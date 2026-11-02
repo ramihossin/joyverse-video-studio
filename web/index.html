@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#111827">
+  <title>JoyVerse Video Studio</title>
+  <meta name="description" content="استوديو JoyVerse لإنشاء فيديو من صورة ووصف نصي.">
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <main class="shell">
+    <header class="top">
+      <div class="mark">JV</div>
+      <div>
+        <p class="eyebrow">JOYVERSE CREATIVE TOOLS</p>
+        <h1>استوديو JoyVerse للفيديو</h1>
+        <p class="sub">حوّل صورة ثابتة إلى مقطع متحرك باستخدام وصفك.</p>
+      </div>
+    </header>
+
+    <section class="panel">
+      <form id="studio-form">
+        <label class="field-title" for="image">1. الصورة المرجعية</label>
+        <label class="upload" for="image">
+          <span class="upload-icon">＋</span>
+          <strong id="upload-title">اختر صورة من جهازك</strong>
+          <small id="upload-help">PNG أو JPG أو WEBP</small>
+          <img id="preview" alt="معاينة الصورة المختارة" hidden>
+        </label>
+        <input id="image" name="image" type="file" accept="image/png,image/jpeg,image/webp" required>
+
+        <label class="field-title" for="prompt">2. وصف الحركة والمشهد</label>
+        <textarea id="prompt" rows="5" maxlength="3000" placeholder="اكتب وصفًا واضحًا لما تريد أن يحدث في الفيديو..." required></textarea>
+
+        <details class="advanced">
+          <summary>إعدادات إضافية</summary>
+          <div class="settings">
+            <label>مدة المقطع
+              <select id="duration">
+                <option value="0.5">0.5 ثانية</option>
+                <option value="1">1 ثانية</option>
+                <option value="2" selected>2 ثانيتان</option>
+                <option value="3">3 ثوانٍ</option>
+                <option value="4">4 ثوانٍ</option>
+                <option value="5">5 ثوانٍ</option>
+              </select>
+            </label>
+            <label>خطوات التوليد
+              <select id="steps">
+                <option value="4">4</option>
+                <option value="6" selected>6</option>
+                <option value="8">8</option>
+                <option value="10">10</option>
+              </select>
+            </label>
+          </div>
+          <p class="hint">المدة والنتيجة الفعلية تخضعان لحدود النموذج وتوفّر موارد Hugging Face.</p>
+        </details>
+
+        <label class="consent">
+          <input id="consent" type="checkbox" required>
+          <span>أوافق على إرسال الصورة والوصف إلى خوادم Hugging Face لمعالجة طلب التوليد.</span>
+        </label>
+
+        <button id="generate" type="submit">إنشاء الفيديو</button>
+      </form>
+    </section>
+
+    <section id="status-box" class="status" aria-live="polite" hidden>
+      <div class="spinner" id="spinner"></div>
+      <p id="status-text"></p>
+    </section>
+
+    <section id="result-box" class="panel result" hidden>
+      <h2>الفيديو الناتج</h2>
+      <video id="result-video" controls playsinline></video>
+      <a id="download" class="download" download="joyverse-video.mp4">تنزيل الفيديو</a>
+    </section>
+
+    <footer>
+      <p>هذه واجهة مستقلة تتصل بواجهة Gradio العامة لمساحة Hugging Face المختارة.</p>
+      <p>لا نطلب كلمة مرور أو رمز وصول. قد تفرض الخدمة طابور انتظار أو حصص استخدام أو قيودًا مؤقتة.</p>
+      <p><a href="https://huggingface.co/spaces/zerogpu-aoti/wan2-2-fp8da-aoti-faster" target="_blank" rel="noopener">صفحة النموذج ومعلوماته</a></p>
+    </footer>
+  </main>
+  <script type="module" src="./app.js"></script>
+</body>
+</html>
