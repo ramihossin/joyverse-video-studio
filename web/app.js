@@ -13,12 +13,14 @@ const spinner = document.querySelector("#spinner");
 const resultBox = document.querySelector("#result-box");
 const resultVideo = document.querySelector("#result-video");
 const downloadLink = document.querySelector("#download");
+const promptInput = document.querySelector("#prompt");
 
 let previewUrl = null;
 
 imageInput.addEventListener("change", () => {
   const file = imageInput.files?.[0];
   if (!file) return;
+
   if (previewUrl) URL.revokeObjectURL(previewUrl);
   previewUrl = URL.createObjectURL(file);
   preview.src = previewUrl;
@@ -36,56 +38,90 @@ function setStatus(message, busy = false) {
 function getVideoUrl(value) {
   if (typeof value === "string") return value;
   if (!value || typeof value !== "object") return null;
-  return value.url || value.video?.url || value.video || value.path || null;
+
+  if (typeof value.url === "string") return value.url;
+  if (typeof value.path === "string" && /^https?:\/\//i.test(value.path)) return value.path;
+  if (value.video) return getVideoUrl(value.video);
+  return null;
+}
+
+function readableError(error) {
+  const message = error?.message || String(error);
+  if (/queue|wait|pending/i.test(message)) {
+    return "الخدمة مشغولة حاليًا أو يوجد طلب في قائمة الانتظار. انتظر قليلًا ثم أعد المحاولة.";
+  }
+  if (/429|quota|rate limit/i.test(message)) {
+    return "تم بلوغ حد الاستخدام المؤقت للخدمة. حاول لاحقًا.";
+  }
+  if (/not found|404|api_name|endpoint/i.test(message)) {
+    return "تعذر العثور على واجهة التوليد المطلوبة. قد تكون واجهة Hugging Face قد تغيّرت.";
+  }
+  return message;
 }
 
 form.addEventListener("submit", async (event) => {
   event.preventDefault();
+
   const file = imageInput.files?.[0];
-  const prompt = document.querySelector("#prompt").value.trim();
-  if (!file || !prompt || !document.querySelector("#consent").checked) return;
+  const prompt = promptInput.value.trim();
+  const consent = document.querySelector("#consent").checked;
+
+  if (!file || !prompt || !consent) {
+    setStatus("يرجى اختيار صورة وكتابة الوصف والموافقة على إرسال البيانات.", false);
+    return;
+  }
+
+  if (!/^image\/(png|jpeg|webp)$/.test(file.type)) {
+    setStatus("نوع الصورة غير مدعوم. استخدم PNG أو JPG أو WEBP.", false);
+    return;
+  }
 
   generateButton.disabled = true;
   resultBox.hidden = true;
-  setStatus("جارٍ الاتصال بخدمة التوليد…", true);
+  resultVideo.removeAttribute("src");
+  downloadLink.removeAttribute("href");
+  setStatus("جارٍ الاتصال بخدمة Hugging Face…", true);
 
   try {
     const client = await Client.connect(SPACE);
-    setStatus("تم الاتصال. جارٍ رفع الصورة وإرسال طلبك إلى قائمة الانتظار…", true);
+    setStatus("تم الاتصال. جارٍ تجهيز الصورة وإرسال طلب التوليد…", true);
 
     const image = await handle_file(file);
     const duration = Number(document.querySelector("#duration").value);
     const steps = Number(document.querySelector("#steps").value);
 
-    setStatus("بدأ التوليد. قد يستغرق الأمر وقتًا حسب ازدحام الخدمة…", true);
+    // The Space's current Gradio input order is:
+    // input_image, prompt, steps, negative_prompt, duration_seconds,
+    // guidance_scale, guidance_scale_2, seed, randomize_seed.
+    setStatus("تم إرسال الطلب. يجري توليد الفيديو؛ قد يستغرق ذلك عدة دقائق.", true);
+
     const result = await client.predict("/generate_video", [
       image,
       prompt,
+      steps,
       "",
       duration,
-      2.5,
-      3.5,
-      steps,
+      1,
+      1,
       42,
       true
     ]);
 
     const videoUrl = getVideoUrl(result?.data?.[0]);
     if (!videoUrl) {
-      throw new Error("انتهى الطلب لكن لم أستطع قراءة رابط الفيديو من استجابة الخدمة.");
+      console.error("Unexpected Gradio response:", result);
+      throw new Error("وصل رد من النموذج، لكن لم يظهر رابط ملف الفيديو في الاستجابة.");
     }
 
     resultVideo.src = videoUrl;
     downloadLink.href = videoUrl;
     resultBox.hidden = false;
-    setStatus("اكتمل التوليد. يمكنك مشاهدة الفيديو أو تنزيله.", false);
-    spinner.hidden = true;
+    setStatus("اكتمل التوليد بنجاح. يمكنك مشاهدة الفيديو أو تنزيله.", false);
   } catch (error) {
-    console.error(error);
-    const message = error?.message || String(error);
-    setStatus("تعذّر إكمال التوليد: " + message + " — قد تكون الخدمة مزدحمة أو تغيّرت واجهتها.", false);
-    spinner.hidden = true;
+    console.error("JoyVerse generation error:", error);
+    setStatus("تعذّر إكمال التوليد: " + readableError(error), false);
   } finally {
     generateButton.disabled = false;
+    spinner.hidden = true;
   }
 });
