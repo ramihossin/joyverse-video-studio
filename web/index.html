@@ -3,67 +3,99 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#111827">
-  <title>JoyVerse Video Studio</title>
-  <meta name="description" content="استوديو JoyVerse لإنشاء فيديو من صورة ووصف نصي.">
+  <meta name="theme-color" content="#101426">
+  <meta name="description" content="JoyVerse Video Studio — مولّد فيديو بالذكاء الاصطناعي من النص أو الصورة.">
+  <title>JoyVerse AI Video Studio</title>
   <link rel="stylesheet" href="./styles.css">
 </head>
 <body>
   <main class="shell">
     <header class="top">
       <div class="mark">JV</div>
-      <div>
+      <div class="brand-copy">
         <p class="eyebrow">JOYVERSE CREATIVE TOOLS</p>
-        <h1>استوديو JoyVerse للفيديو</h1>
-        <p class="sub">حوّل صورة ثابتة إلى مقطع متحرك باستخدام وصفك.</p>
+        <h1>JoyVerse AI Video Studio</h1>
+        <p class="sub">حوّل وصفك أو صورتك إلى فيديو مع صوت متزامن.</p>
       </div>
+      <span class="free-tag">مجاني · قائمة عامة</span>
     </header>
 
     <section class="panel">
+      <div class="section-heading">
+        <span class="step">01</span>
+        <div>
+          <h2>وصف الفيديو</h2>
+          <p>اكتب المشهد والحركة وأسلوب التصوير بوضوح.</p>
+        </div>
+      </div>
+
       <form id="studio-form">
-        <label class="field-title" for="image">1. الصورة المرجعية</label>
+        <label class="field-title" for="prompt">وصف المشهد</label>
+        <textarea id="prompt" rows="5" maxlength="4000" placeholder="مثال: A cheerful colorful elephant walks through a sunny garden, sneezes gently, and tiny rainbow clouds appear. Smooth camera movement, joyful 3D animated film style." required></textarea>
+
+        <div class="section-heading image-heading">
+          <span class="step">02</span>
+          <div>
+            <h2>الصورة المرجعية <span class="optional">اختياري</span></h2>
+            <p>اتركها فارغة لتوليد فيديو من النص فقط.</p>
+          </div>
+        </div>
+
         <label class="upload" for="image">
           <span class="upload-icon">＋</span>
-          <strong id="upload-title">اختر صورة من جهازك</strong>
+          <strong id="upload-title">اختر صورة مرجعية</strong>
           <small id="upload-help">PNG أو JPG أو WEBP</small>
-          <img id="preview" alt="معاينة الصورة المختارة" hidden>
+          <img id="preview" alt="معاينة الصورة المرجعية" hidden>
         </label>
-        <input id="image" name="image" type="file" accept="image/png,image/jpeg,image/webp" required>
+        <input id="image" name="image" type="file" accept="image/png,image/jpeg,image/webp">
 
-        <label class="field-title" for="prompt">2. وصف الحركة والمشهد</label>
-        <textarea id="prompt" rows="5" maxlength="3000" placeholder="اكتب وصفًا واضحًا لما تريد أن يحدث في الفيديو..." required></textarea>
-
-        <details class="advanced">
-          <summary>إعدادات إضافية</summary>
-          <div class="settings">
-            <label>مدة المقطع
-              <select id="duration">
-                <option value="0.5">0.5 ثانية</option>
-                <option value="1">1 ثانية</option>
-                <option value="2" selected>2 ثانيتان</option>
-                <option value="3">3 ثوانٍ</option>
-                <option value="4">4 ثوانٍ</option>
-                <option value="5">5 ثوانٍ</option>
-              </select>
-            </label>
-            <label>خطوات التوليد
-              <select id="steps">
-                <option value="4">4</option>
-                <option value="6" selected>6</option>
-                <option value="8">8</option>
-                <option value="10">10</option>
-              </select>
-            </label>
+        <div class="section-heading settings-heading">
+          <span class="step">03</span>
+          <div>
+            <h2>إعدادات التوليد</h2>
+            <p>إعدادات متوافقة مع محرك LTX-2.5.</p>
           </div>
-          <p class="hint">المدة والنتيجة الفعلية تخضعان لحدود النموذج وتوفّر موارد Hugging Face.</p>
-        </details>
+        </div>
+
+        <div class="settings">
+          <label>المحرك
+            <input type="text" value="LTX-2.5 · Video + Audio" readonly>
+          </label>
+          <label>نوع الإطار
+            <select id="aspect">
+              <option value="portrait" selected>عمودي 9:16 — Shorts</option>
+              <option value="landscape">أفقي 16:9 — YouTube</option>
+              <option value="square">مربع 1:1</option>
+            </select>
+          </label>
+          <label>مدة الفيديو
+            <select id="duration">
+              <option value="1">1 ثانية</option>
+              <option value="2" selected>2 ثانية</option>
+              <option value="3">3 ثوانٍ</option>
+              <option value="4">4 ثوانٍ</option>
+              <option value="5">5 ثوانٍ</option>
+            </select>
+          </label>
+          <label>Seed
+            <input id="seed" type="number" min="0" max="2147483647" value="42">
+          </label>
+        </div>
+
+        <label class="toggle-row">
+          <input id="random-seed" type="checkbox" checked>
+          <span>استخدام Seed عشوائي لكل محاولة</span>
+        </label>
 
         <label class="consent">
           <input id="consent" type="checkbox" required>
-          <span>أوافق على إرسال الصورة والوصف إلى خوادم Hugging Face لمعالجة طلب التوليد.</span>
+          <span>أوافق على إرسال الوصف والصورة الاختيارية إلى خوادم مزود النموذج لإنتاج الفيديو. لا ترفع صوراً خاصة أو حساسة.</span>
         </label>
 
-        <button id="generate" type="submit">إنشاء الفيديو</button>
+        <button id="generate" type="submit">
+          <span>إنشاء الفيديو</span>
+          <span aria-hidden="true">✦</span>
+        </button>
       </form>
     </section>
 
@@ -73,15 +105,25 @@
     </section>
 
     <section id="result-box" class="panel result" hidden>
-      <h2>الفيديو الناتج</h2>
+      <div class="result-head">
+        <div>
+          <p class="eyebrow">GENERATION COMPLETE</p>
+          <h2>الفيديو الناتج</h2>
+          <p id="result-meta"></p>
+        </div>
+      </div>
       <video id="result-video" controls playsinline></video>
+      <div class="prompt-result">
+        <strong>الوصف المستخدم</strong>
+        <p id="prompt-output"></p>
+      </div>
       <a id="download" class="download" download="joyverse-video.mp4">تنزيل الفيديو</a>
     </section>
 
     <footer>
-      <p>هذه واجهة مستقلة تتصل بواجهة Gradio العامة لمساحة Hugging Face المختارة.</p>
-      <p>لا نطلب كلمة مرور أو رمز وصول. قد تفرض الخدمة طابور انتظار أو حصص استخدام أو قيودًا مؤقتة.</p>
-      <p><a href="https://huggingface.co/spaces/zerogpu-aoti/wan2-2-fp8da-aoti-faster" target="_blank" rel="noopener">صفحة النموذج ومعلوماته</a></p>
+      <p>محرك التوليد: LTX-2.5 عبر مساحة عامة تعمل بنظام GPU مشترك.</p>
+      <p>الاستخدام مجاني ضمن الحصة المتاحة، وقد يحدث انتظار أو رفض مؤقت عند ازدحام الخدمة. لا توجد أرصدة مدفوعة مفعّلة في هذه النسخة.</p>
+      <p><a href="https://huggingface.co/spaces/Lightricks/LTX-2.5" target="_blank" rel="noopener noreferrer">معلومات محرك LTX-2.5</a></p>
     </footer>
   </main>
   <script type="module" src="./app.js"></script>
