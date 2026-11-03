@@ -1,0 +1,28 @@
+name: Validate JoyVerse Video Studio
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  validate-web:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Check JavaScript syntax
+        run: node --input-type=module --check < web/app.js
+      - name: Verify static site files
+        run: |
+          test -s web/index.html
+          test -s web/styles.css
+          test -s web/app.js
