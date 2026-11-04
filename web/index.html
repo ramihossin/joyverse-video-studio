@@ -71,10 +71,10 @@
           <label>مدة الفيديو
             <select id="duration">
               <option value="1">1 ثانية</option>
-              <option value="2" selected>2 ثانية</option>
+              <option value="2">2 ثانية</option>
               <option value="3">3 ثوانٍ</option>
               <option value="4">4 ثوانٍ</option>
-              <option value="5">5 ثوانٍ</option>
+              <option value="5" selected>5 ثوانٍ</option>
             </select>
           </label>
           <label>Seed
@@ -85,6 +85,11 @@
         <label class="toggle-row">
           <input id="random-seed" type="checkbox" checked>
           <span>استخدام Seed عشوائي لكل محاولة</span>
+        </label>
+
+        <label class="toggle-row">
+          <input id="enhance-prompt" type="checkbox" checked>
+          <span>تحسين الوصف تلقائياً باستخدام Gemma‑4</span>
         </label>
 
         <label class="consent">
