@@ -1,41 +1,37 @@
-# JoyVerse AI Video Studio
+# JoyVerse Scene Studio
 
-Mobile-first Arabic AI video generator. The first integrated engine is the public LTX-2.5 Gradio Space, supporting text-to-video and image-to-video with synchronized audio.
+Mobile-first scene queue for the JoyVerse Kids video workflow.
 
-## Cost policy
+## What it does
 
-- This version uses the public shared ZeroGPU queue without a provider API key.
-- No paid provider API, prepaid balance, or billing key is configured.
-- Free queue access is quota-limited and availability is not guaranteed. A request may wait or fail when shared GPU capacity is busy.
-- The app does not silently switch to a paid provider.
-- Never add API tokens to browser JavaScript or commit secrets.
+- Adds individual scenes to a persistent browser-side queue.
+- Sends scenes to the public LTX-2.5 Gradio Space one at a time.
+- Waits for the current scene's streamed job result before starting the next.
+- Tracks waiting, running, completed, and failed states.
+- Stores scene prompts and result URLs in browser local storage.
+- Provides a preview and MP4 link for each completed scene.
+- Supports optional reference image, 1–5 second clips, and 9:16 / 16:9 / 1:1 aspect ratios.
 
-## Current capabilities
+## Cost and provider policy
 
-- Text-to-video and optional image-to-video.
-- Portrait, landscape, and square aspect presets.
-- Short clips from 1 to 5 seconds.
-- Generated audio returned with the video by the LTX-2.5 Space.
-- Queue/status feedback, preview, and download link.
-- Explicit consent before sending prompt/image to the external model provider.
+- The app connects directly to the public Lightricks/LTX-2.5 Gradio Space using `@gradio/client`.
+- It does not use LoreMotion, TinyFish, or a paid provider API.
+- The public Space uses shared GPU capacity. Queue time, uptime, and free access are controlled by the provider and are not guaranteed.
+- The app does not bypass ads, queues, account checks, or provider limits, and does not silently switch to a paid model.
+- A successful queue submission is not the same as a completed render. A scene is marked complete only after a video URL is returned.
 
-## Architecture
+## Important operating notes
 
-The browser calls the public Gradio Space directly through the official @gradio/client library. This avoids a server-side proxy, avoids storing user images on our server, and avoids needing a paid hosting service for inference.
-
-Provider configuration is isolated in web/app.js so future free or renewable-credit providers can be added without redesigning the UI. Do not enable a provider until its public API, cost model, and quota behavior are verified.
+- Keep the browser tab open while the queue is running. Browser-side execution cannot be guaranteed to continue after the tab is closed.
+- Scene prompts and statuses are stored in local browser storage. Reference images are not persisted; choose the image again after reloading if needed.
+- Video URLs are controlled by the upstream provider and may expire. Download completed clips promptly.
+- Prompts and optional reference images are sent to the external model provider. Do not upload private or sensitive images.
+- This is an independent community workflow and is not affiliated with LoreMotion or Lightricks.
 
 ## Deployment
 
-The existing GitHub Pages workflow deploys the web/ directory. Enable GitHub Pages with GitHub Actions as the source in repository Settings → Pages if it is not already enabled.
-
-## Important limitations
-
-- LTX-2.5 is a large model served by a shared public GPU Space. Queue time, quota, and uptime are controlled by the upstream service.
-- The current UI requests short 1–5 second clips. Longer videos require a later editing/assembly workflow.
-- A successful web deployment does not prove that upstream generation works. End-to-end generation must be tested separately when the model service is available.
-- Prompts and optional images are transmitted directly to the model provider. Do not upload private or sensitive images.
+The GitHub Actions workflow in `.github/workflows/pages.yml` deploys the `web/` directory to GitHub Pages when files in `web/**` change on `main`. Enable GitHub Pages with GitHub Actions as the source in repository Settings → Pages if it is not already enabled.
 
 ## Development
 
-The site is static HTML/CSS/JavaScript. No build step is required. web/app.js imports @gradio/client from a version-pinned CDN.
+The app is static HTML/CSS/JavaScript. No build step is required. `web/app.js` imports the version-pinned `@gradio/client` package from esm.sh.
