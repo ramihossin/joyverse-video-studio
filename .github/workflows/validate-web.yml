@@ -26,3 +26,9 @@ jobs:
           test -s web/index.html
           test -s web/styles.css
           test -s web/app.js
+      - name: Install Playwright
+        run: |
+          npm install --no-save @playwright/test
+          npx playwright install --with-deps chromium
+      - name: Run browser smoke tests
+        run: npx playwright test
