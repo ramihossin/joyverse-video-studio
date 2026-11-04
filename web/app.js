@@ -102,7 +102,7 @@ form.addEventListener("submit", async (event) => {
       "conv",
       false,
       document.querySelector("#random-seed").checked,
-      false
+      document.querySelector("#enhance-prompt").checked
     ];
 
     setStatus("تم الاتصال. يجري إرسال طلب التوليد إلى قائمة الانتظار العامة…", true);
