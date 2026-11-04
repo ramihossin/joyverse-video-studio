@@ -59,6 +59,9 @@
           </label>
           <label>Seed<input id="seed" type="number" min="0" max="2147483647" value="42"></label>
         </div>
+        <label class="field-title" for="hf-token">رمز Hugging Face (اختياري)</label>
+        <input id="hf-token" type="password" autocomplete="off" spellcheck="false" placeholder="hf_… — أدخله هنا فقط ولا ترسله في المحادثة">
+        <p class="token-note">يُستخدم داخل هذه الجلسة فقط ولا يُحفظ في قائمة المشاهد. قد يساعد في ربط طلباتك بحسابك، لكنه لا يضمن تجاوز حصص ZeroGPU أو الحصول على GPU.</p>
         <label class="toggle-row"><input id="random-seed" type="checkbox" checked><span>Seed عشوائي لكل مشهد</span></label>
         <label class="toggle-row"><input id="enhance-prompt" type="checkbox" checked><span>تحسين الوصف تلقائياً</span></label>
         <label class="consent"><input id="consent" type="checkbox"><span>أوافق على إرسال الوصف والصورة الاختيارية إلى مزود النموذج لتوليد الفيديو.</span></label>
