@@ -4,6 +4,7 @@ const PROVIDER = { space: "Lightricks/LTX-2.5", endpoint: "/run" };
 const $ = (id) => document.getElementById(id);
 const form = $("studio-form");
 const imageInput = $("image");
+const tokenInput = $("hf-token");
 const preview = $("preview");
 const uploadTitle = $("upload-title");
 const uploadHelp = $("upload-help");
@@ -168,8 +169,10 @@ async function generateScene(client, scene) {
   let output = null;
   for await (const message of job) {
     if (message.type === "status") {
-      const detail = message.message || (Number.isInteger(message.rank) ? "ترتيب الطابور: " + message.rank : "بانتظار تحديث المحرك…");
-      setStatus(scene.title + ": " + detail, true);
+      const stage = message.stage || message.status || message.message || "قيد المعالجة";
+      const position = Number.isInteger(message.position) ? " · ترتيب الطابور: " + (message.position + 1) : "";
+      const eta = Number.isFinite(message.eta) && message.eta > 0 ? " · الوقت المتوقع: " + Math.ceil(message.eta) + " ثانية" : "";
+      setStatus(scene.title + ": " + stage + position + eta, true);
     } else if (message.type === "data") {
       output = message.data;
     }
@@ -197,7 +200,10 @@ async function runQueue() {
 
   try {
     setStatus("جارٍ الاتصال بمحرك LTX‑2.5 المجاني…", true);
-    client = await Client.connect(PROVIDER.space);
+    const connectOptions = { events: ["status", "data"] };
+    const hfToken = tokenInput.value.trim();
+    if (hfToken) connectOptions.token = hfToken;
+    client = await Client.connect(PROVIDER.space, connectOptions);
 
     for (const scene of queue) {
       if (stopRequested) break;
