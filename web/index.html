@@ -4,8 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#101426">
-  <meta name="description" content="JoyVerse Video Studio — مولّد فيديو بالذكاء الاصطناعي من النص أو الصورة.">
-  <title>JoyVerse AI Video Studio</title>
+  <meta name="description" content="JoyVerse Studio — إدارة وتوليد مشاهد الفيديو بالتتابع.">
+  <title>JoyVerse Scene Studio</title>
   <link rel="stylesheet" href="./styles.css">
 </head>
 <body>
@@ -14,121 +14,87 @@
       <div class="mark">JV</div>
       <div class="brand-copy">
         <p class="eyebrow">JOYVERSE CREATIVE TOOLS</p>
-        <h1>JoyVerse AI Video Studio</h1>
-        <p class="sub">أنشئ مقاطع فيديو قصيرة من وصفك أو صورتك المرجعية.</p>
+        <h1>JoyVerse Scene Studio</h1>
+        <p class="sub">أداة مستقلة لإدارة مشاهدك وتوليدها واحداً تلو الآخر.</p>
       </div>
-      <span class="free-tag">حصة عامة محدودة</span>
+      <span class="free-tag">LTX‑2.5 · Free queue</span>
     </header>
 
     <section class="panel">
       <div class="section-heading">
         <span class="step">01</span>
-        <div>
-          <h2>وصف الفيديو</h2>
-          <p>اكتب المشهد والحركة وأسلوب التصوير بوضوح.</p>
-        </div>
+        <div><h2>إضافة مشهد</h2><p>أضف مشهداً واحداً في كل مرة إلى قائمة الإنتاج.</p></div>
       </div>
-
       <form id="studio-form">
-        <label class="field-title" for="prompt">وصف المشهد</label>
-        <textarea id="prompt" rows="5" maxlength="4000" placeholder="مثال: A cheerful colorful elephant walks through a sunny garden, sneezes gently, and tiny rainbow clouds appear. Smooth camera movement, joyful 3D animated film style." required></textarea>
+        <label class="field-title" for="prompt">عنوان المشهد</label>
+        <input id="scene-title" type="text" maxlength="100" placeholder="مثال: Scene 17 — The First Symbol">
+        <label class="field-title" for="prompt">وصف المشهد باللغة الإنجليزية</label>
+        <textarea id="prompt" rows="5" maxlength="4000" placeholder="Describe the characters, action, environment, camera movement, lighting and continuity..." required></textarea>
 
         <div class="section-heading image-heading">
           <span class="step">02</span>
-          <div>
-            <h2>الصورة المرجعية <span class="optional">اختياري</span></h2>
-            <p>اتركها فارغة لتوليد فيديو من النص فقط.</p>
-          </div>
+          <div><h2>الصورة المرجعية <span class="optional">اختياري</span></h2><p>يمكنك إرفاق مرجع بصري للمشهد.</p></div>
         </div>
-
         <label class="upload" for="image">
-          <span class="upload-icon">＋</span>
-          <strong id="upload-title">اختر صورة مرجعية</strong>
-          <small id="upload-help">PNG أو JPG أو WEBP</small>
-          <img id="preview" alt="معاينة الصورة المرجعية" hidden>
+          <span class="upload-icon">＋</span><strong id="upload-title">اختر صورة مرجعية</strong>
+          <small id="upload-help">PNG أو JPG أو WEBP</small><img id="preview" alt="معاينة الصورة المرجعية" hidden>
         </label>
         <input id="image" name="image" type="file" accept="image/png,image/jpeg,image/webp">
 
         <div class="section-heading settings-heading">
           <span class="step">03</span>
-          <div>
-            <h2>إعدادات التوليد</h2>
-            <p>محرك LTX-2.5 من Lightricks.</p>
-          </div>
+          <div><h2>إعدادات التوليد</h2><p>اتصال مباشر بمساحة LTX‑2.5 العامة، دون TinyFish.</p></div>
         </div>
-
         <div class="settings">
-          <label>المحرك
-            <input type="text" value="LTX-2.5 · Video + Audio" readonly>
-          </label>
-          <label>نوع الإطار
+          <label>المحرك<input type="text" value="LTX‑2.5 · Free public Space" readonly></label>
+          <label>نسبة العرض
             <select id="aspect">
-              <option value="landscape" selected>أفقي 16:9 — YouTube</option>
-              <option value="portrait">عمودي 9:16 — Shorts</option>
+              <option value="portrait" selected>عمودي 9:16 — المشروع الحالي</option>
+              <option value="landscape">أفقي 16:9 — YouTube</option>
               <option value="square">مربع 1:1</option>
             </select>
           </label>
-          <label>مدة الفيديو
-            <select id="duration">
-              <option value="1">1 ثانية</option>
-              <option value="2">2 ثانية</option>
-              <option value="3">3 ثوانٍ</option>
-              <option value="4">4 ثوانٍ</option>
-              <option value="5" selected>5 ثوانٍ</option>
-            </select>
+          <label>المدة
+            <select id="duration"><option value="5" selected>5 ثوانٍ</option><option value="4">4 ثوانٍ</option><option value="3">3 ثوانٍ</option><option value="2">ثانيتان</option><option value="1">ثانية واحدة</option></select>
           </label>
-          <label>Seed
-            <input id="seed" type="number" min="0" max="2147483647" value="42">
-          </label>
+          <label>Seed<input id="seed" type="number" min="0" max="2147483647" value="42"></label>
         </div>
-
-        <label class="toggle-row">
-          <input id="random-seed" type="checkbox" checked>
-          <span>استخدام Seed عشوائي لكل محاولة</span>
-        </label>
-
-        <label class="toggle-row">
-          <input id="enhance-prompt" type="checkbox" checked>
-          <span>تحسين الوصف تلقائياً باستخدام Gemma‑4</span>
-        </label>
-
-        <label class="consent">
-          <input id="consent" type="checkbox" required>
-          <span>أوافق على إرسال الوصف والصورة الاختيارية إلى خوادم مزود النموذج لإنتاج الفيديو. لا ترفع صوراً خاصة أو حساسة.</span>
-        </label>
-
-        <button id="generate" type="submit">
-          <span>إنشاء الفيديو</span>
-          <span aria-hidden="true">✦</span>
-        </button>
+        <label class="toggle-row"><input id="random-seed" type="checkbox" checked><span>Seed عشوائي لكل مشهد</span></label>
+        <label class="toggle-row"><input id="enhance-prompt" type="checkbox" checked><span>تحسين الوصف تلقائياً</span></label>
+        <label class="consent"><input id="consent" type="checkbox"><span>أوافق على إرسال الوصف والصورة الاختيارية إلى مزود النموذج لتوليد الفيديو.</span></label>
+        <button id="add-scene" type="submit"><span>＋ إضافة إلى قائمة المشاهد</span></button>
       </form>
     </section>
 
+    <section class="panel queue-panel">
+      <div class="section-heading">
+        <span class="step">04</span>
+        <div><h2>قائمة الإنتاج</h2><p>تُرسل المشاهد بالتتابع؛ لا يبدأ التالي قبل انتهاء الحالي.</p></div>
+      </div>
+      <div class="queue-actions">
+        <button id="start-queue" type="button">▶ تشغيل قائمة المشاهد</button>
+        <button id="stop-queue" class="secondary" type="button" disabled>إيقاف بعد المشهد الحالي</button>
+        <button id="clear-queue" class="secondary" type="button">مسح المكتمل</button>
+      </div>
+      <p id="queue-summary" class="queue-summary">لا توجد مشاهد في القائمة بعد.</p>
+      <ol id="scene-list" class="scene-list"></ol>
+    </section>
+
     <section id="status-box" class="status" aria-live="polite" hidden>
-      <div class="spinner" id="spinner"></div>
-      <p id="status-text"></p>
+      <div class="spinner" id="spinner"></div><p id="status-text"></p>
     </section>
 
     <section id="result-box" class="panel result" hidden>
-      <div class="result-head">
-        <div>
-          <p class="eyebrow">GENERATION COMPLETE</p>
-          <h2>الفيديو الناتج</h2>
-          <p id="result-meta"></p>
-        </div>
-      </div>
+      <div class="result-head"><div><p class="eyebrow">LATEST COMPLETED SCENE</p><h2 id="result-title">نتيجة المشهد</h2><p id="result-meta"></p></div></div>
       <video id="result-video" controls playsinline></video>
-      <div class="prompt-result">
-        <strong>الوصف المستخدم</strong>
-        <p id="prompt-output"></p>
-      </div>
-      <a id="download" class="download" download="joyverse-video.mp4">تنزيل الفيديو</a>
+      <a id="download" class="download" download="joyverse-scene.mp4">تنزيل المشهد</a>
     </section>
 
     <footer>
-      <p>محرك التوليد: LTX-2.5 عبر مساحة عامة تعمل بنظام GPU مشترك.</p>
-      <p>التوفر والانتظار والحصة المجانية تخضع لسياسة مزود النموذج وازدحام GPU؛ لا توجد ضمانة لتوليد مجاني غير محدود.</p>
-      <p><a href="https://huggingface.co/spaces/Lightricks/LTX-2.5" target="_blank" rel="noopener noreferrer">معلومات محرك LTX-2.5</a></p>
+      <p>المحرك: LTX‑2.5 عبر مساحة Gradio عامة؛ لا نستخدم رصيد LoreMotion أو TinyFish.</p>
+      <p>الطابور العام والحصة والتوفر يتحكم بها مزود النموذج. قد تتأخر الطلبات أو تفشل عند ازدحام GPU.</p>
+      <p>اترك الصفحة مفتوحة أثناء التشغيل. إذا أغلقتها، لا يمكن ضمان استمرار المعالجة في المتصفح.</p>
+      <p><a href="https://huggingface.co/spaces/Lightricks/LTX-2.5" target="_blank" rel="noopener noreferrer">صفحة محرك LTX‑2.5</a></p>
     </footer>
   </main>
   <script type="module" src="./app.js"></script>
