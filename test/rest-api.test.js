@@ -1,0 +1,67 @@
+import test, { before, after } from "node:test";
+import assert from "node:assert/strict";
+import { spawn } from "node:child_process";
+import net from "node:net";
+
+const TOKEN = "test-only-token-with-at-least-32-characters";
+let child;
+let baseUrl;
+
+before(async () => {
+  const probe = net.createServer();
+  await new Promise((resolve, reject) => probe.listen(0, "127.0.0.1", resolve).once("error", reject));
+  const port = probe.address().port;
+  await new Promise(resolve => probe.close(resolve));
+  baseUrl = `http://127.0.0.1:${port}`;
+  child = spawn(process.execPath, ["bridge/server.js"], {
+    env: { ...process.env, PORT: String(port), MCP_ACCESS_TOKEN: TOKEN },
+    stdio: "ignore"
+  });
+  let ready = false;
+  for (let i = 0; i < 50; i++) {
+    if (child.exitCode !== null) throw new Error("Bridge process exited before becoming ready");
+    try {
+      const response = await fetch(`${baseUrl}/health`);
+      if (response.ok) { ready = true; break; }
+    } catch {}
+    await new Promise(resolve => setTimeout(resolve, 100));
+  }
+  assert.equal(ready, true, "bridge should become healthy");
+});
+
+after(() => {
+  if (child && child.exitCode === null) child.kill("SIGTERM");
+});
+
+test("REST status rejects missing bearer token", async () => {
+  const response = await fetch(`${baseUrl}/api/status`);
+  assert.equal(response.status, 401);
+});
+
+test("REST command rejects missing bearer token", async () => {
+  const response = await fetch(`${baseUrl}/api/command`, {
+    method: "POST", headers: { "content-type": "application/json" },
+    body: JSON.stringify({ command: "stop", webhook_url: "https://trigger.macrodroid.com/abcdefgh/identifier" })
+  });
+  assert.equal(response.status, 401);
+});
+
+test("REST command rejects malformed webhook URLs", async () => {
+  const response = await fetch(`${baseUrl}/api/command`, {
+    method: "POST",
+    headers: { "content-type": "application/json", authorization: `Bearer ${TOKEN}` },
+    body: JSON.stringify({ command: "stop", webhook_url: "https://example.com/not-a-webhook" })
+  });
+  assert.equal(response.status, 400);
+  assert.deepEqual(await response.json(), { error: "invalid_webhook_url" });
+});
+
+test("REST command requires a prompt for scene submission", async () => {
+  const response = await fetch(`${baseUrl}/api/command`, {
+    method: "POST",
+    headers: { "content-type": "application/json", authorization: `Bearer ${TOKEN}` },
+    body: JSON.stringify({ command: "submit_scene", webhook_url: "https://trigger.macrodroid.com/abcdefgh/identifier" })
+  });
+  assert.equal(response.status, 400);
+  assert.deepEqual(await response.json(), { error: "prompt_required" });
+});

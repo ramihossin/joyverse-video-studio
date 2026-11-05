@@ -90,6 +90,79 @@ function createMcpServer() {
   return server;
 }
 
+
+// Authenticated REST endpoint for clients that cannot speak MCP.
+// Uses the existing secret only in the Authorization header, never in the URL.
+function bearerAuthorized(req) {
+  const header = req.get("authorization") || "";
+  const match = /^Bearer ([A-Za-z0-9._~+/-]+=*)$/.exec(header);
+  return Boolean(match && match[1] === ACCESS_TOKEN);
+}
+
+app.post("/api/command", async (req, res) => {
+  if (!bearerAuthorized(req)) return res.status(401).json({ error: "unauthorized" });
+  const { webhook_url, command, prompt, scene_id } = req.body ?? {};
+  if (typeof webhook_url !== "string" || !isValidMacroDroidWebhook(webhook_url)) {
+    return res.status(400).json({ error: "invalid_webhook_url" });
+  }
+  if (!["open_loremotion", "submit_scene", "check_page", "stop"].includes(command)) {
+    return res.status(400).json({ error: "invalid_command" });
+  }
+  if (command === "submit_scene" && (typeof prompt !== "string" || !prompt.trim())) {
+    return res.status(400).json({ error: "prompt_required" });
+  }
+  if (prompt !== undefined && (typeof prompt !== "string" || prompt.length > 3000)) {
+    return res.status(400).json({ error: "invalid_prompt" });
+  }
+  if (scene_id !== undefined && (typeof scene_id !== "string" || scene_id.length > 80)) {
+    return res.status(400).json({ error: "invalid_scene_id" });
+  }
+
+  const commandId = randomUUID();
+  const target = new URL(webhook_url);
+  target.searchParams.set("command", command);
+  target.searchParams.set("command_id", commandId);
+  if (prompt) target.searchParams.set("prompt", prompt);
+  if (scene_id) target.searchParams.set("scene_id", scene_id);
+
+  try {
+    const response = await fetch(target, {
+      method: "GET",
+      redirect: "error",
+      signal: AbortSignal.timeout(12000)
+    });
+    lastCommand = {
+      commandId, command, sceneId: scene_id ?? null,
+      dispatchedAt: new Date().toISOString(), httpStatus: response.status
+    };
+    if (!response.ok) {
+      return res.status(502).json({
+        accepted: false, command_id: commandId,
+        error: "macrodroid_webhook_rejected", upstream_status: response.status
+      });
+    }
+    return res.status(202).json({
+      accepted: true, command_id: commandId, command,
+      note: "Webhook accepted by MacroDroid cloud; on-device execution is not yet confirmed."
+    });
+  } catch (error) {
+    return res.status(502).json({
+      accepted: false, command_id: commandId,
+      error: "webhook_dispatch_failed",
+      message: String(error?.message || error).slice(0, 200)
+    });
+  }
+});
+
+app.get("/api/status", (req, res) => {
+  if (!bearerAuthorized(req)) return res.status(401).json({ error: "unauthorized" });
+  res.json({
+    last_command: lastCommand,
+    last_device_result: lastDeviceResult,
+    persistence: "in-memory; reset on service restart"
+  });
+});
+
 app.get("/health", (_req, res) => res.json({
   ok: true,
   service: "joyverse-macrodroid-bridge",
