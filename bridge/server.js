@@ -10,6 +10,7 @@ app.disable("x-powered-by");
 app.use(express.json({ limit: "8kb" }));
 
 const ACCESS_TOKEN = process.env.MCP_ACCESS_TOKEN;
+const MACRODROID_WEBHOOK_URL = process.env.MACRODROID_WEBHOOK_URL || "";
 if (!ACCESS_TOKEN || ACCESS_TOKEN.length < 32) {
   throw new Error("MCP_ACCESS_TOKEN must be set to a random value of at least 32 characters.");
 }
@@ -38,20 +39,19 @@ function createMcpServer() {
     "send_macro_command",
     "Send one command to the user's MacroDroid webhook to control the Android browser. The webhook URL is a private device capability; use only the URL the user supplies. A successful response means MacroDroid accepted the webhook request, not that Loremotion completed the action.",
     {
-      webhook_url: z.string().url().describe("Private MacroDroid Webhook URL from the user's own device."),
       command: z.enum(["open_loremotion", "submit_scene", "check_page", "stop"]).describe("Command for the user's MacroDroid command macro."),
       prompt: z.string().max(3000).optional().describe("Scene prompt; required for submit_scene."),
       scene_id: z.string().max(80).optional()
     },
-    async ({ webhook_url, command, prompt, scene_id }) => {
-      if (!isValidMacroDroidWebhook(webhook_url)) {
+    async ({ command, prompt, scene_id }) => {
+      if (!isValidMacroDroidWebhook(MACRODROID_WEBHOOK_URL)) {
         return { isError: true, content: [{ type: "text", text: "Rejected URL. Only a valid https://trigger.macrodroid.com/<device-id>/<identifier> webhook is accepted." }] };
       }
       if (command === "submit_scene" && !prompt?.trim()) {
         return { isError: true, content: [{ type: "text", text: "prompt is required for submit_scene." }] };
       }
       const commandId = randomUUID();
-      const target = new URL(webhook_url);
+      const target = new URL(MACRODROID_WEBHOOK_URL);
       target.searchParams.set("command", command);
       target.searchParams.set("command_id", commandId);
       if (prompt) target.searchParams.set("prompt", prompt);
@@ -109,9 +109,9 @@ app.get("/", (_req, res) => {
 
 app.post("/api/command", async (req, res) => {
   if (!bearerAuthorized(req)) return res.status(401).json({ error: "unauthorized" });
-  const { webhook_url, command, prompt, scene_id } = req.body ?? {};
-  if (typeof webhook_url !== "string" || !isValidMacroDroidWebhook(webhook_url)) {
-    return res.status(400).json({ error: "invalid_webhook_url" });
+  const { command, prompt, scene_id } = req.body ?? {};
+  if (!isValidMacroDroidWebhook(MACRODROID_WEBHOOK_URL)) {
+    return res.status(503).json({ error: "macrodroid_webhook_not_configured" });
   }
   if (!["open_loremotion", "submit_scene", "check_page", "stop"].includes(command)) {
     return res.status(400).json({ error: "invalid_command" });
@@ -127,7 +127,7 @@ app.post("/api/command", async (req, res) => {
   }
 
   const commandId = randomUUID();
-  const target = new URL(webhook_url);
+  const target = new URL(MACRODROID_WEBHOOK_URL);
   target.searchParams.set("command", command);
   target.searchParams.set("command_id", commandId);
   if (prompt) target.searchParams.set("prompt", prompt);
@@ -178,6 +178,7 @@ app.get("/api/status", (req, res) => {
     mcp: {
       configured: true,
       transport: "Streamable HTTP",
+      macrodroid_webhook_configured: isValidMacroDroidWebhook(MACRODROID_WEBHOOK_URL),
       endpoint: "/mcp/<private-token>",
       connectivity_probe: "not_performed"
     },
@@ -193,6 +194,7 @@ app.get("/health", (_req, res) => res.json({
   uptime_seconds: Math.floor(process.uptime()),
   timestamp: new Date().toISOString(),
   mcp: "/mcp/<private-token>",
+  macrodroid_webhook_configured: isValidMacroDroidWebhook(MACRODROID_WEBHOOK_URL),
   callback: "/device-result/<private-token>"
 }));
 
