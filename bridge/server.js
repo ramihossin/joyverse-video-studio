@@ -37,7 +37,7 @@ function createMcpServer() {
 
   server.tool(
     "send_macro_command",
-    "Send one command to the user's MacroDroid webhook to control the Android browser. The webhook URL is a private device capability; use only the URL the user supplies. A successful response means MacroDroid accepted the webhook request, not that Loremotion completed the action.",
+    "Send one command to the user's MacroDroid webhook to control the Android browser. The private MacroDroid webhook is read only from the server-side MACRODROID_WEBHOOK_URL environment variable and is never returned to clients. A successful response means MacroDroid accepted the webhook request, not that Loremotion completed the action.",
     {
       command: z.enum(["open_loremotion", "submit_scene", "check_page", "stop"]).describe("Command for the user's MacroDroid command macro."),
       prompt: z.string().max(3000).optional().describe("Scene prompt; required for submit_scene."),
@@ -45,7 +45,7 @@ function createMcpServer() {
     },
     async ({ command, prompt, scene_id }) => {
       if (!isValidMacroDroidWebhook(MACRODROID_WEBHOOK_URL)) {
-        return { isError: true, content: [{ type: "text", text: "Rejected URL. Only a valid https://trigger.macrodroid.com/<device-id>/<identifier> webhook is accepted." }] };
+        return { isError: true, content: [{ type: "text", text: "MacroDroid webhook is not configured. Set a valid private https://trigger.macrodroid.com/<device-id>/<identifier> URL in the Render MACRODROID_WEBHOOK_URL environment variable." }] };
       }
       if (command === "submit_scene" && !prompt?.trim()) {
         return { isError: true, content: [{ type: "text", text: "prompt is required for submit_scene." }] };
@@ -110,9 +110,6 @@ app.get("/", (_req, res) => {
 app.post("/api/command", async (req, res) => {
   if (!bearerAuthorized(req)) return res.status(401).json({ error: "unauthorized" });
   const { command, prompt, scene_id } = req.body ?? {};
-  if (!isValidMacroDroidWebhook(MACRODROID_WEBHOOK_URL)) {
-    return res.status(503).json({ error: "macrodroid_webhook_not_configured" });
-  }
   if (!["open_loremotion", "submit_scene", "check_page", "stop"].includes(command)) {
     return res.status(400).json({ error: "invalid_command" });
   }
@@ -124,6 +121,9 @@ app.post("/api/command", async (req, res) => {
   }
   if (scene_id !== undefined && (typeof scene_id !== "string" || scene_id.length > 80)) {
     return res.status(400).json({ error: "invalid_scene_id" });
+  }
+  if (!isValidMacroDroidWebhook(MACRODROID_WEBHOOK_URL)) {
+    return res.status(503).json({ error: "macrodroid_webhook_not_configured" });
   }
 
   const commandId = randomUUID();
