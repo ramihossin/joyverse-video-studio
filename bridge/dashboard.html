@@ -51,7 +51,7 @@
     </section>
 
     <section class="panel">
-      <div class="actions"><button class="btn secondary" id="refresh" type="button">تحديث الآن</button><button class="btn secondary" id="logout" type="button">مسح رمز الوصول</button></div>
+      <div class="actions"><button class="btn" id="test-trigger" type="button" disabled>اختبار فتح LoreMotion</button><button class="btn secondary" id="refresh" type="button">تحديث الآن</button><button class="btn secondary" id="logout" type="button">مسح رمز الوصول</button></div>
       <p class="notice">يُحدّث فحص الخادم تلقائيًا. وتُحدّث البيانات الخاصة كل 15 ثانية بعد المصادقة. قبول Webhook لا يعني أن الهاتف نفّذ الأمر؛ التنفيذ لا يُثبت إلا برد الجهاز.</p>
     </section>
     <footer class="footer">JoyVerse Status Dashboard · لا يتم تخزين رمز الوصول في المتصفح</footer>
@@ -130,7 +130,7 @@
           if (response.status === 401) throw new Error("رمز الوصول غير صحيح أو غير مقبول");
           if (!response.ok) throw new Error("تعذر قراءة الحالة: HTTP " + response.status);
           const data = await response.json();
-          setDot("api-dot", "ok"); setText("api-value", "متصل ومصادق عليه");
+          setDot("api-dot", "ok"); setText("api-value", "متصل ومصادق عليه"); $("test-trigger").disabled = false;
           setText("api-detail", "استجابة ناجحة من /api/status");
           setDot("mcp-dot", data.mcp?.configured ? "warn" : "");
           setText("mcp-value", data.mcp?.configured ? "المسار مهيأ" : "غير مهيأ");
@@ -139,15 +139,43 @@
           $("auth-note").className = "notice";
           setText("auth-note", "تمت المصادقة. الرمز موجود في ذاكرة الصفحة فقط، ويُستخدم لتحديث البيانات المحمية.");
         } catch (error) {
-          setDot("api-dot", "bad"); setText("api-value", "فشل الوصول");
+          setDot("api-dot", "bad"); setText("api-value", "فشل الوصول"); $("test-trigger").disabled = true;
           setText("api-detail", error.message);
           $("auth-note").className = "notice error"; setText("auth-note", error.message);
-          if (error.message.includes("غير صحيح")) { accessToken = ""; $("token").value = ""; }
+          if (error.message.includes("غير صحيح")) { accessToken = ""; $("token").value = ""; $("test-trigger").disabled = true; }
         } finally { busy = false; $("connect").disabled = false; }
       }
       async function refreshAll() { await loadHealth(); if (accessToken) await loadPrivate(); }
       $("connect").addEventListener("click", () => { accessToken = $("token").value.trim(); loadPrivate(); });
       $("token").addEventListener("keydown", (event) => { if (event.key === "Enter") $("connect").click(); });
+      $("test-trigger").addEventListener("click", async () => {
+        if (!accessToken || busy) return;
+        const button = $("test-trigger");
+        button.disabled = true;
+        const oldText = button.textContent;
+        button.textContent = "جارٍ إرسال الاختبار…";
+        try {
+          const response = await fetch("/api/command", {
+            method: "POST",
+            headers: {
+              "content-type": "application/json",
+              Authorization: "Bearer " + accessToken
+            },
+            body: JSON.stringify({ command: "open_loremotion" })
+          });
+          const data = await response.json().catch(() => ({}));
+          if (!response.ok) throw new Error(data.error || ("HTTP " + response.status));
+          $("auth-note").className = "notice";
+          setText("auth-note", "قبل MacroDroid الطلب من جهة الخدمة (HTTP " + response.status + "). هذا لا يثبت تنفيذ الهاتف؛ حدّث الحالة للتحقق من Callback.");
+          await loadPrivate();
+        } catch (error) {
+          $("auth-note").className = "notice error";
+          setText("auth-note", "فشل إرسال الاختبار: " + error.message);
+        } finally {
+          button.textContent = oldText;
+          button.disabled = !accessToken;
+        }
+      });
       $("refresh").addEventListener("click", refreshAll);
       $("logout").addEventListener("click", () => {
         accessToken = ""; $("token").value = "";
