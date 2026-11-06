@@ -18,9 +18,12 @@ The callback cache is in memory and is cleared on service restart. The Render fr
 - Start command: `npm start`
 - Health check path: `/health`
 - Environment variable: `MCP_ACCESS_TOKEN` (random secret, at least 32 characters)
+- Environment variable: `MACRODROID_WEBHOOK_URL` (the private HTTPS Webhook URL copied from the phone's MacroDroid Webhook trigger; configure it in Render, never commit it to GitHub or send it in chat)
 
 The MCP endpoint is `https://<service-host>/mcp/<MCP_ACCESS_TOKEN>`.
 The device callback endpoint is `https://<service-host>/device-result/<MCP_ACCESS_TOKEN>`.
+
+The server reads the MacroDroid webhook only from `MACRODROID_WEBHOOK_URL`. The REST `/api/command` request and MCP `send_macro_command` tool therefore need only the command and optional prompt/scene ID; they do not accept or expose the private webhook URL. `/health` and authenticated `/api/status` report only whether the webhook is configured, never its value.
 
 ## Device setup still required
 
