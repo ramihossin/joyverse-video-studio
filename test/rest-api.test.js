@@ -14,7 +14,7 @@ before(async () => {
   await new Promise(resolve => probe.close(resolve));
   baseUrl = `http://127.0.0.1:${port}`;
   child = spawn(process.execPath, ["bridge/server.js"], {
-    env: { ...process.env, PORT: String(port), MCP_ACCESS_TOKEN: TOKEN },
+    env: { ...process.env, PORT: String(port), MCP_ACCESS_TOKEN: TOKEN, MACRODROID_WEBHOOK_URL: "" },
     stdio: "ignore"
   });
   let ready = false;
@@ -46,21 +46,21 @@ test("REST command rejects missing bearer token", async () => {
   assert.equal(response.status, 401);
 });
 
-test("REST command rejects malformed webhook URLs", async () => {
+test("REST command reports missing server-side MacroDroid webhook configuration", async () => {
   const response = await fetch(`${baseUrl}/api/command`, {
     method: "POST",
     headers: { "content-type": "application/json", authorization: `Bearer ${TOKEN}` },
-    body: JSON.stringify({ command: "stop", webhook_url: "https://example.com/not-a-webhook" })
+    body: JSON.stringify({ command: "open_loremotion" })
   });
-  assert.equal(response.status, 400);
-  assert.deepEqual(await response.json(), { error: "invalid_webhook_url" });
+  assert.equal(response.status, 503);
+  assert.deepEqual(await response.json(), { error: "macrodroid_webhook_not_configured" });
 });
 
 test("REST command requires a prompt for scene submission", async () => {
   const response = await fetch(`${baseUrl}/api/command`, {
     method: "POST",
     headers: { "content-type": "application/json", authorization: `Bearer ${TOKEN}` },
-    body: JSON.stringify({ command: "submit_scene", webhook_url: "https://trigger.macrodroid.com/abcdefgh/identifier" })
+    body: JSON.stringify({ command: "submit_scene" })
   });
   assert.equal(response.status, 400);
   assert.deepEqual(await response.json(), { error: "prompt_required" });
@@ -99,6 +99,7 @@ test("authenticated status reports real service metadata without exposing secret
   assert.equal(status.rest_api.status, "authenticated");
   assert.equal(status.mcp.configured, true);
   assert.equal(status.mcp.connectivity_probe, "not_performed");
+  assert.equal(status.mcp.macrodroid_webhook_configured, false);
   assert.equal(status.last_command, null);
   assert.equal(status.last_device_result, null);
   assert.equal(JSON.stringify(status).includes(TOKEN), false);
