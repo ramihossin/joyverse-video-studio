@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#101827">
+  <meta name="description" content="لوحة متابعة حالة خدمات JoyVerse.">
+  <title>لوحة حالة JoyVerse</title>
+  <style>
+    :root{color-scheme:dark;--bg:#0b1220;--panel:#131e30;--panel2:#19263a;--line:#29384e;--text:#edf3fc;--muted:#9eacc0;--blue:#70a7ff;--green:#42d6a0;--amber:#f4c56b;--red:#ff8585}
+    *{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 85% 0%,#1b3150 0,transparent 38%),var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.65}
+    .wrap{width:min(100% - 28px,920px);margin:34px auto 60px}.head{display:flex;align-items:center;gap:15px;margin-bottom:24px}.mark{width:54px;height:54px;border-radius:17px;display:grid;place-items:center;background:linear-gradient(145deg,#3478d7,#7055bd);font-weight:900;font-size:20px;box-shadow:0 10px 28px #0005}.eyebrow{margin:0;color:var(--blue);font-size:11px;font-weight:800;letter-spacing:1.8px}.head h1{margin:2px 0;font-size:clamp(23px,5vw,32px)}.sub{margin:0;color:var(--muted);font-size:13px}
+    .panel{background:linear-gradient(145deg,#17243a,#111b2b);border:1px solid var(--line);border-radius:19px;padding:20px;margin:14px 0;box-shadow:0 14px 40px #0002}.section-title{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 15px}.section-title h2{font-size:17px;margin:0}.muted{color:var(--muted);font-size:12px}
+    .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.metric{background:#0e1828;border:1px solid #26354a;border-radius:14px;padding:15px;min-width:0}.metric-top{display:flex;align-items:center;justify-content:space-between;gap:8px}.metric h3{font-size:13px;margin:0;color:#cbd8e9}.value{font-size:17px;font-weight:750;margin:10px 0 2px;overflow-wrap:anywhere}.detail{font-size:11px;color:var(--muted);margin:0;overflow-wrap:anywhere}.dot{width:9px;height:9px;border-radius:50%;background:#718096;display:inline-block;flex:none}.dot.ok{background:var(--green);box-shadow:0 0 12px #42d6a066}.dot.warn{background:var(--amber)}.dot.bad{background:var(--red)}
+    .auth{display:grid;grid-template-columns:1fr auto;gap:10px}.auth input{min-width:0;background:#0b1422;border:1px solid #35465e;border-radius:11px;padding:12px 13px;color:var(--text);font:inherit;direction:ltr;text-align:left}.btn{border:0;border-radius:11px;padding:11px 17px;font:700 13px system-ui;cursor:pointer;background:#3679d4;color:white}.btn.secondary{background:#26374f;color:#e2ecf9}.btn:disabled{opacity:.5;cursor:wait}.notice{font-size:12px;color:var(--muted);margin:10px 0 0}.notice.error{color:var(--red)}.rows{display:grid;gap:9px}.rowline{display:flex;justify-content:space-between;gap:14px;padding:10px 0;border-bottom:1px solid #26354a;font-size:13px}.rowline:last-child{border:0}.rowline span:first-child{color:var(--muted)}.rowline strong{font-weight:650;text-align:left;overflow-wrap:anywhere;max-width:65%}
+    .actions{display:flex;gap:9px;flex-wrap:wrap}.footer{margin-top:20px;text-align:center;color:#7889a1;font-size:11px}.hidden{display:none!important}
+    @media(max-width:560px){.wrap{margin-top:22px}.panel{padding:15px}.grid{grid-template-columns:1fr}.auth{grid-template-columns:1fr}.auth .btn{width:100%}.rowline{align-items:flex-start}.rowline strong{max-width:62%}}
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <header class="head">
+      <div class="mark">JV</div>
+      <div><p class="eyebrow">JOYVERSE · CONTROL CENTER</p><h1>لوحة حالة JoyVerse</h1><p class="sub">متابعة الخادم وواجهات الاتصال ونتائج الجهاز</p></div>
+    </header>
+
+    <section class="panel">
+      <div class="section-title"><h2>الحالة العامة</h2><span class="muted" id="updated">جارٍ الفحص…</span></div>
+      <div class="grid">
+        <article class="metric"><div class="metric-top"><h3>خادم Render</h3><i class="dot" id="server-dot"></i></div><p class="value" id="server-value">جارٍ الفحص</p><p class="detail" id="server-detail">فحص نقطة /health</p></article>
+        <article class="metric"><div class="metric-top"><h3>REST API</h3><i class="dot" id="api-dot"></i></div><p class="value" id="api-value">يتطلب المصادقة</p><p class="detail" id="api-detail">لا تُعرض البيانات الخاصة قبل إدخال الرمز</p></article>
+        <article class="metric"><div class="metric-top"><h3>مسار MCP</h3><i class="dot" id="mcp-dot"></i></div><p class="value" id="mcp-value">غير مفحوص</p><p class="detail" id="mcp-detail">لن ندّعي وجود اتصال حي دون اختباره</p></article>
+        <article class="metric"><div class="metric-top"><h3>استجابة الجهاز</h3><i class="dot" id="device-dot"></i></div><p class="value" id="device-value">غير معروفة</p><p class="detail" id="device-detail">تظهر بعد وصول Callback من الهاتف</p></article>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="section-title"><h2>عرض بيانات الاتصال المحمية</h2><span class="muted">Bearer Token</span></div>
+      <div class="auth"><input id="token" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="أدخل MCP_ACCESS_TOKEN" aria-label="رمز الوصول"><button class="btn" id="connect" type="button">عرض الحالة التفصيلية</button></div>
+      <p class="notice" id="auth-note">أدخل رمز MCP_ACCESS_TOKEN الموجود في إعدادات Environment داخل Render. يُرسل في ترويسة Authorization فقط، ولا يُحفظ في التخزين المحلي أو داخل ملفات الموقع.</p>
+    </section>
+
+    <section class="panel">
+      <div class="section-title"><h2>آخر أمر مرسل</h2><span class="muted" id="command-time">—</span></div>
+      <div class="rows" id="command-data"><div class="rowline"><span>الحالة</span><strong>لا توجد بيانات خاصة محمّلة</strong></div></div>
+    </section>
+
+    <section class="panel">
+      <div class="section-title"><h2>آخر نتيجة من الجهاز</h2><span class="muted" id="device-time">—</span></div>
+      <div class="rows" id="device-data"><div class="rowline"><span>النتيجة</span><strong>لم يتم تحميل البيانات</strong></div></div>
+    </section>
+
+    <section class="panel">
+      <div class="actions"><button class="btn secondary" id="refresh" type="button">تحديث الآن</button><button class="btn secondary" id="logout" type="button">مسح رمز الوصول</button></div>
+      <p class="notice">يُحدّث فحص الخادم تلقائيًا. وتُحدّث البيانات الخاصة كل 15 ثانية بعد المصادقة. قبول Webhook لا يعني أن الهاتف نفّذ الأمر؛ التنفيذ لا يُثبت إلا برد الجهاز.</p>
+    </section>
+    <footer class="footer">JoyVerse Status Dashboard · لا يتم تخزين رمز الوصول في المتصفح</footer>
+  </main>
+  <script>
+    (() => {
+      const $ = (id) => document.getElementById(id);
+      let accessToken = "";
+      let busy = false;
+      const setDot = (id, state) => { $(""+id).className = "dot" + (state ? " " + state : ""); };
+      const setText = (id, value) => { $(id).textContent = value ?? "—"; };
+      const row = (label, value) => {
+        const line = document.createElement("div"); line.className = "rowline";
+        const left = document.createElement("span"); left.textContent = label;
+        const right = document.createElement("strong"); right.textContent = value ?? "—";
+        line.append(left, right); return line;
+      };
+      const dateText = (value) => {
+        if (!value) return "—";
+        const date = new Date(value);
+        return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleString("ar");
+      };
+      async function loadHealth() {
+        try {
+          const response = await fetch("/health", { cache: "no-store" });
+          if (!response.ok) throw new Error("HTTP " + response.status);
+          const health = await response.json();
+          setDot("server-dot", "ok"); setText("server-value", "يعمل");
+          setText("server-detail", health.service + " · مدة التشغيل " + (health.uptime_seconds ?? "—") + " ثانية");
+          setText("updated", "آخر فحص: " + dateText(health.timestamp));
+        } catch (error) {
+          setDot("server-dot", "bad"); setText("server-value", "غير متاح");
+          setText("server-detail", error.message); setText("updated", "تعذر تحديث الحالة");
+        }
+      }
+      function showCommand(command) {
+        const box = $("command-data"); box.replaceChildren();
+        if (!command) {
+          box.append(row("الحالة", "لا يوجد أمر مرسل حتى الآن"));
+          setText("command-time", "—"); return;
+        }
+        const accepted = Number(command.httpStatus) >= 200 && Number(command.httpStatus) < 300;
+        box.append(
+          row("نتيجة Webhook", accepted ? "قُبل الطلب من نقطة MacroDroid السحابية" : "لم يثبت قبول الطلب"),
+          row("تنفيذ الهاتف", "غير مؤكد ما لم يصل رد مطابق من الجهاز"),
+          row("الأمر", command.command),
+          row("معرّف الأمر", command.commandId),
+          row("HTTP Status", command.httpStatus),
+          row("معرّف المشهد", command.sceneId)
+        );
+        setText("command-time", dateText(command.dispatchedAt));
+      }
+      function showDevice(result, command) {
+        const box = $("device-data"); box.replaceChildren();
+        if (!result) {
+          setDot("device-dot", "warn"); setText("device-value", "لا يوجد رد");
+          setText("device-detail", "لم يصل Callback من الهاتف حتى الآن");
+          box.append(row("النتيجة", "لا توجد نتيجة مسجلة"));
+          setText("device-time", "—"); return;
+        }
+        const matched = Boolean(command && result.commandId && result.commandId === command.commandId);
+        setDot("device-dot", matched ? "ok" : "warn");
+        setText("device-value", matched ? "وصل رد مرتبط بآخر أمر" : "وصل رد من الجهاز");
+        setText("device-detail", matched ? "معرّف الرد يطابق آخر أمر" : "الرد موجود لكنه لا يطابق آخر أمر مسجل");
+        box.append(row("حالة الجهاز المرسلة", result.status), row("معرّف الأمر", result.commandId), row("الصفحة", result.page), row("الرسالة", result.message));
+        setText("device-time", dateText(result.receivedAt));
+      }
+      async function loadPrivate() {
+        if (!accessToken || busy) return;
+        busy = true; $("connect").disabled = true;
+        try {
+          const response = await fetch("/api/status", {
+            headers: { Authorization: "Bearer " + accessToken },
+            cache: "no-store"
+          });
+          if (response.status === 401) throw new Error("رمز الوصول غير صحيح أو غير مقبول");
+          if (!response.ok) throw new Error("تعذر قراءة الحالة: HTTP " + response.status);
+          const data = await response.json();
+          setDot("api-dot", "ok"); setText("api-value", "متصل ومصادق عليه");
+          setText("api-detail", "استجابة ناجحة من /api/status");
+          setDot("mcp-dot", data.mcp?.configured ? "warn" : "");
+          setText("mcp-value", data.mcp?.configured ? "المسار مهيأ" : "غير مهيأ");
+          setText("mcp-detail", "الاتصال الحي لم يُختبر من لوحة الحالة");
+          showCommand(data.last_command); showDevice(data.last_device_result, data.last_command);
+          $("auth-note").className = "notice";
+          setText("auth-note", "تمت المصادقة. الرمز موجود في ذاكرة الصفحة فقط، ويُستخدم لتحديث البيانات المحمية.");
+        } catch (error) {
+          setDot("api-dot", "bad"); setText("api-value", "فشل الوصول");
+          setText("api-detail", error.message);
+          $("auth-note").className = "notice error"; setText("auth-note", error.message);
+          if (error.message.includes("غير صحيح")) { accessToken = ""; $("token").value = ""; }
+        } finally { busy = false; $("connect").disabled = false; }
+      }
+      async function refreshAll() { await loadHealth(); if (accessToken) await loadPrivate(); }
+      $("connect").addEventListener("click", () => { accessToken = $("token").value.trim(); loadPrivate(); });
+      $("token").addEventListener("keydown", (event) => { if (event.key === "Enter") $("connect").click(); });
+      $("refresh").addEventListener("click", refreshAll);
+      $("logout").addEventListener("click", () => {
+        accessToken = ""; $("token").value = "";
+        setDot("api-dot", ""); setText("api-value", "يتطلب المصادقة");
+        setText("api-detail", "تم مسح الرمز من ذاكرة الصفحة");
+        setDot("mcp-dot", ""); setText("mcp-value", "غير مفحوص");
+        setDot("device-dot", ""); setText("device-value", "غير معروفة");
+        $("command-data").replaceChildren(row("الحالة", "تم مسح البيانات الخاصة من العرض"));
+        $("device-data").replaceChildren(row("النتيجة", "تم مسح البيانات الخاصة من العرض"));
+      });
+      refreshAll();
+      window.setInterval(refreshAll, 15000);
+    })();
+  </script>
+</body>
+</html>
