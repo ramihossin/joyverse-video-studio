@@ -51,14 +51,18 @@ function createMcpServer() {
         return { isError: true, content: [{ type: "text", text: "prompt is required for submit_scene." }] };
       }
       const commandId = randomUUID();
-      const target = new URL(MACRODROID_WEBHOOK_URL);
-      target.searchParams.set("command", command);
-      target.searchParams.set("command_id", commandId);
-      if (prompt) target.searchParams.set("prompt", prompt);
-      if (scene_id) target.searchParams.set("scene_id", scene_id);
+      const payload = { command, command_id: commandId };
+      if (prompt) payload.prompt = prompt;
+      if (scene_id) payload.scene_id = scene_id;
 
       try {
-        const response = await fetch(target, { method: "GET", redirect: "error", signal: AbortSignal.timeout(12000) });
+        const response = await fetch(MACRODROID_WEBHOOK_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+          redirect: "error",
+          signal: AbortSignal.timeout(12000)
+        });
         lastCommand = { commandId, command, sceneId: scene_id ?? null, dispatchedAt: new Date().toISOString(), httpStatus: response.status };
         if (!response.ok) {
           return { isError: true, content: [{ type: "text", text: "MacroDroid webhook returned HTTP " + response.status + ". No execution is confirmed." }] };
@@ -127,15 +131,15 @@ app.post("/api/command", async (req, res) => {
   }
 
   const commandId = randomUUID();
-  const target = new URL(MACRODROID_WEBHOOK_URL);
-  target.searchParams.set("command", command);
-  target.searchParams.set("command_id", commandId);
-  if (prompt) target.searchParams.set("prompt", prompt);
-  if (scene_id) target.searchParams.set("scene_id", scene_id);
+  const payload = { command, command_id: commandId };
+  if (prompt) payload.prompt = prompt;
+  if (scene_id) payload.scene_id = scene_id;
 
   try {
-    const response = await fetch(target, {
-      method: "GET",
+    const response = await fetch(MACRODROID_WEBHOOK_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
       redirect: "error",
       signal: AbortSignal.timeout(12000)
     });
