@@ -65,3 +65,41 @@ test("REST command requires a prompt for scene submission", async () => {
   assert.equal(response.status, 400);
   assert.deepEqual(await response.json(), { error: "prompt_required" });
 });
+
+test("root serves the Arabic status dashboard without exposing the access token", async () => {
+  const response = await fetch(`${baseUrl}/`);
+  assert.equal(response.status, 200);
+  assert.match(response.headers.get("content-type") || "", /text\/html/);
+  assert.match(response.headers.get("cache-control") || "", /no-store/);
+  const html = await response.text();
+  assert.match(html, /lang="ar"/);
+  assert.match(html, /لوحة حالة JoyVerse/);
+  assert.match(html, /Authorization/);
+  assert.doesNotMatch(html, new RegExp(TOKEN));
+});
+
+test("health endpoint remains available and reports runtime metadata", async () => {
+  const response = await fetch(`${baseUrl}/health`);
+  assert.equal(response.status, 200);
+  const health = await response.json();
+  assert.equal(health.ok, true);
+  assert.equal(health.service, "joyverse-macrodroid-bridge");
+  assert.equal(typeof health.uptime_seconds, "number");
+  assert.equal(typeof health.timestamp, "string");
+});
+
+test("authenticated status reports real service metadata without exposing secrets", async () => {
+  const response = await fetch(`${baseUrl}/api/status`, {
+    headers: { authorization: `Bearer ${TOKEN}` }
+  });
+  assert.equal(response.status, 200);
+  assert.match(response.headers.get("cache-control") || "", /no-store/);
+  const status = await response.json();
+  assert.equal(status.service.status, "running");
+  assert.equal(status.rest_api.status, "authenticated");
+  assert.equal(status.mcp.configured, true);
+  assert.equal(status.mcp.connectivity_probe, "not_performed");
+  assert.equal(status.last_command, null);
+  assert.equal(status.last_device_result, null);
+  assert.equal(JSON.stringify(status).includes(TOKEN), false);
+});
