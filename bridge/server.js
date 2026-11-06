@@ -1,5 +1,6 @@
 import express from "express";
 import { randomUUID } from "node:crypto";
+import { fileURLToPath } from "node:url";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { z } from "zod";
@@ -13,6 +14,7 @@ if (!ACCESS_TOKEN || ACCESS_TOKEN.length < 32) {
   throw new Error("MCP_ACCESS_TOKEN must be set to a random value of at least 32 characters.");
 }
 
+const DASHBOARD_PATH = fileURLToPath(new URL("./dashboard.html", import.meta.url));
 let lastDeviceResult = null;
 let lastCommand = null;
 const seenCommandIds = new Set();
@@ -95,9 +97,15 @@ function createMcpServer() {
 // Uses the existing secret only in the Authorization header, never in the URL.
 function bearerAuthorized(req) {
   const header = req.get("authorization") || "";
-  const match = /^Bearer ([A-Za-z0-9._~+/-]+=*)$/.exec(header);
+  const match = /^Bearer ([A-Za-z0-9._~+\/-]+=*)$/.exec(header);
   return Boolean(match && match[1] === ACCESS_TOKEN);
 }
+
+// Public dashboard shell. Private operational data remains behind /api/status.
+app.get("/", (_req, res) => {
+  res.set("Cache-Control", "no-store");
+  res.sendFile(DASHBOARD_PATH);
+});
 
 app.post("/api/command", async (req, res) => {
   if (!bearerAuthorized(req)) return res.status(401).json({ error: "unauthorized" });
@@ -156,7 +164,23 @@ app.post("/api/command", async (req, res) => {
 
 app.get("/api/status", (req, res) => {
   if (!bearerAuthorized(req)) return res.status(401).json({ error: "unauthorized" });
+  res.set("Cache-Control", "no-store");
   res.json({
+    service: {
+      name: "joyverse-macrodroid-bridge",
+      status: "running",
+      uptime_seconds: Math.floor(process.uptime())
+    },
+    rest_api: {
+      status: "authenticated",
+      endpoint: "/api/status"
+    },
+    mcp: {
+      configured: true,
+      transport: "Streamable HTTP",
+      endpoint: "/mcp/<private-token>",
+      connectivity_probe: "not_performed"
+    },
     last_command: lastCommand,
     last_device_result: lastDeviceResult,
     persistence: "in-memory; reset on service restart"
@@ -166,6 +190,8 @@ app.get("/api/status", (req, res) => {
 app.get("/health", (_req, res) => res.json({
   ok: true,
   service: "joyverse-macrodroid-bridge",
+  uptime_seconds: Math.floor(process.uptime()),
+  timestamp: new Date().toISOString(),
   mcp: "/mcp/<private-token>",
   callback: "/device-result/<private-token>"
 }));
