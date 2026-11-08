@@ -2,7 +2,8 @@
 """Phone-side worker: Render queue -> local authenticated Hermes bridge."""
 from __future__ import annotations
 
-import getpass
+import secrets
+import sys
 import json
 import os
 import time
@@ -13,22 +14,32 @@ from pathlib import Path
 BASE = Path(__file__).resolve().parent
 RENDER_BASE = "https://joyverse-mcp-bridge.onrender.com"
 LOCAL_BASE = "http://127.0.0.1:9120"
-TOKEN_FILE = Path.home() / ".joyverse_render_worker_token"
+TOKEN_FILE = Path.home() / ".joyverse_hermes_worker_token"
 BRIDGE_KEY_FILE = BASE / ".bridge_api_key"
 POLL_SECONDS = 5
 TASK_WAIT_SECONDS = 225
 
 
-def load_token() -> str:
-    if TOKEN_FILE.exists():
-        return TOKEN_FILE.read_text(encoding="utf-8").strip()
-    token = getpass.getpass("Render MCP_ACCESS_TOKEN (input hidden): ").strip()
-    if len(token) < 32:
-        raise SystemExit("Token is missing or too short; no token was saved.")
+def initialize_token() -> None:
+    token = secrets.token_urlsafe(48)
     TOKEN_FILE.write_text(token, encoding="utf-8")
     os.chmod(TOKEN_FILE, 0o600)
-    return token
+    print("\nCopy this dedicated worker token into Render as HERMES_WORKER_TOKEN.")
+    print("Do not send it in this chat or share it with anyone else.\n")
+    print(token)
+    print("\nToken saved locally with file permissions 600.")
 
+
+def load_token() -> str:
+    if not TOKEN_FILE.is_file():
+        raise SystemExit(
+            "Dedicated worker token is not set. Run this script once with --init-token, "
+            "then add that token to Render as HERMES_WORKER_TOKEN."
+        )
+    token = TOKEN_FILE.read_text(encoding="utf-8").strip()
+    if len(token) < 32:
+        raise SystemExit("The local worker token is invalid; initialize a new one.")
+    return token
 
 def request_json(url: str, token: str, method: str = "GET", payload=None):
     data = None if payload is None else json.dumps(payload).encode("utf-8")
@@ -67,16 +78,16 @@ def main():
     bridge_key = BRIDGE_KEY_FILE.read_text(encoding="utf-8").strip()
     if not bridge_key:
         raise SystemExit("Local bridge key file is empty.")
-    render_token = load_token()
+    worker_token = load_token()
 
-    status, health = request_json(RENDER_BASE + "/health", render_token)
+    status, health = request_json(RENDER_BASE + "/health", worker_token)
     print("Render reachable; authenticated worker starting.")
     status, _ = local_request(LOCAL_BASE + "/health", bridge_key)
     print("Local Hermes bridge reachable. Polling for tasks; Ctrl+C to stop.")
 
     while True:
         try:
-            status, task = request_json(RENDER_BASE + "/api/hermes/next", render_token)
+            status, task = request_json(RENDER_BASE + "/api/hermes/next", worker_token)
             if status == 204 or not task:
                 time.sleep(POLL_SECONDS)
                 continue
@@ -109,7 +120,7 @@ def main():
                 report = {"task_id": task_id, "status": "failed", "error": error}
 
             _, acknowledged = request_json(
-                RENDER_BASE + "/api/hermes/result", render_token, "POST", report
+                RENDER_BASE + "/api/hermes/result", worker_token, "POST", report
             )
             print(f"Task {task_id}: {acknowledged.get('status', 'reported')}.")
         except KeyboardInterrupt:
@@ -121,4 +132,9 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    if len(sys.argv) == 2 and sys.argv[1] == "--init-token":
+        initialize_token()
+    elif len(sys.argv) == 1:
+        main()
+    else:
+        raise SystemExit("Usage: hermes_phone_worker.py [--init-token]")
