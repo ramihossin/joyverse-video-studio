@@ -119,6 +119,23 @@ function createMcpServer() {
   );
 
   server.tool(
+    "get_hermes_task_status",
+    "Check the status and result of a task previously dispatched to the Android Hermes worker.",
+    { task_id: z.string().min(1).max(100) },
+    async ({ task_id }) => {
+      const task = hermesTasks.get(task_id);
+      if (!task) {
+        return { isError: true, content: [{ type: "text", text: "Hermes task not found. It may have expired or Render may have restarted." }] };
+      }
+      return { content: [{ type: "text", text: JSON.stringify({
+        task_id: task.task_id, scene_id: task.scene_id, status: task.status,
+        result: task.result, error: task.error,
+        created_at: task.created_at, finished_at: task.finished_at ?? null
+      }) }] };
+    }
+  );
+
+  server.tool(
     "get_device_result",
     "Read the latest status callback posted by the user's MacroDroid macro. Returns only the latest callback held in server memory.",
     {},
@@ -240,7 +257,7 @@ app.get("/api/hermes/next", (req, res) => {
   const now = Date.now();
   const task = [...hermesTasks.values()].find(t =>
     t.status === "queued" ||
-    (t.status === "claimed" && t.claimed_at && now - Date.parse(t.claimed_at) > 120000)
+    (t.status === "claimed" && t.claimed_at && now - Date.parse(t.claimed_at) > 300000)
   );
   if (!task) return res.status(204).end();
   task.status = "claimed";
