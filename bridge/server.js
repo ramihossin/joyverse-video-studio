@@ -173,7 +173,7 @@ function hermesWorkerAuthorized(req) {
 
 function chatgptDispatchAuthorized(req) {
   const header = req.get("authorization") || "";
-  const match = /^Bearer ([A-Za-z0-9._~+\\/-]+=*)$/.exec(header);
+  const match = /^Bearer ([A-Za-z0-9._~+\/-]+=*)$/.exec(header);
   if (!CHATGPT_DISPATCH_TOKEN || !match) return false;
   const supplied = Buffer.from(match[1]);
   const expected = Buffer.from(CHATGPT_DISPATCH_TOKEN);
