@@ -1,5 +1,5 @@
 import express from "express";
-import { randomUUID } from "node:crypto";
+import { randomUUID, timingSafeEqual } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
@@ -10,6 +10,7 @@ app.disable("x-powered-by");
 app.use(express.json({ limit: "8kb" }));
 
 const ACCESS_TOKEN = process.env.MCP_ACCESS_TOKEN;
+const HERMES_WORKER_TOKEN = process.env.HERMES_WORKER_TOKEN || "";
 const MACRODROID_WEBHOOK_URL = process.env.MACRODROID_WEBHOOK_URL || "";
 if (!ACCESS_TOKEN || ACCESS_TOKEN.length < 32) {
   throw new Error("MCP_ACCESS_TOKEN must be set to a random value of at least 32 characters.");
@@ -160,6 +161,15 @@ function bearerAuthorized(req) {
   return Boolean(match && match[1] === ACCESS_TOKEN);
 }
 
+function hermesWorkerAuthorized(req) {
+  const header = req.get("authorization") || "";
+  const match = /^Bearer ([A-Za-z0-9._~+\/-]+=*)$/.exec(header);
+  if (!HERMES_WORKER_TOKEN || !match) return false;
+  const supplied = Buffer.from(match[1]);
+  const expected = Buffer.from(HERMES_WORKER_TOKEN);
+  return supplied.length === expected.length && timingSafeEqual(supplied, expected);
+}
+
 // Public dashboard shell. Private operational data remains behind /api/status.
 app.get("/", (_req, res) => {
   res.set("Cache-Control", "no-store");
@@ -223,7 +233,8 @@ app.post("/api/command", async (req, res) => {
 
 // Hermes phone-worker queue. All endpoints use the existing bearer token.
 app.post("/api/hermes/dispatch", (req, res) => {
-  if (!bearerAuthorized(req)) return res.status(401).json({ error: "unauthorized" });
+  if (!HERMES_WORKER_TOKEN) return res.status(503).json({ error: "hermes_worker_token_not_configured" });
+  if (!hermesWorkerAuthorized(req)) return res.status(401).json({ error: "unauthorized" });
   const { scene_id, prompt, toolsets = ["web"], confirm_video_generation = false } = req.body ?? {};
   if (typeof scene_id !== "string" || !scene_id.trim() || scene_id.length > 100) {
     return res.status(400).json({ error: "invalid_scene_id" });
@@ -253,7 +264,8 @@ app.post("/api/hermes/dispatch", (req, res) => {
 });
 
 app.get("/api/hermes/next", (req, res) => {
-  if (!bearerAuthorized(req)) return res.status(401).json({ error: "unauthorized" });
+  if (!HERMES_WORKER_TOKEN) return res.status(503).json({ error: "hermes_worker_token_not_configured" });
+  if (!hermesWorkerAuthorized(req)) return res.status(401).json({ error: "unauthorized" });
   const now = Date.now();
   const task = [...hermesTasks.values()].find(t =>
     t.status === "queued" ||
@@ -271,7 +283,8 @@ app.get("/api/hermes/next", (req, res) => {
 });
 
 app.post("/api/hermes/result", (req, res) => {
-  if (!bearerAuthorized(req)) return res.status(401).json({ error: "unauthorized" });
+  if (!HERMES_WORKER_TOKEN) return res.status(503).json({ error: "hermes_worker_token_not_configured" });
+  if (!hermesWorkerAuthorized(req)) return res.status(401).json({ error: "unauthorized" });
   const { task_id, status, result, error } = req.body ?? {};
   const task = typeof task_id === "string" ? hermesTasks.get(task_id) : null;
   if (!task) return res.status(404).json({ error: "task_not_found" });
@@ -285,7 +298,8 @@ app.post("/api/hermes/result", (req, res) => {
 });
 
 app.get("/api/hermes/tasks/:taskId", (req, res) => {
-  if (!bearerAuthorized(req)) return res.status(401).json({ error: "unauthorized" });
+  if (!HERMES_WORKER_TOKEN) return res.status(503).json({ error: "hermes_worker_token_not_configured" });
+  if (!hermesWorkerAuthorized(req)) return res.status(401).json({ error: "unauthorized" });
   const task = hermesTasks.get(req.params.taskId);
   if (!task) return res.status(404).json({ error: "task_not_found" });
   res.set("Cache-Control", "no-store");
