@@ -362,8 +362,7 @@ app.post("/device-result/:token", (req, res) => {
   res.status(202).json({ accepted: true });
 });
 
-app.post("/mcp/:token", async (req, res) => {
-  if (req.params.token !== ACCESS_TOKEN) return res.status(404).end();
+async function handleMcpRequest(req, res) {
   const server = createMcpServer();
   const transport = new StreamableHTTPServerTransport({
     sessionIdGenerator: undefined,
@@ -376,8 +375,21 @@ app.post("/mcp/:token", async (req, res) => {
   } catch (error) {
     if (!res.headersSent) res.status(500).json({ error: "MCP request failed" });
   }
+}
+
+// Header-authenticated MCP endpoint for ChatGPT custom plugin connections.
+// The API key is supplied by the client as Authorization: Bearer <MCP_ACCESS_TOKEN>.
+app.post("/mcp", async (req, res) => {
+  if (!bearerAuthorized(req)) return res.status(401).json({ error: "unauthorized" });
+  return handleMcpRequest(req, res);
 });
 
+app.post("/mcp/:token", async (req, res) => {
+  if (req.params.token !== ACCESS_TOKEN) return res.status(404).end();
+  return handleMcpRequest(req, res);
+});
+
+app.all("/mcp", (_req, res) => res.status(405).json({ error: "Use POST for Streamable HTTP MCP." }));
 app.all("/mcp/:token", (_req, res) => res.status(405).json({ error: "Use POST for Streamable HTTP MCP." }));
 
 const port = Number(process.env.PORT || 10000);
