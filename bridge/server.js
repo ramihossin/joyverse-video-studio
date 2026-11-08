@@ -11,6 +11,7 @@ app.use(express.json({ limit: "8kb" }));
 
 const ACCESS_TOKEN = process.env.MCP_ACCESS_TOKEN;
 const HERMES_WORKER_TOKEN = process.env.HERMES_WORKER_TOKEN || "";
+const CHATGPT_DISPATCH_TOKEN = process.env.CHATGPT_DISPATCH_TOKEN || "";
 const MACRODROID_WEBHOOK_URL = process.env.MACRODROID_WEBHOOK_URL || "";
 if (!ACCESS_TOKEN || ACCESS_TOKEN.length < 32) {
   throw new Error("MCP_ACCESS_TOKEN must be set to a random value of at least 32 characters.");
@@ -170,10 +171,62 @@ function hermesWorkerAuthorized(req) {
   return supplied.length === expected.length && timingSafeEqual(supplied, expected);
 }
 
+function chatgptDispatchAuthorized(req) {
+  const header = req.get("authorization") || "";
+  const match = /^Bearer ([A-Za-z0-9._~+\/-]+=*)$/.exec(header);
+  if (!CHATGPT_DISPATCH_TOKEN || !match) return false;
+  const supplied = Buffer.from(match[1]);
+  const expected = Buffer.from(CHATGPT_DISPATCH_TOKEN);
+  return supplied.length === expected.length && timingSafeEqual(supplied, expected);
+}
+
 // Public dashboard shell. Private operational data remains behind /api/status.
 app.get("/", (_req, res) => {
   res.set("Cache-Control", "no-store");
   res.sendFile(DASHBOARD_PATH);
+});
+
+app.get("/chatgpt-console", (_req, res) => {
+  res.set("Cache-Control", "no-store");
+  res.type("html").send(`<!doctype html>
+<html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>JoyVerse Task Console</title>
+<style>
+body{font:16px system-ui;max-width:760px;margin:32px auto;padding:0 16px;color:#172033}
+label{display:block;margin:14px 0 6px;font-weight:600}input,textarea,select{box-sizing:border-box;width:100%;padding:10px;border:1px solid #9aa5b5;border-radius:8px;font:inherit}
+textarea{min-height:130px}button{margin-top:16px;padding:11px 18px;border:0;border-radius:8px;background:#174ea6;color:white;font-weight:700}
+pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f3f5f8;padding:12px;border-radius:8px}
+small{color:#586174}
+</style>
+<h1>JoyVerse Task Console</h1><p>Secure task dispatch to the connected Android Hermes worker. Video generation is intentionally unavailable in this console.</p>
+<form id="f">
+<label for="token">Dispatch credential</label><input id="token" type="password" autocomplete="off" required>
+<label for="scene">Task ID label</label><input id="scene" value="chatgpt-diagnostic" maxlength="100" required>
+<label for="prompt">Instruction for Hermes</label><textarea id="prompt" maxlength="12000" required>Reply exactly: HERMES_LINK_OK. Do not use browser, web, video_gen, or any paid external services.</textarea>
+<label for="tools">Tool access</label><select id="tools"><option value="web">Text only (web tool disabled by instruction)</option><option value="browser">Browser</option></select>
+<button type="submit">Send task</button>
+</form>
+<pre id="out" aria-live="polite">Ready. No task has been sent.</pre>
+<script>
+const form=document.getElementById('f'),out=document.getElementById('out');
+form.addEventListener('submit',async e=>{
+ e.preventDefault();const token=document.getElementById('token').value;
+ const payload={scene_id:document.getElementById('scene').value,prompt:document.getElementById('prompt').value,toolsets:['web'],confirm_video_generation:false};
+ out.textContent='Sending task…';
+ try{
+  const r=await fetch('/api/hermes/dispatch-chatgpt',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify(payload),cache:'no-store'});
+  const data=await r.json();if(!r.ok)throw new Error('HTTP '+r.status+' '+JSON.stringify(data));
+  out.textContent='Accepted: '+JSON.stringify(data)+'\\nWaiting for Hermes…';
+  const id=data.task_id;
+  for(let i=0;i<80;i++){await new Promise(resolve=>setTimeout(resolve,3000));
+   const s=await fetch('/api/hermes/status-chatgpt/'+encodeURIComponent(id),{headers:{'Authorization':'Bearer '+token},cache:'no-store'});
+   const state=await s.json();if(!s.ok)throw new Error('Status HTTP '+s.status);
+   out.textContent='Task status: '+JSON.stringify(state,null,2);
+   if(state.status==='completed'||state.status==='failed')break;
+  }
+ }catch(err){out.textContent='ERROR: '+err.message;}
+});
+</script></html>`);
 });
 
 app.post("/api/command", async (req, res) => {
@@ -229,6 +282,41 @@ app.post("/api/command", async (req, res) => {
       message: String(error?.message || error).slice(0, 200)
     });
   }
+});
+
+// ChatGPT-controlled relay endpoint, protected by a dedicated credential distinct from the phone worker token.
+app.post("/api/hermes/dispatch-chatgpt", (req, res) => {
+  if (!CHATGPT_DISPATCH_TOKEN) return res.status(503).json({ error: "chatgpt_dispatch_not_configured" });
+  if (!chatgptDispatchAuthorized(req)) return res.status(401).json({ error: "unauthorized" });
+  const { scene_id, prompt, toolsets = ["web"] } = req.body ?? {};
+  if (typeof scene_id !== "string" || !scene_id.trim() || scene_id.length > 100)
+    return res.status(400).json({ error: "invalid_scene_id" });
+  if (typeof prompt !== "string" || !prompt.trim() || prompt.length > HERMES_MAX_PROMPT)
+    return res.status(400).json({ error: "invalid_prompt" });
+  if (!Array.isArray(toolsets) || toolsets.length < 1 ||
+      toolsets.some(x => !["web", "browser"].includes(x)))
+    return res.status(400).json({ error: "invalid_toolsets" });
+  const selected = [...new Set(toolsets)];
+  const taskId = "hermes_" + randomUUID();
+  hermesTasks.set(taskId, {
+    task_id: taskId, scene_id, prompt, toolsets: selected,
+    confirm_video_generation: false, status: "queued",
+    created_at: new Date().toISOString(), claimed_at: null,
+    result: null, error: null
+  });
+  res.set("Cache-Control", "no-store");
+  return res.status(202).json({ accepted: true, task_id: taskId, scene_id, status: "queued" });
+});
+
+app.get("/api/hermes/status-chatgpt/:taskId", (req, res) => {
+  if (!CHATGPT_DISPATCH_TOKEN) return res.status(503).json({ error: "chatgpt_dispatch_not_configured" });
+  if (!chatgptDispatchAuthorized(req)) return res.status(401).json({ error: "unauthorized" });
+  const task = hermesTasks.get(req.params.taskId);
+  if (!task) return res.status(404).json({ error: "task_not_found" });
+  res.set("Cache-Control", "no-store");
+  return res.json({ task_id: task.task_id, scene_id: task.scene_id, status: task.status,
+    result: task.result, error: task.error, created_at: task.created_at,
+    finished_at: task.finished_at ?? null });
 });
 
 // Hermes phone-worker queue. All endpoints use the existing bearer token.
