@@ -20,6 +20,12 @@ let lastDeviceResult = null;
 let lastCommand = null;
 const seenCommandIds = new Set();
 
+// Prototype queue: in-memory only; a Render restart clears queued tasks.
+const hermesTasks = new Map();
+const HERMES_TOOLSETS = new Set(["web", "browser", "video_gen"]);
+const HERMES_MAX_PROMPT = 12000;
+
+
 function isValidMacroDroidWebhook(value) {
   try {
     const u = new URL(value);
@@ -77,6 +83,55 @@ function createMcpServer() {
       } catch (error) {
         return { isError: true, content: [{ type: "text", text: "Webhook dispatch failed: " + (error?.message || String(error)) }] };
       }
+    }
+  );
+
+  server.tool(
+    "dispatch_hermes_task",
+    "Queue a task for the user's Android Hermes worker. The phone must be online and polling. Video generation requires explicit confirmation for each task.",
+    {
+      scene_id: z.string().min(1).max(100),
+      prompt: z.string().min(1).max(HERMES_MAX_PROMPT),
+      toolsets: z.array(z.enum(["web", "browser", "video_gen"])).min(1).default(["web"]),
+      confirm_video_generation: z.boolean().default(false)
+    },
+    async ({ scene_id, prompt, toolsets, confirm_video_generation }) => {
+      const selected = [...new Set(toolsets)];
+      if (selected.includes("video_gen") && !confirm_video_generation) {
+        return { isError: true, content: [{ type: "text", text: "Video generation requires explicit confirmation." }] };
+      }
+      if (confirm_video_generation && !selected.includes("video_gen")) {
+        return { isError: true, content: [{ type: "text", text: "Confirmation requires video_gen in toolsets." }] };
+      }
+      const taskId = "hermes_" + randomUUID();
+      const task = {
+        task_id: taskId, scene_id, prompt, toolsets: selected,
+        confirm_video_generation, status: "queued",
+        created_at: new Date().toISOString(), claimed_at: null,
+        result: null, error: null
+      };
+      hermesTasks.set(taskId, task);
+      return { content: [{ type: "text", text: JSON.stringify({
+        accepted: true, task_id: taskId, scene_id, status: "queued",
+        note: "Queued in Render memory. The Android worker must claim and execute it; acceptance is not completion. Tasks are lost if the service restarts."
+      }) }] };
+    }
+  );
+
+  server.tool(
+    "get_hermes_task_status",
+    "Check the status and result of a task previously dispatched to the Android Hermes worker.",
+    { task_id: z.string().min(1).max(100) },
+    async ({ task_id }) => {
+      const task = hermesTasks.get(task_id);
+      if (!task) {
+        return { isError: true, content: [{ type: "text", text: "Hermes task not found. It may have expired or Render may have restarted." }] };
+      }
+      return { content: [{ type: "text", text: JSON.stringify({
+        task_id: task.task_id, scene_id: task.scene_id, status: task.status,
+        result: task.result, error: task.error,
+        created_at: task.created_at, finished_at: task.finished_at ?? null
+      }) }] };
     }
   );
 
@@ -166,6 +221,81 @@ app.post("/api/command", async (req, res) => {
   }
 });
 
+// Hermes phone-worker queue. All endpoints use the existing bearer token.
+app.post("/api/hermes/dispatch", (req, res) => {
+  if (!bearerAuthorized(req)) return res.status(401).json({ error: "unauthorized" });
+  const { scene_id, prompt, toolsets = ["web"], confirm_video_generation = false } = req.body ?? {};
+  if (typeof scene_id !== "string" || !scene_id.trim() || scene_id.length > 100) {
+    return res.status(400).json({ error: "invalid_scene_id" });
+  }
+  if (typeof prompt !== "string" || !prompt.trim() || prompt.length > HERMES_MAX_PROMPT) {
+    return res.status(400).json({ error: "invalid_prompt" });
+  }
+  if (!Array.isArray(toolsets) || toolsets.length < 1 ||
+      toolsets.some(x => typeof x !== "string" || !HERMES_TOOLSETS.has(x))) {
+    return res.status(400).json({ error: "invalid_toolsets" });
+  }
+  const selected = [...new Set(toolsets)];
+  if (selected.includes("video_gen") && confirm_video_generation !== true) {
+    return res.status(403).json({ error: "video_generation_confirmation_required" });
+  }
+  if (confirm_video_generation === true && !selected.includes("video_gen")) {
+    return res.status(400).json({ error: "confirmation_without_video_gen" });
+  }
+  const taskId = "hermes_" + randomUUID();
+  hermesTasks.set(taskId, {
+    task_id: taskId, scene_id, prompt, toolsets: selected,
+    confirm_video_generation, status: "queued",
+    created_at: new Date().toISOString(), claimed_at: null,
+    result: null, error: null
+  });
+  return res.status(202).json({ accepted: true, task_id: taskId, scene_id, status: "queued" });
+});
+
+app.get("/api/hermes/next", (req, res) => {
+  if (!bearerAuthorized(req)) return res.status(401).json({ error: "unauthorized" });
+  const now = Date.now();
+  const task = [...hermesTasks.values()].find(t =>
+    t.status === "queued" ||
+    (t.status === "claimed" && t.claimed_at && now - Date.parse(t.claimed_at) > 300000)
+  );
+  if (!task) return res.status(204).end();
+  task.status = "claimed";
+  task.claimed_at = new Date().toISOString();
+  res.set("Cache-Control", "no-store");
+  return res.json({
+    task_id: task.task_id, scene_id: task.scene_id,
+    prompt: task.prompt, toolsets: task.toolsets,
+    confirm_video_generation: task.confirm_video_generation
+  });
+});
+
+app.post("/api/hermes/result", (req, res) => {
+  if (!bearerAuthorized(req)) return res.status(401).json({ error: "unauthorized" });
+  const { task_id, status, result, error } = req.body ?? {};
+  const task = typeof task_id === "string" ? hermesTasks.get(task_id) : null;
+  if (!task) return res.status(404).json({ error: "task_not_found" });
+  if (!["completed", "failed"].includes(status)) return res.status(400).json({ error: "invalid_status" });
+  task.status = status;
+  task.result = status === "completed" && result && typeof result === "object"
+    ? JSON.stringify(result).slice(0, 14000) : null;
+  task.error = status === "failed" ? String(error || "Hermes task failed").slice(0, 1000) : null;
+  task.finished_at = new Date().toISOString();
+  return res.json({ accepted: true, task_id, status: task.status });
+});
+
+app.get("/api/hermes/tasks/:taskId", (req, res) => {
+  if (!bearerAuthorized(req)) return res.status(401).json({ error: "unauthorized" });
+  const task = hermesTasks.get(req.params.taskId);
+  if (!task) return res.status(404).json({ error: "task_not_found" });
+  res.set("Cache-Control", "no-store");
+  return res.json({
+    task_id: task.task_id, scene_id: task.scene_id, status: task.status,
+    result: task.result, error: task.error, created_at: task.created_at,
+    finished_at: task.finished_at ?? null
+  });
+});
+
 app.get("/api/status", (req, res) => {
   if (!bearerAuthorized(req)) return res.status(401).json({ error: "unauthorized" });
   res.set("Cache-Control", "no-store");
@@ -188,6 +318,9 @@ app.get("/api/status", (req, res) => {
     },
     last_command: lastCommand,
     last_device_result: lastDeviceResult,
+    hermes_queue: { queued: [...hermesTasks.values()].filter(t => t.status === "queued").length,
+      active: [...hermesTasks.values()].filter(t => t.status === "claimed").length,
+      persistence: "in-memory; reset on service restart" },
     persistence: "in-memory; reset on service restart"
   });
 });
