@@ -72,6 +72,20 @@ def local_request(url: str, key: str, method: str = "GET", payload=None):
         return response.status, (json.loads(raw.decode("utf-8")) if raw else None)
 
 
+def local_task_if_present(local_id: str, key: str):
+    try:
+        return local_request(LOCAL_BASE + "/tasks/" + local_id, key)[1]
+    except urllib.error.HTTPError as exc:
+        if exc.code == 404:
+            return None
+        raise
+
+
+def save_checkpoint(task_id: str, worker_token: str, **fields):
+    payload = {"task_id": task_id, **fields}
+    request_json(RENDER_BASE + "/api/hermes/checkpoint", worker_token, "POST", payload)
+
+
 def main():
     if not BRIDGE_KEY_FILE.is_file():
         raise SystemExit("Local bridge key file is missing.")
@@ -100,16 +114,41 @@ def main():
                 "toolsets": task.get("toolsets", ["web"]),
                 "confirm_video_generation": task.get("confirm_video_generation", False)
             }
-            _, submitted = local_request(LOCAL_BASE + "/tasks", bridge_key, "POST", local_payload)
-            local_id = submitted["task_id"]
+
+            # Resume a local Hermes task after a worker restart when its ID was
+            # checkpointed and the local bridge still has that task.
+            local_id = None
+            if task.get("provider") == "local-hermes" and task.get("provider_job_id"):
+                local_id = task["provider_job_id"]
+                current = local_task_if_present(local_id, bridge_key)
+                if current is None:
+                    local_id = None
+                elif current.get("status") in ("completed", "failed"):
+                    pass
+
+            if local_id is None:
+                save_checkpoint(task_id, worker_token, stage="preparing", provider="local-hermes")
+                _, submitted = local_request(LOCAL_BASE + "/tasks", bridge_key, "POST", local_payload)
+                local_id = submitted["task_id"]
+                save_checkpoint(task_id, worker_token, stage="generating",
+                                provider="local-hermes", provider_job_id=local_id)
+
             deadline = time.time() + TASK_WAIT_SECONDS
             final = None
+            current = local_task_if_present(local_id, bridge_key)
+            if current and current.get("status") in ("completed", "failed"):
+                final = current
 
-            while time.time() < deadline:
-                _, current = local_request(LOCAL_BASE + "/tasks/" + local_id, bridge_key)
+            while final is None and time.time() < deadline:
+                current = local_task_if_present(local_id, bridge_key)
+                if current is None:
+                    raise RuntimeError("Checkpointed local Hermes task no longer exists.")
                 if current["status"] in ("completed", "failed"):
                     final = current
                     break
+                # Heartbeat prevents another worker from reclaiming a live task.
+                save_checkpoint(task_id, worker_token, stage="generating",
+                                provider="local-hermes", provider_job_id=local_id)
                 time.sleep(3)
 
             if final and final["status"] == "completed":
