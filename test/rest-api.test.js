@@ -5,6 +5,7 @@ import net from "node:net";
 
 const TOKEN = "test-only-token-with-at-least-32-characters";
 const WORKER_TOKEN = "test-worker-token-with-at-least-32-characters";
+const CHATGPT_TOKEN = "test-chatgpt-dispatch-token-with-at-least-32-characters";
 let child;
 let baseUrl;
 
@@ -18,7 +19,7 @@ before(async () => {
     env: {
       ...process.env, NODE_ENV: "test", JOYVERSE_TEST_MEMORY_STORE: "1",
       PORT: String(port), MCP_ACCESS_TOKEN: TOKEN,
-      HERMES_WORKER_TOKEN: WORKER_TOKEN, MACRODROID_WEBHOOK_URL: ""
+      HERMES_WORKER_TOKEN: WORKER_TOKEN, CHATGPT_DISPATCH_TOKEN: CHATGPT_TOKEN, MACRODROID_WEBHOOK_URL: ""
     },
     stdio: "ignore"
   });
