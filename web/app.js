@@ -264,6 +264,7 @@ async function runQueue() {
   }
   try {
     apiConfig();
+    stopRequested = false;
     queueRunning = true; renderQueue();
     const pending = queue.filter(scene => scene.status === "waiting");
     for (const scene of pending) {
