@@ -30,6 +30,20 @@ test("S3 adapter uploads and retrieves objects using an injected client", async 
   assert.deepEqual(await storage.get(saved.key), Buffer.from("clip"));
 });
 
+test("S3 adapter accepts Cloudflare R2 environment variable names", () => {
+  const storage = createObjectStorage({
+    env: {
+      R2_BUCKET: "joyverse-r2",
+      R2_ACCOUNT_ID: "0123456789abcdef0123456789abcdef",
+      R2_ACCESS_KEY_ID: "r2-access-key",
+      R2_SECRET_ACCESS_KEY: "r2-secret-key"
+    },
+    client: { send: async () => ({}) }
+  });
+  assert.equal(typeof storage.put, "function");
+  assert.equal(typeof storage.get, "function");
+});
+
 test("S3 adapter creates bounded presigned upload URLs", async () => {
   const client = { send: async () => ({}) };
   const storage = createObjectStorage({
