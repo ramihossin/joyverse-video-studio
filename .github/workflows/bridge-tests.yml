@@ -4,7 +4,7 @@ on:
   pull_request:
     branches: [main, feat/durable-server-task-queue, feat/server-video-worker-foundation]
   push:
-    branches: [main, feat/server-video-worker-foundation]
+    branches: [main, feat/server-video-worker-foundation, feat/off-browser-video-worker]
 
 jobs:
   test:

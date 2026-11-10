@@ -33,6 +33,7 @@ export async function initializeTaskStore() {
       prompt TEXT NOT NULL,
       toolsets JSONB NOT NULL DEFAULT '[]'::jsonb,
       confirm_video_generation BOOLEAN NOT NULL DEFAULT FALSE,
+      video_options JSONB NOT NULL DEFAULT '{}'::jsonb,
       status TEXT NOT NULL CHECK (status IN ('queued','claimed','completed','failed')),
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       claimed_at TIMESTAMPTZ,
@@ -48,6 +49,7 @@ export async function initializeTaskStore() {
       attempts INTEGER NOT NULL DEFAULT 0,
       claim_token TEXT
     );
+    ALTER TABLE joyverse_tasks ADD COLUMN IF NOT EXISTS video_options JSONB NOT NULL DEFAULT '{}'::jsonb;
     ALTER TABLE joyverse_tasks ADD COLUMN IF NOT EXISTS stage TEXT NOT NULL DEFAULT 'queued';
     ALTER TABLE joyverse_tasks ADD COLUMN IF NOT EXISTS provider TEXT;
     ALTER TABLE joyverse_tasks ADD COLUMN IF NOT EXISTS provider_job_id TEXT;
@@ -69,7 +71,7 @@ export async function enqueueTask(task) {
   if (testMemoryEnabled) {
     if (testTasks.has(task.task_id)) throw new Error("Task already exists.");
     testTasks.set(task.task_id, {
-      ...task, toolsets: [...task.toolsets], status: "queued",
+      ...task, toolsets: [...task.toolsets], video_options: { ...(task.video_options || {}) }, status: "queued",
       stage: "queued", provider: null, provider_job_id: null,
       output_url: null, storage_key: null, heartbeat_at: null, attempts: 0, claim_token: null,
       created_at: task.created_at || new Date().toISOString()
@@ -79,10 +81,10 @@ export async function enqueueTask(task) {
   const db = getTaskPool();
   await db.query(
     `INSERT INTO joyverse_tasks
-      (task_id, scene_id, prompt, toolsets, confirm_video_generation, status, created_at)
-     VALUES ($1,$2,$3,$4::jsonb,$5,'queued',$6)`,
+      (task_id, scene_id, prompt, toolsets, confirm_video_generation, video_options, status, created_at)
+     VALUES ($1,$2,$3,$4::jsonb,$5,$6::jsonb,'queued',$7)`,
     [task.task_id, task.scene_id, task.prompt, JSON.stringify(task.toolsets),
-      task.confirm_video_generation === true, task.created_at || new Date().toISOString()]
+      task.confirm_video_generation === true, JSON.stringify(task.video_options || {}), task.created_at || new Date().toISOString()]
   );
   return getTask(task.task_id);
 }
@@ -91,7 +93,7 @@ export async function getTask(taskId) {
   if (testMemoryEnabled) return testTasks.get(taskId) || null;
   const db = getTaskPool();
   const { rows } = await db.query(
-    `SELECT task_id, scene_id, prompt, toolsets, confirm_video_generation,
+    `SELECT task_id, scene_id, prompt, toolsets, confirm_video_generation, video_options,
             status, created_at, claimed_at, finished_at, result, error,
             stage, provider, provider_job_id, output_url, storage_key,
             heartbeat_at, attempts
@@ -173,7 +175,7 @@ export async function claimNextTask() {
     return {
       task_id: task.task_id, scene_id: task.scene_id, prompt: task.prompt,
       toolsets: task.toolsets, confirm_video_generation: task.confirm_video_generation,
-      stage: task.stage, provider: task.provider, provider_job_id: task.provider_job_id,
+      video_options: task.video_options || {}, stage: task.stage, provider: task.provider, provider_job_id: task.provider_job_id,
       output_url: task.output_url, storage_key: task.storage_key, attempts: task.attempts,
       claim_token: task.claim_token
     };
@@ -200,7 +202,7 @@ export async function claimNextTask() {
              attempts=attempts+1, claim_token=$2
        WHERE task_id=$1
        RETURNING task_id, scene_id, prompt, toolsets, confirm_video_generation,
-                 stage, provider, provider_job_id, output_url, storage_key, attempts, claim_token
+                 video_options, stage, provider, provider_job_id, output_url, storage_key, attempts, claim_token
     `, [rows[0].task_id, randomUUID()]);
     await client.query("COMMIT");
     return claimed[0] || null;

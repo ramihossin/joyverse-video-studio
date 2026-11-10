@@ -5,6 +5,7 @@ import net from "node:net";
 
 const TOKEN = "test-only-token-with-at-least-32-characters";
 const WORKER_TOKEN = "test-worker-token-with-at-least-32-characters";
+const CHATGPT_TOKEN = "test-chatgpt-dispatch-token-with-at-least-32-characters";
 let child;
 let baseUrl;
 
@@ -18,7 +19,7 @@ before(async () => {
     env: {
       ...process.env, NODE_ENV: "test", JOYVERSE_TEST_MEMORY_STORE: "1",
       PORT: String(port), MCP_ACCESS_TOKEN: TOKEN,
-      HERMES_WORKER_TOKEN: WORKER_TOKEN, MACRODROID_WEBHOOK_URL: ""
+      HERMES_WORKER_TOKEN: WORKER_TOKEN, CHATGPT_DISPATCH_TOKEN: CHATGPT_TOKEN, MACRODROID_WEBHOOK_URL: ""
     },
     stdio: "ignore"
   });
@@ -268,3 +269,49 @@ test("Hermes queue rejects a second checkpoint after task completion", async () 
   assert.equal((await lateCheckpoint.json()).error, "task_not_found_or_not_claimed");
 });
 
+
+test("video generation dispatch persists validated LTX settings for the worker", async () => {
+  const headers = {
+    "content-type": "application/json",
+    authorization: `Bearer ${WORKER_TOKEN}`
+  };
+  const invalid = await fetch(`${baseUrl}/api/hermes/dispatch`, {
+    method: "POST", headers,
+    body: JSON.stringify({
+      scene_id: "scene-invalid-video", prompt: "A colorful train.",
+      toolsets: ["video_gen"], confirm_video_generation: true,
+      video_options: { aspect: "cinematic-wide", duration: 9 }
+    })
+  });
+  assert.equal(invalid.status, 400);
+  assert.equal((await invalid.json()).error, "invalid_video_options");
+
+  const dispatch = await fetch(`${baseUrl}/api/hermes/dispatch`, {
+    method: "POST", headers,
+    body: JSON.stringify({
+      scene_id: "scene-video-options", prompt: "A colorful train.",
+      toolsets: ["video_gen"], confirm_video_generation: true,
+      video_options: { aspect: "landscape", duration: 4, seed: 123, randomize_seed: true, enhance_prompt: true }
+    })
+  });
+  assert.equal(dispatch.status, 202);
+  const accepted = await dispatch.json();
+
+  const claim = await fetch(`${baseUrl}/api/hermes/next`, { headers });
+  assert.equal(claim.status, 200);
+  const task = await claim.json();
+  assert.equal(task.task_id, accepted.task_id);
+  assert.deepEqual(task.video_options, {
+    aspect: "landscape", width: 1472, height: 832, duration: 4, seed: 123,
+    randomize_seed: true, enhance_prompt: true, decoder: "conv", auto_len: false
+  });
+
+  const complete = await fetch(`${baseUrl}/api/hermes/result`, {
+    method: "POST", headers,
+    body: JSON.stringify({
+      task_id: accepted.task_id, claim_token: task.claim_token,
+      status: "completed", result: { test: true }
+    })
+  });
+  assert.equal(complete.status, 200);
+});
