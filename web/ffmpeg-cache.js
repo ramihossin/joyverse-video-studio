@@ -14,17 +14,17 @@ export async function preloadFfmpegRuntime(onStatus = () => {}) {
 
     await new Promise((resolve, reject) => {
       const channel = new MessageChannel();
-      const timeout = setTimeout(() => reject(new Error("انتهت مهلة تنزيل ملفات المحرك.")), 180000);
+      const timeout = setTimeout(() => reject(new Error("انتهت مهلة تنزيل ملفات محرك الدمج المحلي.")), 600000);
       channel.port1.onmessage = ({ data }) => {
         if (data.type === "progress") {
           onStatus({ state: "downloading", completed: data.completed, total: data.total });
         } else if (data.type === "complete") {
           clearTimeout(timeout);
-          onStatus({ state: "ready", message: "ملفات محرك الدمج محفوظة في ذاكرة المتصفح." });
+          onStatus({ state: "ready", message: "ملفات محرك الدمج المحلي محفوظة في ذاكرة المتصفح." });
           resolve();
         } else if (data.type === "error") {
           clearTimeout(timeout);
-          reject(new Error(data.message || "فشل تنزيل محرك الدمج."));
+          reject(new Error(data.message || "فشل تنزيل محرك الدمج المحلي."));
         }
       };
       worker.postMessage({ type: "JOYVERSE_PRECACHE_FFMPEG" }, [channel.port2]);
