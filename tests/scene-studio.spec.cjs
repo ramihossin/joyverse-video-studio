@@ -121,3 +121,19 @@ test("agent manifest import accepts files larger than 1 MB", async ({ page }) =>
   await expect(page.locator("#scene-list")).toContainText("Large file scene");
   await expect(page.locator("#scene-list")).toContainText("بانتظار الدور");
 });
+
+
+test("reference image picker accepts and previews multiple images", async ({ page }) => {
+  await page.goto("/");
+  const picker = page.locator("#image");
+  await expect(picker).toHaveAttribute("multiple", "");
+  const png = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jZ8sAAAAASUVORK5CYII=", "base64");
+  await picker.setInputFiles([
+    { name: "adam.png", mimeType: "image/png", buffer: png },
+    { name: "lina.png", mimeType: "image/png", buffer: png }
+  ]);
+  await expect(page.locator("#preview-list figure")).toHaveCount(2);
+  await expect(page.locator("#upload-title")).toHaveText("تم اختيار 2 صور مرجعية");
+  await expect(page.locator("#preview-list")).toContainText("adam.png");
+  await expect(page.locator("#preview-list")).toContainText("lina.png");
+});
