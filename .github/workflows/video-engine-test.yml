@@ -1,0 +1,31 @@
+name: JoyVerse video engine smoke test
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "bridge/procedural-video-provider.js"
+      - "bridge/video-worker.js"
+      - "package.json"
+      - "package-lock.json"
+      - "test/procedural-video-provider.test.js"
+      - ".github/workflows/video-engine-test.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  smoke-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm install
+      - run: node --check bridge/procedural-video-provider.js
+      - run: node --check bridge/video-worker.js
+      - run: node --test test/procedural-video-provider.test.js
