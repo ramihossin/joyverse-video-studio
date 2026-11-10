@@ -130,3 +130,7 @@ footer a { color: #a5b4fc; }
 @media (max-width: 620px) {
   .queue-actions { grid-template-columns: 1fr; }
 }
+
+.assembly-panel { margin-top: 18px; }
+.assembly-panel video { width: 100%; max-height: 560px; background: #05070c; border-radius: 12px; }
+.assembly-note { color: #9eabc4; font-size: 12px; line-height: 1.8; margin: 12px 0 0; }
