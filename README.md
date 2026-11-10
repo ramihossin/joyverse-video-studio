@@ -1,39 +1,59 @@
 # JoyVerse Scene Studio
 
-Mobile-first scene queue for the JoyVerse Kids video workflow.
+Mobile-first scene queue for the JoyVerse Kids workflow. The Studio UI dispatches generation tasks to a server-side queue; a separate worker generates clips, persists them to S3-compatible storage, and assembles the final MP4 on the server.
 
-## What it does
+## Server-backed workflow
 
-- Adds individual scenes to a persistent browser-side queue.
-- Sends scenes to the public LTX-2.5 Gradio Space one at a time.
-- Waits for the current scene's streamed job result before starting the next.
-- Tracks waiting, running, completed, and failed states.
-- Stores scene prompts and result URLs in browser local storage.
-- Provides a preview and MP4 link for each completed scene.
-- Can merge 2–8 completed clips into one silent MP4 locally in the browser using FFmpeg WebAssembly. The merge is experimental on mobile and has a 350 MB total input limit.
-- When the Studio is opened over HTTPS, a service worker downloads and caches the FFmpeg runtime in the background. The browser may pause background work, and cached data can be evicted by the browser; the first download requires the page to remain open and online.
-- Supports optional reference image, 1–5 second clips, and 9:16 / 16:9 / 1:1 aspect ratios.
+1. Add scenes in the browser. Optional reference images are saved in IndexedDB on the phone until dispatch.
+2. When the user starts the queue, the browser uploads each reference image to the authenticated bridge, then dispatches the scene and its validated LTX options.
+3. PostgreSQL stores each task and its reference-image storage key.
+4. The standalone `npm run worker` process claims confirmed video tasks, loads the reference image, calls the LTX-2.5 Gradio Space, and stores the resulting MP4 in S3-compatible storage.
+5. The Studio polls task status while open. Closing the browser does not cancel tasks already dispatched to the server.
+6. On return, the Studio restores task IDs from browser storage, queries their server status, retrieves stored clips, and can request server-side FFmpeg assembly. The final ID is saved locally and the final MP4 can be fetched again.
 
-## Cost and provider policy
+The browser does not contain the worker credential. It uses a separate `JOYVERSE_STUDIO_TOKEN` configured privately on the bridge and entered by the user in the Studio connection panel. That token is held in session storage only.
 
-- The app connects directly to the public Lightricks/LTX-2.5 Gradio Space using `@gradio/client`.
+## Required server configuration
+
+Configure these values as private environment variables on the bridge host:
+
+- `MCP_ACCESS_TOKEN`: existing MCP/API secret (at least 32 characters).
+- `HERMES_WORKER_TOKEN`: separate secret used only by the background worker and internal worker endpoints.
+- `JOYVERSE_STUDIO_TOKEN`: separate strong secret entered into the Studio UI; do not commit it.
+- `DATABASE_URL`: PostgreSQL connection string for durable tasks.
+- Optional S3-compatible storage: `OBJECT_STORAGE_BUCKET`, `OBJECT_STORAGE_ENDPOINT`, `OBJECT_STORAGE_ACCESS_KEY_ID`, and `OBJECT_STORAGE_SECRET_ACCESS_KEY`; Cloudflare R2 aliases are accepted. If no S3/R2 settings are supplied, objects are stored in PostgreSQL automatically (50 MiB maximum per object). This is a temporary fallback for small tests, not a long-term video archive.
+- `HF_TOKEN` (optional): Hugging Face token for the server-side LTX provider.
+- `STUDIO_ALLOWED_ORIGINS` (optional): comma-separated exact HTTPS origins. Defaults include the project GitHub Pages and Render static-site origins.
+
+The Studio's default bridge URL is `https://joyverse-mcp-bridge.onrender.com`. Enter the same `JOYVERSE_STUDIO_TOKEN` value in the Studio's connection panel. Never put `HERMES_WORKER_TOKEN`, AWS credentials, or `HF_TOKEN` in browser JavaScript or GitHub Pages.
+
+## Worker process and persistence caveats
+
+- The API process and `npm run worker` are separate processes. The worker must be deployed and running continuously on a host that supports a persistent background process.
+- A sleeping/free web service does not guarantee background execution. A separate persistent worker host may be required; no keep-alive workaround is assumed.
+- PostgreSQL is required for durable tasks. Without S3/R2 settings, reference images, clips, and final MP4s use a PostgreSQL BYTEA table with a 50 MiB per-object limit. Use private object storage for production and larger videos.
+- The current Gradio submission iterator is process-local. If the worker dies after submitting to Gradio but before persisting a resumable provider job ID, automatic resubmission is blocked to avoid duplicate generation/quota use.
+- A successful dispatch response means the task was accepted by the queue, not that a video has completed. The Studio only marks a scene complete after reading the persisted task result.
+- Browser-side scene metadata is kept in local storage and reference blobs in IndexedDB until uploaded. After dispatch, the server-side task and object storage are the durable source of truth. The browser token is session-only and must be re-entered in a new browser session.
+
+## Provider and cost policy
+
+- The server worker calls the public `Lightricks/LTX-2.5` Gradio Space through `@gradio/client`.
 - It does not use LoreMotion, TinyFish, or a paid provider API.
-- The public Space uses shared GPU capacity. Queue time, uptime, and free access are controlled by the provider and are not guaranteed.
-- The app does not bypass ads, queues, account checks, or provider limits, and does not silently switch to a paid model.
-- A successful queue submission is not the same as a completed render. A scene is marked complete only after a video URL is returned.
-
-## Important operating notes
-
-- Keep the browser tab open while the queue is running. Browser-side execution cannot be guaranteed to continue after the tab is closed.
-- Scene prompts and statuses are stored in local browser storage. Reference images are not persisted; choose the image again after reloading if needed.
-- Video URLs are controlled by the upstream provider and may expire. Download completed clips promptly.
-- Prompts and optional reference images are sent to the external model provider. Do not upload private or sensitive images.
-- This is an independent community workflow and is not affiliated with LoreMotion or Lightricks.
-
-## Deployment
-
-The GitHub Actions workflow in `.github/workflows/pages.yml` deploys the `web/` directory to GitHub Pages when files in `web/**` change on `main`. Enable GitHub Pages with GitHub Actions as the source in repository Settings → Pages if it is not already enabled.
+- Public Space capacity, queue time, uptime, and free access are controlled by the provider and are not guaranteed.
+- The app does not bypass provider queues, account checks, ads, or limits and does not silently switch to a paid model.
+- Prompts and reference images are sent to the external model provider. Do not upload private or sensitive images.
 
 ## Development
 
-The app is static HTML/CSS/JavaScript. No build step is required. `web/app.js` imports the version-pinned `@gradio/client` package from esm.sh.
+- Static frontend: `web/`; no build step is required.
+- Bridge API: `bridge/server.js`.
+- Worker command: `npm run worker`.
+- Tests: `npm test`.
+- Browser acceptance tests: `npx playwright test`.
+- GitHub Pages deployment is configured in `.github/workflows/pages.yml`.
+
+
+## GitHub Actions worker option
+
+A scheduled one-task worker can run without keeping the Android browser open. Configure the repository Actions secret `DATABASE_URL`. S3/R2 secrets are optional for testing: without them the worker uses PostgreSQL object storage (50 MiB maximum per object). For production, configure the S3/R2 bucket, endpoint, access key, and secret key; optionally add `OBJECT_STORAGE_REGION` and `HF_TOKEN`. The scheduled workflow uses the free GitHub-hosted runner allowance and processes one queued scene per run. It is not a permanent always-on server: GitHub scheduling is best-effort, jobs have a maximum runtime, and provider outages or a job timeout can leave a task failed rather than safely resumable. It does not bypass LTX provider limits or guarantee free GPU capacity.
