@@ -24,6 +24,7 @@ jobs:
           node --input-type=module --check < web/app.js
           node --input-type=module --check < web/manifest.js
           node --input-type=module --check < web/automation.js
+          node --input-type=module --check < web/assembler.js
       - name: Verify static site files
         run: |
           test -s web/index.html
@@ -31,6 +32,7 @@ jobs:
           test -s web/app.js
           test -s web/manifest.js
           test -s web/automation.js
+          test -s web/assembler.js
       - name: Install Playwright
         run: |
           npm install --no-save @playwright/test

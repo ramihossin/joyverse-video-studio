@@ -10,6 +10,7 @@ Mobile-first scene queue for the JoyVerse Kids video workflow.
 - Tracks waiting, running, completed, and failed states.
 - Stores scene prompts and result URLs in browser local storage.
 - Provides a preview and MP4 link for each completed scene.
+- Can merge 2–8 completed clips into one silent MP4 locally in the browser using FFmpeg WebAssembly. The merge is experimental on mobile, requires CDN access on first use, and has a 350 MB total input limit.
 - Supports optional reference image, 1–5 second clips, and 9:16 / 16:9 / 1:1 aspect ratios.
 
 ## Cost and provider policy

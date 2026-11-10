@@ -1,3 +1,4 @@
+import { assembleVideos } from "./assembler.js";
 import { Client, handle_file } from "https://esm.sh/@gradio/client@2.0.0";
 
 const PROVIDER = { space: "Lightricks/LTX-2.5", endpoint: "/run" };
@@ -15,6 +16,10 @@ const sceneList = $("scene-list");
 const queueSummary = $("queue-summary");
 const startButton = $("start-queue");
 const stopButton = $("stop-queue");
+const assembleButton = $("assemble-scenes");
+const assemblyBox = $("assembly-box");
+const assemblyVideo = $("assembly-video");
+const assemblyDownload = $("assembly-download");
 const resultBox = $("result-box");
 const resultVideo = $("result-video");
 const downloadLink = $("download");
@@ -23,6 +28,8 @@ const STORAGE_KEY = "joyverse-scene-queue-v1";
 let queue = [];
 let queueRunning = false;
 let stopRequested = false;
+let assemblyRunning = false;
+let assemblyUrl = null;
 let previewUrl = null;
 
 try {
@@ -93,7 +100,7 @@ function renderQueue() {
       link.textContent = "فتح MP4";
       item.append(link);
     }
-    if (!queueRunning && scene.status !== "running") {
+    if (!queueRunning && !assemblyRunning && scene.status !== "running") {
       const remove = document.createElement("button");
       remove.type = "button";
       remove.className = "remove-scene";
@@ -108,8 +115,10 @@ function renderQueue() {
     sceneList.append(item);
   });
   queueSummary.textContent = `الإجمالي: ${queue.length} · بانتظار الدور: ${counts.waiting} · قيد التوليد: ${counts.running} · مكتمل: ${counts.done} · تعذّر: ${counts.failed}`;
-  startButton.disabled = queueRunning || !queue.some((scene) => scene.status === "waiting");
+  startButton.disabled = queueRunning || assemblyRunning || !queue.some((scene) => scene.status === "waiting");
   stopButton.disabled = !queueRunning;
+  const completedCount = queue.filter((scene) => scene.status === "done" && scene.videoUrl).length;
+  assembleButton.disabled = queueRunning || assemblyRunning || completedCount < 2;
 }
 
 imageInput.addEventListener("change", () => {
@@ -183,7 +192,7 @@ async function generateScene(client, scene) {
 }
 
 async function runQueue() {
-  if (queueRunning) return;
+  if (queueRunning || assemblyRunning) return;
   if (!queue.some((scene) => scene.status === "waiting")) {
     setStatus("لا توجد مشاهد بانتظار التوليد.");
     return;
@@ -248,6 +257,40 @@ async function runQueue() {
   }
 }
 
+async function assembleCompletedScenes() {
+  if (queueRunning || assemblyRunning) return;
+  const completed = queue.filter((scene) => scene.status === "done" && scene.videoUrl);
+  if (completed.length < 2) return setStatus("يلزم مشهدان مكتملان على الأقل قبل الدمج.");
+  if (completed.length > 8) return setStatus("الدمج المحلي يدعم 8 مشاهد كحد أقصى في المرة الواحدة.");
+
+  assemblyRunning = true;
+  renderQueue();
+  assembleButton.textContent = "جارٍ تجهيز الدمج…";
+  try {
+    setStatus("جارٍ تنزيل المقاطع المكتملة إلى الهاتف…", true);
+    const blob = await assembleVideos(completed, $("aspect").value, ({ stage, progress }) => {
+      const percent = Math.round((Number(progress) || 0) * 100);
+      const label = stage === "download" ? "تنزيل المقاطع" : stage === "load" ? "تحميل محرك الدمج" : "دمج وترميز الفيديو";
+      const progressText = stage === "download" || percent > 0 ? " · " + percent + "%" : "…";
+      setStatus(label + progressText, true);
+    });
+    if (assemblyUrl) URL.revokeObjectURL(assemblyUrl);
+    assemblyUrl = URL.createObjectURL(blob);
+    assemblyVideo.src = assemblyUrl;
+    assemblyDownload.href = assemblyUrl;
+    assemblyBox.hidden = false;
+    setStatus("اكتمل دمج " + completed.length + " مشاهد في فيديو واحد. الملف صامت وجاهز لإضافة الصوت لاحقاً.");
+  } catch (error) {
+    const message = error?.message || String(error);
+    setStatus("تعذّر الدمج المحلي: " + message + " إذا ظهر خطأ شبكة، تحقق من اتصال الإنترنت أو دعم المتصفح.");
+  } finally {
+    assemblyRunning = false;
+    assembleButton.textContent = "دمج المشاهد المكتملة";
+    renderQueue();
+  }
+}
+
+assembleButton.addEventListener("click", assembleCompletedScenes);
 startButton.addEventListener("click", runQueue);
 stopButton.addEventListener("click", () => {
   stopRequested = true;
@@ -261,6 +304,7 @@ $("clear-queue").addEventListener("click", () => {
 });
 window.addEventListener("beforeunload", () => {
   if (previewUrl) URL.revokeObjectURL(previewUrl);
+  if (assemblyUrl) URL.revokeObjectURL(assemblyUrl);
 });
 
 renderQueue();

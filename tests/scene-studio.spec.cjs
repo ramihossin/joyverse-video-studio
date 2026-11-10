@@ -57,3 +57,23 @@ test("agent manifest export downloads a reusable JSON file", async ({ page }) =>
   const download = await downloadPromise;
   expect(download.suggestedFilename()).toBe("joyverse-scene-manifest.json");
 });
+
+
+test("local assembly stays disabled until two completed clips exist", async ({ page }) => {
+  await page.goto("/");
+  await expect(page.locator("#assemble-scenes")).toBeDisabled();
+});
+
+test("local assembly becomes available for two completed clips without starting a render", async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem("joyverse-scene-queue-v1", JSON.stringify([
+      { id: "a", title: "Clip A", prompt: "A", status: "done", videoUrl: "https://example.com/a.mp4" },
+      { id: "b", title: "Clip B", prompt: "B", status: "done", videoUrl: "https://example.com/b.mp4" }
+    ]));
+  });
+  await page.goto("/");
+  await expect(page.locator("#scene-list")).toContainText("Clip A");
+  await expect(page.locator("#scene-list")).toContainText("Clip B");
+  await expect(page.locator("#assemble-scenes")).toBeEnabled();
+  await expect(page.locator("#start-queue")).toBeDisabled();
+});
