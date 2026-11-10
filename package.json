@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "start": "node bridge/server.js",
-    "test": "node --test"
+    "test": "node --test",
+    "worker": "node bridge/video-worker-main.js"
   },
   "engines": {
     "node": ">=20"
