@@ -8,6 +8,19 @@ function dimensionsFor(aspect) {
   return { width: 720, height: 1280 };
 }
 
+async function fetchRuntimeAsset(url) {
+  const cacheName = "joyverse-ffmpeg-0.12.10";
+  if ("caches" in window) {
+    const cache = await caches.open(cacheName);
+    const cached = await cache.match(url);
+    if (cached) return cached;
+    const response = await fetch(url, { mode: "cors", credentials: "omit" });
+    if (response.ok && response.type !== "opaque") await cache.put(url, response.clone());
+    return response;
+  }
+  return fetch(url, { mode: "cors", credentials: "omit" });
+}
+
 async function loadFFmpeg(onProgress) {
   const { FFmpeg } = await import(
     "https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.10/dist/esm/index.js"
@@ -19,8 +32,8 @@ async function loadFFmpeg(onProgress) {
 
   const coreBase = "https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.10/dist/umd";
   const [coreResponse, wasmResponse] = await Promise.all([
-    fetch(coreBase + "/ffmpeg-core.js"),
-    fetch(coreBase + "/ffmpeg-core.wasm")
+    fetchRuntimeAsset(coreBase + "/ffmpeg-core.js"),
+    fetchRuntimeAsset(coreBase + "/ffmpeg-core.wasm")
   ]);
   if (!coreResponse.ok || !wasmResponse.ok) {
     throw new Error("تعذّر تحميل محرك الدمج من شبكة CDN.");

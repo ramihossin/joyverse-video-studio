@@ -134,3 +134,5 @@ footer a { color: #a5b4fc; }
 .assembly-panel { margin-top: 18px; }
 .assembly-panel video { width: 100%; max-height: 560px; background: #05070c; border-radius: 12px; }
 .assembly-note { color: #9eabc4; font-size: 12px; line-height: 1.8; margin: 12px 0 0; }
+
+.engine-cache-status { color: #a5b4fc; font-size: 12px; line-height: 1.8; margin: 8px 0 0; }
