@@ -9,34 +9,33 @@ function dimensionsFor(aspect) {
 }
 
 async function fetchRuntimeAsset(url) {
-  const cacheName = "joyverse-ffmpeg-0.12.10";
+  const cacheName = "joyverse-ffmpeg-0.12.10-local";
   if ("caches" in window) {
     const cache = await caches.open(cacheName);
     const cached = await cache.match(url);
     if (cached) return cached;
-    const response = await fetch(url, { mode: "cors", credentials: "omit" });
+    const response = await fetch(url);
     if (response.ok && response.type !== "opaque") await cache.put(url, response.clone());
     return response;
   }
-  return fetch(url, { mode: "cors", credentials: "omit" });
+  return fetch(url);
 }
 
 async function loadFFmpeg(onProgress) {
-  const { FFmpeg } = await import(
-    "https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.10/dist/esm/index.js"
-  );
+  const moduleUrl = new URL("./vendor/ffmpeg/esm/index.js", import.meta.url);
+  const { FFmpeg } = await import(moduleUrl.href);
   const ffmpeg = new FFmpeg();
   ffmpeg.on("progress", ({ progress }) => {
     if (Number.isFinite(progress)) onProgress(Math.max(0, Math.min(1, progress)));
   });
 
-  const coreBase = "https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.10/dist/umd";
+  const coreBase = new URL("./vendor/ffmpeg/core/", import.meta.url);
   const [coreResponse, wasmResponse] = await Promise.all([
-    fetchRuntimeAsset(coreBase + "/ffmpeg-core.js"),
-    fetchRuntimeAsset(coreBase + "/ffmpeg-core.wasm")
+    fetchRuntimeAsset(new URL("ffmpeg-core.js", coreBase).href),
+    fetchRuntimeAsset(new URL("ffmpeg-core.wasm", coreBase).href)
   ]);
   if (!coreResponse.ok || !wasmResponse.ok) {
-    throw new Error("تعذّر تحميل محرك الدمج من شبكة CDN.");
+    throw new Error("تعذّر تحميل ملفات محرك الدمج المستضافة داخل الاستوديو.");
   }
 
   const coreBlob = URL.createObjectURL(
@@ -50,7 +49,7 @@ async function loadFFmpeg(onProgress) {
     await ffmpeg.load({
       coreURL: coreBlob,
       wasmURL: wasmBlob,
-      classWorkerURL: "https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.10/dist/esm/worker.js"
+      classWorkerURL: new URL("./vendor/ffmpeg/esm/worker.js", import.meta.url).href
     });
     return ffmpeg;
   } catch (error) {
