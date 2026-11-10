@@ -569,8 +569,8 @@ app.get("/api/hermes/tasks/:taskId", async (req, res) => {
     result: task.result, error: task.error,
     stage: task.stage, provider: task.provider,
     provider_job_id: task.provider_job_id, output_url: task.output_url,
-    storage_key: task.storage_key, heartbeat_at: task.heartbeat_at,
-    attempts: task.attempts, created_at: task.created_at,
+    storage_key: task.storage_key, reference_image_attached: Boolean(task.reference_image_key),
+    heartbeat_at: task.heartbeat_at, attempts: task.attempts, created_at: task.created_at,
     finished_at: task.finished_at ?? null
   });
 });
