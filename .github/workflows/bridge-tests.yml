@@ -2,9 +2,9 @@ name: Bridge tests
 
 on:
   pull_request:
-    branches: [main, feat/durable-server-task-queue]
+    branches: [main, feat/durable-server-task-queue, feat/server-video-worker-foundation]
   push:
-    branches: [main]
+    branches: [main, feat/server-video-worker-foundation, feat/off-browser-worker-core]
 
 jobs:
   test:
@@ -15,4 +15,8 @@ jobs:
         with:
           node-version: 20
       - run: npm install
+      - name: Check bridge JavaScript syntax
+        run: node --check bridge/server.js && node --check bridge/task-store.js && node --check bridge/video-worker.js && node --check bridge/video-worker-main.js
       - run: npm test
+      - name: Validate Android worker Python syntax
+        run: python -m py_compile bridge/hermes_phone_worker.py
