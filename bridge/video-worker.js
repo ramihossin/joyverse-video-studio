@@ -42,8 +42,10 @@ export async function processClaimedVideoTask(task, {
       stage: "submitting", provider: "ltx-gradio"
     });
     if (!started) throw new Error("Task claim expired before LTX submission.");
+    const referenceImage = task.reference_image_key ? await storage.get(task.reference_image_key) : null;
     const output = await provider.generate({
       prompt: task.prompt,
+      referenceImage,
       videoOptions: task.video_options || {},
       onProgress: async progress => {
         await checkpoint(task.task_id, claimToken, {
