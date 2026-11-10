@@ -1,8 +1,9 @@
-const CACHE_NAME = "joyverse-ffmpeg-0.12.10";
+const CACHE_NAME = "joyverse-ffmpeg-0.12.10-local";
 const ASSETS = [
-  "https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.10/dist/umd/ffmpeg-core.js",
-  "https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.10/dist/umd/ffmpeg-core.wasm",
-  "https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.10/dist/esm/worker.js"
+  new URL("./vendor/ffmpeg/core/ffmpeg-core.js", self.location.href).href,
+  new URL("./vendor/ffmpeg/core/ffmpeg-core.wasm", self.location.href).href,
+  new URL("./vendor/ffmpeg/esm/index.js", self.location.href).href,
+  new URL("./vendor/ffmpeg/esm/worker.js", self.location.href).href
 ];
 
 self.addEventListener("install", (event) => {
@@ -43,8 +44,8 @@ self.addEventListener("message", (event) => {
         const existing = await cache.match(url);
         if (!existing) {
           send({ type: "progress", completed, total: ASSETS.length, current: url });
-          const response = await fetch(url, { mode: "cors", credentials: "omit", cache: "reload" });
-          if (!response.ok || response.type === "opaque") throw new Error("تعذّر تنزيل أحد ملفات FFmpeg من CDN.");
+          const response = await fetch(url, { cache: "reload" });
+          if (!response.ok || response.type === "opaque") throw new Error("تعذّر تنزيل أحد ملفات FFmpeg المستضافة داخل الاستوديو.");
           await cache.put(url, response);
         }
         completed += 1;
