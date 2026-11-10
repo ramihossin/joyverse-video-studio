@@ -7,6 +7,7 @@ import { z } from "zod";
 import { initializeTaskStore, enqueueTask, getTask, claimNextTask, finishTask, getQueueCounts, updateTaskCheckpoint } from "./task-store.js";
 import { normalizeVideoOptions } from "./video-job.js";
 import { createObjectStorage } from "./object-storage.js";
+import { assembleMp4 } from "./ffmpeg-assembler.js";
 
 const app = express();
 app.disable("x-powered-by");
@@ -443,6 +444,66 @@ app.get("/api/hermes/tasks/:taskId", async (req, res) => {
     attempts: task.attempts, created_at: task.created_at,
     finished_at: task.finished_at ?? null
   });
+});
+
+app.post("/api/hermes/assemble", async (req, res) => {
+  if (!HERMES_WORKER_TOKEN) return res.status(503).json({ error: "hermes_worker_token_not_configured" });
+  if (!hermesWorkerAuthorized(req)) return res.status(401).json({ error: "unauthorized" });
+  const { task_ids } = req.body ?? {};
+  if (!Array.isArray(task_ids) || task_ids.length < 1 || task_ids.length > 40 ||
+      task_ids.some(id => typeof id !== "string" || !id.trim() || id.length > 100)) {
+    return res.status(400).json({ error: "task_ids_must_contain_1_to_40_valid_ids_in_playback_order" });
+  }
+  if (new Set(task_ids).size !== task_ids.length) return res.status(400).json({ error: "duplicate_task_ids" });
+  try {
+    const tasks = [];
+    for (const id of task_ids) {
+      const task = await getTask(id);
+      if (!task || task.status !== "completed") {
+        return res.status(409).json({ error: "scene_not_completed", task_id: id });
+      }
+      const key = task.storage_key || task.result?.storage_key;
+      if (typeof key !== "string" || !key.startsWith("jobs/")) {
+        return res.status(409).json({ error: "scene_video_missing", task_id: id });
+      }
+      tasks.push({ id, key });
+    }
+    const storage = createObjectStorage();
+    const clips = [];
+    for (const task of tasks) clips.push(await storage.get(task.key));
+    const finalVideo = await assembleMp4(clips);
+    const finalId = randomUUID();
+    const finalKey = "finals/" + finalId + ".mp4";
+    await storage.put(finalKey, finalVideo, "video/mp4");
+    res.set("Cache-Control", "no-store");
+    return res.status(201).json({
+      status: "completed", final_id: finalId, storage_key: finalKey,
+      scene_count: tasks.length, bytes: finalVideo.length,
+      download_path: "/api/hermes/final/" + finalId
+    });
+  } catch (error) {
+    console.error("Server-side assembly failed:", String(error?.message || error).slice(0, 300));
+    return res.status(502).json({ error: "assembly_failed", message: String(error?.message || error).slice(0, 180) });
+  }
+});
+
+app.get("/api/hermes/final/:finalId", async (req, res) => {
+  if (!HERMES_WORKER_TOKEN) return res.status(503).json({ error: "hermes_worker_token_not_configured" });
+  if (!hermesWorkerAuthorized(req)) return res.status(401).json({ error: "unauthorized" });
+  if (!/^[0-9a-f-]{36}$/i.test(req.params.finalId)) return res.status(400).json({ error: "invalid_final_id" });
+  try {
+    const video = await createObjectStorage().get("finals/" + req.params.finalId + ".mp4");
+    res.set({
+      "Content-Type": "video/mp4",
+      "Content-Length": String(video.length),
+      "Content-Disposition": 'attachment; filename="joyverse-final.mp4"',
+      "Cache-Control": "private, no-store",
+      "X-Content-Type-Options": "nosniff"
+    });
+    return res.status(200).send(video);
+  } catch (error) {
+    return res.status(404).json({ error: "final_video_not_found" });
+  }
 });
 
 app.get("/api/hermes/video/:taskId", async (req, res) => {
