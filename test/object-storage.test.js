@@ -74,3 +74,42 @@ test("S3 adapter requires bucket and server-side credentials", () => {
     env: { OBJECT_STORAGE_BUCKET: "bucket" }
   }), /credentials/);
 });
+
+
+test("PostgreSQL fallback stores and retrieves small objects without S3 credentials", async () => {
+  const records = new Map();
+  const database = {
+    async query(sql, params) {
+      if (sql.includes("INSERT INTO joyverse_objects")) {
+        records.set(params[0], { body: Buffer.from(params[1]), content_type: params[2], byte_length: params[3] });
+        return { rows: [] };
+      }
+      if (sql.includes("SELECT body FROM joyverse_objects")) {
+        const record = records.get(params[0]);
+        return { rows: record ? [{ body: record.body }] : [] };
+      }
+      throw new Error("Unexpected SQL in storage test.");
+    }
+  };
+  const storage = createObjectStorage({
+    env: { DATABASE_URL: "postgres://test.invalid/joyverse" },
+    database
+  });
+  assert.equal(storage.backend, "postgresql");
+  const saved = await storage.put("jobs/task-1/scene.mp4", Buffer.from("video"), "video/mp4");
+  assert.equal(saved.bucket, "postgresql");
+  assert.deepEqual(await storage.get(saved.key), Buffer.from("video"));
+  await assert.rejects(storage.get("jobs/missing.mp4"), /not found/);
+  await assert.rejects(storage.createUploadUrl("refs/test.png"), /unavailable/);
+});
+
+test("PostgreSQL fallback enforces its per-object size limit", async () => {
+  const storage = createObjectStorage({
+    env: { DATABASE_URL: "postgres://test.invalid/joyverse" },
+    database: { query: async () => ({ rows: [] }) }
+  });
+  await assert.rejects(
+    storage.put("jobs/large.mp4", Buffer.alloc(50 * 1024 * 1024 + 1), "video/mp4"),
+    /up to/
+  );
+});
