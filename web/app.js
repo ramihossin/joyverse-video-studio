@@ -1,3 +1,4 @@
+import { preloadFfmpegRuntime } from "./ffmpeg-cache.js";
 import { assembleVideos } from "./assembler.js";
 import { Client, handle_file } from "https://esm.sh/@gradio/client@2.0.0";
 
@@ -307,4 +308,17 @@ window.addEventListener("beforeunload", () => {
   if (assemblyUrl) URL.revokeObjectURL(assemblyUrl);
 });
 
+const engineCacheStatus = $("engine-cache-status");
+preloadFfmpegRuntime((status) => {
+  if (!engineCacheStatus) return;
+  if (status.state === "downloading") {
+    engineCacheStatus.textContent = "تنزيل محرك الدمج في الخلفية: " + status.completed + " من " + status.total + " ملفات";
+  } else if (status.state === "ready") {
+    engineCacheStatus.textContent = "محرك الدمج جاهز ومحفوظ في المتصفح.";
+  } else if (status.state === "unsupported") {
+    engineCacheStatus.textContent = status.message;
+  } else if (status.state === "error") {
+    engineCacheStatus.textContent = "تعذّر التخزين المسبق: " + status.message;
+  }
+});
 renderQueue();
