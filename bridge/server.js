@@ -8,6 +8,8 @@ import { initializeTaskStore, enqueueTask, getTask, claimNextTask, finishTask, g
 import { normalizeVideoOptions } from "./video-job.js";
 import { createObjectStorage } from "./object-storage.js";
 import { assembleMp4 } from "./ffmpeg-assembler.js";
+import { createVideoWorker } from "./video-worker.js";
+import { verifyGithubActionsToken } from "./github-oidc.js";
 
 const app = express();
 app.disable("x-powered-by");
@@ -47,6 +49,23 @@ const seenCommandIds = new Set();
 // Task records are stored in PostgreSQL; process memory is not used for queue state.
 const HERMES_TOOLSETS = new Set(["web", "browser", "video_gen"]);
 const HERMES_MAX_PROMPT = 12000;
+
+const VIDEO_WORKER_REPOSITORY = process.env.GITHUB_OIDC_REPOSITORY || "ramihossin/joyverse-video-studio";
+const VIDEO_WORKER_WORKFLOW = ".github/workflows/video-worker.yml";
+const VIDEO_WORKER_BRANCH = process.env.GITHUB_OIDC_BRANCH || "main";
+const VIDEO_WORKER_AUDIENCE = "joyverse-video-worker";
+const backgroundVideoWorker = createVideoWorker();
+let backgroundVideoWorkerBusy = false;
+
+function startBackgroundVideoTask() {
+  if (backgroundVideoWorkerBusy) return false;
+  backgroundVideoWorkerBusy = true;
+  void backgroundVideoWorker.runOnce()
+    .catch(error => console.error("Background video worker failed:", String(error?.message || error).slice(0, 300)))
+    .finally(() => { backgroundVideoWorkerBusy = false; });
+  return true;
+}
+
 
 
 function isValidMacroDroidWebhook(value) {
@@ -487,6 +506,28 @@ app.post("/api/hermes/dispatch", async (req, res) => {
     result: null, error: null
   });
   return res.status(202).json({ accepted: true, task_id: taskId, scene_id, status: "queued" });
+});
+
+// GitHub Actions uses short-lived OIDC identity tokens; no database or storage secret is copied into GitHub.
+app.post("/api/hermes/worker/tick", async (req, res) => {
+  const authorization = req.get("authorization") || "";
+  const token = authorization.startsWith("Bearer ") ? authorization.slice(7) : "";
+  try {
+    await verifyGithubActionsToken(token, {
+      repository: VIDEO_WORKER_REPOSITORY,
+      workflowFile: VIDEO_WORKER_WORKFLOW,
+      branch: VIDEO_WORKER_BRANCH,
+      audience: VIDEO_WORKER_AUDIENCE
+    });
+  } catch {
+    return res.status(401).json({ error: "invalid_github_actions_identity" });
+  }
+  if (!startBackgroundVideoTask()) {
+    res.set("Cache-Control", "no-store");
+    return res.status(202).json({ accepted: true, status: "busy" });
+  }
+  res.set("Cache-Control", "no-store");
+  return res.status(202).json({ accepted: true, status: "worker_started" });
 });
 
 app.get("/api/hermes/next", async (req, res) => {
