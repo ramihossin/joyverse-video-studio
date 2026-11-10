@@ -1,5 +1,6 @@
 import { preloadFfmpegRuntime } from "./ffmpeg-cache.js";
 import { assembleVideos } from "./assembler.js";
+import { getVideoBlob, deleteVideoBlob } from "./video-storage.js";
 import { Client, handle_file } from "https://esm.sh/@gradio/client@2.0.0";
 
 const PROVIDER = { space: "Lightricks/LTX-2.5", endpoint: "/run" };
@@ -89,7 +90,7 @@ function renderQueue() {
     const title = document.createElement("strong");
     title.textContent = scene.title || ("مشهد " + (index + 1));
     const detail = document.createElement("small");
-    detail.textContent = statusLabel(scene.status) + (scene.error ? " — " + scene.error : "");
+    detail.textContent = statusLabel(scene.status) + (scene.localVideoName ? " — من الهاتف: " + scene.localVideoName : "") + (scene.error ? " — " + scene.error : "");
     copy.append(title, detail);
     item.append(copy);
 
@@ -100,6 +101,10 @@ function renderQueue() {
       link.rel = "noopener noreferrer";
       link.textContent = "فتح MP4";
       item.append(link);
+    } else if (scene.localVideoId) {
+      const localLabel = document.createElement("small");
+      localLabel.textContent = "فيديو محلي محفوظ على الهاتف";
+      item.append(localLabel);
     }
     if (!queueRunning && !assemblyRunning && scene.status !== "running") {
       const remove = document.createElement("button");
@@ -107,6 +112,7 @@ function renderQueue() {
       remove.className = "remove-scene";
       remove.textContent = "حذف";
       remove.addEventListener("click", () => {
+        if (scene.localVideoId) deleteVideoBlob(scene.localVideoId).catch(console.warn);
         queue = queue.filter((entry) => entry.id !== scene.id);
         saveQueue();
         renderQueue();
@@ -118,7 +124,7 @@ function renderQueue() {
   queueSummary.textContent = `الإجمالي: ${queue.length} · بانتظار الدور: ${counts.waiting} · قيد التوليد: ${counts.running} · مكتمل: ${counts.done} · تعذّر: ${counts.failed}`;
   startButton.disabled = queueRunning || assemblyRunning || !queue.some((scene) => scene.status === "waiting");
   stopButton.disabled = !queueRunning;
-  const completedCount = queue.filter((scene) => scene.status === "done" && scene.videoUrl).length;
+  const completedCount = queue.filter((scene) => scene.status === "done" && (scene.videoUrl || scene.localVideoId)).length;
   assembleButton.disabled = queueRunning || assemblyRunning || completedCount < 2;
 }
 
@@ -260,7 +266,7 @@ async function runQueue() {
 
 async function assembleCompletedScenes() {
   if (queueRunning || assemblyRunning) return;
-  const completed = queue.filter((scene) => scene.status === "done" && scene.videoUrl);
+  const completed = queue.filter((scene) => scene.status === "done" && (scene.videoUrl || scene.localVideoId));
   if (completed.length < 2) return setStatus("يلزم مشهدان مكتملان على الأقل قبل الدمج.");
   if (completed.length > 8) return setStatus("الدمج المحلي يدعم 8 مشاهد كحد أقصى في المرة الواحدة.");
 
@@ -268,8 +274,10 @@ async function assembleCompletedScenes() {
   renderQueue();
   assembleButton.textContent = "جارٍ تجهيز الدمج…";
   try {
-    setStatus("جارٍ تنزيل المقاطع المكتملة إلى الهاتف…", true);
-    const blob = await assembleVideos(completed, $("aspect").value, ({ stage, progress }) => {
+    setStatus("جارٍ تجهيز المقاطع المكتملة للدمج…", true);
+    const clipsForAssembly = await Promise.all(completed.map(async scene => scene.localVideoId ? { ...scene, videoBlob: await getVideoBlob(scene.localVideoId) } : scene));
+    if (clipsForAssembly.some(scene => scene.localVideoId && !scene.videoBlob)) throw new Error("تعذّر العثور على أحد ملفات الفيديو المحفوظة. أعد استيراده من الهاتف.");
+    const blob = await assembleVideos(clipsForAssembly, $("aspect").value, ({ stage, progress }) => {
       const percent = Math.round((Number(progress) || 0) * 100);
       const label = stage === "download" ? "تنزيل المقاطع" : stage === "load" ? "تحميل محرك الدمج" : "دمج وترميز الفيديو";
       const progressText = stage === "download" || percent > 0 ? " · " + percent + "%" : "…";
@@ -299,6 +307,7 @@ stopButton.addEventListener("click", () => {
 });
 $("clear-queue").addEventListener("click", () => {
   if (queueRunning) return;
+  queue.filter((scene) => scene.status === "done" && scene.localVideoId).forEach(scene => deleteVideoBlob(scene.localVideoId).catch(console.warn));
   queue = queue.filter((scene) => scene.status !== "done");
   saveQueue();
   renderQueue();
