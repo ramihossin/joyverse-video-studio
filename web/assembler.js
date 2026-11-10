@@ -1,6 +1,11 @@
 const MAX_CLIPS = 8;
 const MAX_CLIP_BYTES = 100 * 1024 * 1024;
 const MAX_TOTAL_BYTES = 350 * 1024 * 1024;
+const CORE_CDN = "https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.10/dist/umd/";
+const CORE_MIRRORS = [
+  "https://unpkg.com/@ffmpeg/core@0.12.10/dist/umd/",
+  "https://fastly.jsdelivr.net/npm/@ffmpeg/core@0.12.10/dist/umd/"
+];
 
 function dimensionsFor(aspect) {
   if (aspect === "landscape") return { width: 1280, height: 720 };
@@ -8,17 +13,32 @@ function dimensionsFor(aspect) {
   return { width: 720, height: 1280 };
 }
 
-async function fetchRuntimeAsset(url) {
+async function fetchRuntimeAsset(url, fallbackUrls = []) {
   const cacheName = "joyverse-ffmpeg-0.12.10-local";
   if ("caches" in window) {
     const cache = await caches.open(cacheName);
     const cached = await cache.match(url);
     if (cached) return cached;
-    const response = await fetch(url);
-    if (response.ok && response.type !== "opaque") await cache.put(url, response.clone());
-    return response;
   }
-  return fetch(url);
+
+  let lastError;
+  for (const candidate of [url, ...fallbackUrls]) {
+    try {
+      const response = await fetch(candidate, { mode: "cors", credentials: "omit" });
+      if (!response.ok || response.type === "opaque") {
+        lastError = new Error("HTTP " + response.status + " from " + candidate);
+        continue;
+      }
+      if ("caches" in window) {
+        const cache = await caches.open(cacheName);
+        await cache.put(url, response.clone());
+      }
+      return response;
+    } catch (error) {
+      lastError = error;
+    }
+  }
+  throw new Error("تعذّر تحميل ملف محرك FFmpeg من المصادر الاحتياطية: " + (lastError?.message || "unknown error"));
 }
 
 async function loadFFmpeg(onProgress) {
@@ -29,15 +49,10 @@ async function loadFFmpeg(onProgress) {
     if (Number.isFinite(progress)) onProgress(Math.max(0, Math.min(1, progress)));
   });
 
-  const coreBase = new URL("./vendor/ffmpeg/core/", import.meta.url);
   const [coreResponse, wasmResponse] = await Promise.all([
-    fetchRuntimeAsset(new URL("ffmpeg-core.js", coreBase).href),
-    fetchRuntimeAsset(new URL("ffmpeg-core.wasm", coreBase).href)
+    fetchRuntimeAsset(CORE_CDN + "ffmpeg-core.js", CORE_MIRRORS.map((base) => base + "ffmpeg-core.js")),
+    fetchRuntimeAsset(CORE_CDN + "ffmpeg-core.wasm", CORE_MIRRORS.map((base) => base + "ffmpeg-core.wasm"))
   ]);
-  if (!coreResponse.ok || !wasmResponse.ok) {
-    throw new Error("تعذّر تحميل ملفات محرك الدمج المستضافة داخل الاستوديو.");
-  }
-
   const coreBlob = URL.createObjectURL(
     new Blob([await coreResponse.arrayBuffer()], { type: "text/javascript" })
   );
