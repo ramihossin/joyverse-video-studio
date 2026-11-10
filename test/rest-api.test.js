@@ -268,3 +268,29 @@ test("Hermes queue rejects a second checkpoint after task completion", async () 
   assert.equal((await lateCheckpoint.json()).error, "task_not_found_or_not_claimed");
 });
 
+
+test("private object storage endpoints require worker auth and explicit storage configuration", async () => {
+  const unauthorized = await fetch(`${baseUrl}/api/storage/joyverse/scenes/test.mp4`, {
+    method: "PUT",
+    headers: { "content-type": "video/mp4" },
+    body: Buffer.from([1, 2, 3])
+  });
+  assert.equal(unauthorized.status, 401);
+  assert.deepEqual(await unauthorized.json(), { error: "unauthorized" });
+
+  const headers = {
+    authorization: `Bearer ${WORKER_TOKEN}`,
+    "content-type": "video/mp4"
+  };
+  const unavailable = await fetch(`${baseUrl}/api/storage/joyverse/scenes/test.mp4`, {
+    method: "PUT", headers, body: Buffer.from([1, 2, 3])
+  });
+  assert.equal(unavailable.status, 503);
+  assert.deepEqual(await unavailable.json(), { error: "object_storage_not_configured" });
+
+  const unavailableRead = await fetch(`${baseUrl}/api/storage/joyverse/scenes/test.mp4`, {
+    headers: { authorization: `Bearer ${WORKER_TOKEN}` }
+  });
+  assert.equal(unavailableRead.status, 503);
+  assert.deepEqual(await unavailableRead.json(), { error: "object_storage_not_configured" });
+});
