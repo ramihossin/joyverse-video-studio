@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { z } from "zod";
-import { initializeTaskStore, enqueueTask, getTask, claimNextTask, finishTask, getQueueCounts } from "./task-store.js";
+import { initializeTaskStore, enqueueTask, getTask, claimNextTask, finishTask, getQueueCounts, updateTaskCheckpoint } from "./task-store.js";
 
 const app = express();
 app.disable("x-powered-by");
@@ -362,6 +362,32 @@ app.get("/api/hermes/next", async (req, res) => {
     prompt: task.prompt, toolsets: task.toolsets,
     confirm_video_generation: task.confirm_video_generation
   });
+});
+
+app.post("/api/hermes/checkpoint", async (req, res) => {
+  if (!HERMES_WORKER_TOKEN) return res.status(503).json({ error: "hermes_worker_token_not_configured" });
+  if (!hermesWorkerAuthorized(req)) return res.status(401).json({ error: "unauthorized" });
+  const { task_id, stage, provider, provider_job_id, output_url, storage_key } = req.body ?? {};
+  if (typeof task_id !== "string" || !task_id.trim() || task_id.length > 100)
+    return res.status(400).json({ error: "invalid_task_id" });
+  if (output_url !== undefined) {
+    try {
+      const url = new URL(output_url);
+      if (!["https:", "http:"].includes(url.protocol)) throw new Error("invalid protocol");
+    } catch {
+      return res.status(400).json({ error: "invalid_output_url" });
+    }
+  }
+  try {
+    const checkpoint = await updateTaskCheckpoint(task_id, {
+      stage, provider, provider_job_id, output_url, storage_key
+    });
+    if (!checkpoint) return res.status(404).json({ error: "task_not_found_or_not_claimed" });
+    res.set("Cache-Control", "no-store");
+    return res.json({ accepted: true, ...checkpoint });
+  } catch (error) {
+    return res.status(400).json({ error: "invalid_checkpoint", message: String(error?.message || error).slice(0, 160) });
+  }
 });
 
 app.post("/api/hermes/result", async (req, res) => {
