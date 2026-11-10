@@ -5,7 +5,9 @@ import net from "node:net";
 
 const TOKEN = "test-only-token-with-at-least-32-characters";
 const WORKER_TOKEN = "test-worker-token-with-at-least-32-characters";
+const CHATGPT_TOKEN = "test-chatgpt-dispatch-token-with-at-least-32-characters";
 let child;
+let childOutput = "";
 let baseUrl;
 
 before(async () => {
@@ -18,13 +20,15 @@ before(async () => {
     env: {
       ...process.env, NODE_ENV: "test", JOYVERSE_TEST_MEMORY_STORE: "1",
       PORT: String(port), MCP_ACCESS_TOKEN: TOKEN,
-      HERMES_WORKER_TOKEN: WORKER_TOKEN, MACRODROID_WEBHOOK_URL: ""
+      HERMES_WORKER_TOKEN: WORKER_TOKEN, JOYVERSE_STUDIO_TOKEN: "test-studio-token-with-at-least-32-characters", CHATGPT_DISPATCH_TOKEN: CHATGPT_TOKEN, MACRODROID_WEBHOOK_URL: ""
     },
-    stdio: "ignore"
+    stdio: ["ignore", "pipe", "pipe"]
   });
+  child.stdout.on("data", chunk => { childOutput += chunk.toString(); });
+  child.stderr.on("data", chunk => { childOutput += chunk.toString(); });
   let ready = false;
   for (let i = 0; i < 50; i++) {
-    if (child.exitCode !== null) throw new Error("Bridge process exited before becoming ready");
+    if (child.exitCode !== null) throw new Error("Bridge process exited before becoming ready: " + childOutput.slice(-5000));
     try {
       const response = await fetch(`${baseUrl}/health`);
       if (response.ok) { ready = true; break; }
@@ -36,6 +40,14 @@ before(async () => {
 
 after(() => {
   if (child && child.exitCode === null) child.kill("SIGTERM");
+});
+
+test("background worker trigger rejects requests without a verified GitHub Actions identity", async () => {
+  const response = await fetch(`${baseUrl}/api/hermes/worker/tick`, {
+    method: "POST", headers: { "content-type": "application/json" }, body: "{}"
+  });
+  assert.equal(response.status, 401);
+  assert.deepEqual(await response.json(), { error: "invalid_github_actions_identity" });
 });
 
 test("REST status rejects missing bearer token", async () => {
@@ -81,6 +93,48 @@ test("root serves the Arabic status dashboard without exposing the access token"
   assert.match(html, /لوحة حالة JoyVerse/);
   assert.match(html, /Authorization/);
   assert.doesNotMatch(html, new RegExp(TOKEN));
+});
+
+test("ChatGPT dispatch relay accepts valid text-only tasks and persists them in the queue", async () => {
+  const response = await fetch(`${baseUrl}/api/hermes/dispatch-chatgpt`, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      authorization: `Bearer ${CHATGPT_TOKEN}`
+    },
+    body: JSON.stringify({
+      scene_id: "chatgpt-relay-test",
+      prompt: "Reply with a short diagnostic acknowledgement.",
+      toolsets: ["web"]
+    })
+  });
+  assert.equal(response.status, 202);
+  const accepted = await response.json();
+  assert.equal(accepted.accepted, true);
+  assert.equal(accepted.scene_id, "chatgpt-relay-test");
+  assert.equal(accepted.status, "queued");
+  assert.match(accepted.task_id, /^hermes_[0-9a-f-]{36}$/);
+
+  // Complete the relay task here so later FIFO queue tests start from an empty queue.
+  const workerHeaders = {
+    "content-type": "application/json",
+    authorization: `Bearer ${WORKER_TOKEN}`
+  };
+  const claim = await fetch(`${baseUrl}/api/hermes/next`, { headers: workerHeaders });
+  assert.equal(claim.status, 200);
+  const task = await claim.json();
+  assert.equal(task.task_id, accepted.task_id);
+  const completed = await fetch(`${baseUrl}/api/hermes/result`, {
+    method: "POST",
+    headers: workerHeaders,
+    body: JSON.stringify({
+      task_id: accepted.task_id,
+      claim_token: task.claim_token,
+      status: "completed",
+      result: { message: "relay test cleanup" }
+    })
+  });
+  assert.equal(completed.status, 200);
 });
 
 test("health endpoint remains available and reports runtime metadata", async () => {
@@ -132,11 +186,41 @@ test("Hermes task survives dispatch, claim, completion, and status retrieval", a
   const task = await claim.json();
   assert.equal(task.task_id, accepted.task_id);
   assert.equal(task.scene_id, "scene-test");
+  assert.equal(task.stage, "queued");
+  assert.equal(task.provider, null);
+  assert.equal(task.provider_job_id, null);
+  assert.equal(task.output_url, null);
+  assert.equal(task.storage_key, null);
+  assert.equal(task.attempts, 1);
+  assert.equal(typeof task.claim_token, "string");
+  assert.ok(task.claim_token.length >= 32);
+  const claimToken = task.claim_token;
+
+  const staleCheckpoint = await fetch(`${baseUrl}/api/hermes/checkpoint`, {
+    method: "POST", headers,
+    body: JSON.stringify({ task_id: accepted.task_id, claim_token: "z".repeat(36), stage: "uploading" })
+  });
+  assert.equal(staleCheckpoint.status, 404);
+  assert.equal((await staleCheckpoint.json()).error, "task_not_found_or_not_claimed");
+
+  const checkpoint = await fetch(`${baseUrl}/api/hermes/checkpoint`, {
+    method: "POST", headers,
+    body: JSON.stringify({
+      task_id: accepted.task_id, claim_token: claimToken, stage: "generating",
+      provider: "LTX-2.5", provider_job_id: "provider-job-test",
+      output_url: "https://example.test/scene.mp4",
+      storage_key: "joyverse/scenes/scene-test.mp4"
+    })
+  });
+  assert.equal(checkpoint.status, 200);
+  const savedCheckpoint = await checkpoint.json();
+  assert.equal(savedCheckpoint.stage, "generating");
+  assert.equal(savedCheckpoint.provider_job_id, "provider-job-test");
 
   const complete = await fetch(`${baseUrl}/api/hermes/result`, {
     method: "POST", headers,
     body: JSON.stringify({
-      task_id: accepted.task_id, status: "completed",
+      task_id: accepted.task_id, claim_token: claimToken, status: "completed",
       result: { message: "TEST_OK" }
     })
   });
@@ -147,4 +231,248 @@ test("Hermes task survives dispatch, claim, completion, and status retrieval", a
   const finalState = await status.json();
   assert.equal(finalState.status, "completed");
   assert.deepEqual(finalState.result, { message: "TEST_OK" });
+  assert.equal(finalState.stage, "completed");
+  assert.equal(finalState.provider, "LTX-2.5");
+  assert.equal(finalState.provider_job_id, "provider-job-test");
+  assert.equal(finalState.storage_key, "joyverse/scenes/scene-test.mp4");
+});
+
+test("Hermes queue rejects checkpoints and results for unclaimed tasks", async () => {
+  const headers = {
+    "content-type": "application/json",
+    authorization: `Bearer ${WORKER_TOKEN}`
+  };
+  const dispatch = await fetch(`${baseUrl}/api/hermes/dispatch`, {
+    method: "POST", headers,
+    body: JSON.stringify({
+      scene_id: "scene-unclaimed", prompt: "This task must be claimed first.",
+      toolsets: ["web"], confirm_video_generation: false
+    })
+  });
+  assert.equal(dispatch.status, 202);
+  const accepted = await dispatch.json();
+
+  const checkpoint = await fetch(`${baseUrl}/api/hermes/checkpoint`, {
+    method: "POST", headers,
+    body: JSON.stringify({ task_id: accepted.task_id, claim_token: "x".repeat(36), stage: "generating" })
+  });
+  assert.equal(checkpoint.status, 404);
+  assert.equal((await checkpoint.json()).error, "task_not_found_or_not_claimed");
+
+  const result = await fetch(`${baseUrl}/api/hermes/result`, {
+    method: "POST", headers,
+    body: JSON.stringify({
+      task_id: accepted.task_id, claim_token: "x".repeat(36), status: "completed", result: { message: "must not complete" }
+    })
+  });
+  assert.equal(result.status, 404);
+  assert.equal((await result.json()).error, "task_not_found_or_not_claimed");
+
+  const status = await fetch(`${baseUrl}/api/hermes/tasks/${encodeURIComponent(accepted.task_id)}`, { headers });
+  assert.equal(status.status, 200);
+  assert.equal((await status.json()).status, "queued");
+
+  // Clean up this intentionally unclaimed task so it cannot be picked up by
+  // the following test and interfere with its FIFO claim expectation.
+  const claim = await fetch(`${baseUrl}/api/hermes/next`, { headers });
+  assert.equal(claim.status, 200);
+  const claimed = await claim.json();
+  assert.equal(claimed.task_id, accepted.task_id);
+  const cleanup = await fetch(`${baseUrl}/api/hermes/result`, {
+    method: "POST", headers,
+    body: JSON.stringify({
+      task_id: accepted.task_id, claim_token: claimed.claim_token,
+      status: "completed", result: { message: "test cleanup" }
+    })
+  });
+  assert.equal(cleanup.status, 200);
+});
+
+test("Hermes queue rejects a second checkpoint after task completion", async () => {
+  const headers = {
+    "content-type": "application/json",
+    authorization: `Bearer ${WORKER_TOKEN}`
+  };
+  const dispatch = await fetch(`${baseUrl}/api/hermes/dispatch`, {
+    method: "POST", headers,
+    body: JSON.stringify({
+      scene_id: "scene-completed", prompt: "Complete then reject later writes.",
+      toolsets: ["web"], confirm_video_generation: false
+    })
+  });
+  assert.equal(dispatch.status, 202);
+  const accepted = await dispatch.json();
+
+  const claim = await fetch(`${baseUrl}/api/hermes/next`, { headers });
+  assert.equal(claim.status, 200);
+  const task = await claim.json();
+  assert.equal(task.task_id, accepted.task_id);
+
+  const complete = await fetch(`${baseUrl}/api/hermes/result`, {
+    method: "POST", headers,
+    body: JSON.stringify({ task_id: accepted.task_id, claim_token: task.claim_token, status: "completed", result: { ok: true } })
+  });
+  assert.equal(complete.status, 200);
+
+  const lateCheckpoint = await fetch(`${baseUrl}/api/hermes/checkpoint`, {
+    method: "POST", headers,
+    body: JSON.stringify({ task_id: accepted.task_id, claim_token: task.claim_token, stage: "uploading" })
+  });
+  assert.equal(lateCheckpoint.status, 404);
+  assert.equal((await lateCheckpoint.json()).error, "task_not_found_or_not_claimed");
+});
+
+
+test("video generation dispatch persists validated LTX settings for the worker", async () => {
+  const headers = {
+    "content-type": "application/json",
+    authorization: `Bearer ${WORKER_TOKEN}`
+  };
+  const invalid = await fetch(`${baseUrl}/api/hermes/dispatch`, {
+    method: "POST", headers,
+    body: JSON.stringify({
+      scene_id: "scene-invalid-video", prompt: "A colorful train.",
+      toolsets: ["video_gen"], confirm_video_generation: true,
+      video_options: { aspect: "cinematic-wide", duration: 9 }
+    })
+  });
+  assert.equal(invalid.status, 400);
+  assert.equal((await invalid.json()).error, "invalid_video_options");
+
+  const invalidNull = await fetch(`${baseUrl}/api/hermes/dispatch`, {
+    method: "POST", headers,
+    body: JSON.stringify({
+      scene_id: "scene-null-video", prompt: "A colorful train.",
+      toolsets: ["video_gen"], confirm_video_generation: true, video_options: null
+    })
+  });
+  assert.equal(invalidNull.status, 400);
+  assert.equal((await invalidNull.json()).error, "invalid_video_options");
+
+  const dispatch = await fetch(`${baseUrl}/api/hermes/dispatch`, {
+    method: "POST", headers,
+    body: JSON.stringify({
+      scene_id: "scene-video-options", prompt: "A colorful train.",
+      toolsets: ["video_gen"], confirm_video_generation: true,
+      video_options: { aspect: "landscape", duration: 4, seed: 123, randomize_seed: true, enhance_prompt: true }
+    })
+  });
+  assert.equal(dispatch.status, 202);
+  const accepted = await dispatch.json();
+
+  const claim = await fetch(`${baseUrl}/api/hermes/next`, { headers });
+  assert.equal(claim.status, 200);
+  const task = await claim.json();
+  assert.equal(task.task_id, accepted.task_id);
+  assert.deepEqual(task.video_options, {
+    aspect: "landscape", width: 1472, height: 832, duration: 4, seed: 123,
+    randomize_seed: true, enhance_prompt: true, decoder: "conv", auto_len: false
+  });
+
+  const complete = await fetch(`${baseUrl}/api/hermes/result`, {
+    method: "POST", headers,
+    body: JSON.stringify({
+      task_id: accepted.task_id, claim_token: task.claim_token,
+      status: "completed", result: { test: true }
+    })
+  });
+  assert.equal(complete.status, 200);
+});
+
+test("video claim returns the durable reference-image key to the background worker", async () => {
+  const headers = {
+    "content-type": "application/json",
+    authorization: `Bearer ${WORKER_TOKEN}`
+  };
+  const referenceKey = "references/pending/123e4567-e89b-12d3-a456-426614174000.png";
+  const dispatch = await fetch(`${baseUrl}/api/hermes/dispatch`, {
+    method: "POST", headers,
+    body: JSON.stringify({
+      scene_id: "scene-reference-key",
+      prompt: "A colorful friendly dragon.",
+      toolsets: ["video_gen"],
+      confirm_video_generation: true,
+      reference_image_key: referenceKey
+    })
+  });
+  assert.equal(dispatch.status, 202);
+  const accepted = await dispatch.json();
+  const claim = await fetch(`${baseUrl}/api/hermes/next`, { headers });
+  assert.equal(claim.status, 200);
+  const task = await claim.json();
+  assert.equal(task.task_id, accepted.task_id);
+  assert.equal(task.reference_image_key, referenceKey);
+  const complete = await fetch(`${baseUrl}/api/hermes/result`, {
+    method: "POST", headers,
+    body: JSON.stringify({
+      task_id: task.task_id, claim_token: task.claim_token,
+      status: "completed", result: { test: true }
+    })
+  });
+  assert.equal(complete.status, 200);
+});
+
+test("reference image upload requires worker authentication and rejects invalid image bytes", async () => {
+  const taskId = "hermes_123e4567-e89b-12d3-a456-426614174000";
+  const unauthorized = await fetch(`${baseUrl}/api/hermes/reference/${taskId}`, {
+    method: "POST", headers: { "content-type": "image/png" },
+    body: Buffer.from([137,80,78,71,13,10,26,10,0,0,0,0])
+  });
+  assert.equal(unauthorized.status, 401);
+
+  const invalid = await fetch(`${baseUrl}/api/hermes/reference/${taskId}`, {
+    method: "POST",
+    headers: { "content-type": "image/png", authorization: `Bearer ${WORKER_TOKEN}` },
+    body: Buffer.from("not-an-image")
+  });
+  assert.equal(invalid.status, 415);
+  assert.equal((await invalid.json()).error, "unsupported_image_format");
+});
+
+test("Studio API accepts its scoped token, enforces CORS, and dispatches a durable video task", async () => {
+  const studioHeaders = {
+    "content-type": "application/json",
+    authorization: "Bearer test-studio-token-with-at-least-32-characters",
+    origin: "https://ramihossin.github.io"
+  };
+  const preflight = await fetch(`${baseUrl}/api/hermes/dispatch`, {
+    method: "OPTIONS", headers: { origin: "https://ramihossin.github.io", "access-control-request-method": "POST",
+      "access-control-request-headers": "authorization,content-type" }
+  });
+  assert.equal(preflight.status, 204);
+  assert.equal(preflight.headers.get("access-control-allow-origin"), "https://ramihossin.github.io");
+
+  const deniedOrigin = await fetch(`${baseUrl}/api/hermes/dispatch`, {
+    method: "OPTIONS", headers: { origin: "https://attacker.example", "access-control-request-method": "POST" }
+  });
+  assert.equal(deniedOrigin.status, 403);
+
+  const dispatch = await fetch(`${baseUrl}/api/hermes/dispatch`, {
+    method: "POST", headers: studioHeaders,
+    body: JSON.stringify({
+      scene_id: "studio-ui-scene", prompt: "A bright toy train.",
+      toolsets: ["video_gen"], confirm_video_generation: true,
+      video_options: { aspect: "portrait", duration: 5, seed: 42 },
+      reference_image_key: "references/pending/123e4567-e89b-12d3-a456-426614174000.png"
+    })
+  });
+  assert.equal(dispatch.status, 202);
+  const accepted = await dispatch.json();
+  const status = await fetch(`${baseUrl}/api/hermes/tasks/${accepted.task_id}`, { headers: studioHeaders });
+  assert.equal(status.status, 200);
+  const taskState = await status.json();
+  assert.equal(taskState.status, "queued");
+  assert.equal(taskState.reference_image_attached, true);
+});
+
+test("Studio reference upload rejects invalid image signatures without requiring worker token", async () => {
+  const response = await fetch(`${baseUrl}/api/hermes/reference-upload`, {
+    method: "POST",
+    headers: { "content-type": "image/png",
+      authorization: "Bearer test-studio-token-with-at-least-32-characters",
+      origin: "https://ramihossin.github.io" },
+    body: Buffer.from("not-an-image")
+  });
+  assert.equal(response.status, 415);
+  assert.equal((await response.json()).error, "unsupported_image_format");
 });

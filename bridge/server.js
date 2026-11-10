@@ -4,14 +4,37 @@ import { fileURLToPath } from "node:url";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { z } from "zod";
-import { initializeTaskStore, enqueueTask, getTask, claimNextTask, finishTask, getQueueCounts } from "./task-store.js";
+import { initializeTaskStore, enqueueTask, getTask, claimNextTask, finishTask, getQueueCounts, updateTaskCheckpoint, setTaskReferenceImage } from "./task-store.js";
+import { normalizeVideoOptions } from "./video-job.js";
+import { createObjectStorage } from "./object-storage.js";
+import { assembleMp4 } from "./ffmpeg-assembler.js";
+import { createVideoWorker } from "./video-worker.js";
+import { verifyGithubActionsToken } from "./github-oidc.js";
 
 const app = express();
 app.disable("x-powered-by");
+const STUDIO_ALLOWED_ORIGINS = new Set(
+  (process.env.STUDIO_ALLOWED_ORIGINS ||
+    "https://ramihossin.github.io,https://joyverse-video-studio.onrender.com")
+    .split(",").map(value => value.trim()).filter(Boolean)
+);
+app.use((req, res, next) => {
+  const origin = req.get("origin");
+  if (origin && STUDIO_ALLOWED_ORIGINS.has(origin)) {
+    res.set("Access-Control-Allow-Origin", origin);
+    res.set("Vary", "Origin");
+    res.set("Access-Control-Allow-Headers", "Authorization, Content-Type");
+    res.set("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+    res.set("Access-Control-Max-Age", "600");
+  }
+  if (req.method === "OPTIONS") return res.status(origin && STUDIO_ALLOWED_ORIGINS.has(origin) ? 204 : 403).end();
+  next();
+});
 app.use(express.json({ limit: "20kb" }));
 
 const ACCESS_TOKEN = process.env.MCP_ACCESS_TOKEN;
 const HERMES_WORKER_TOKEN = process.env.HERMES_WORKER_TOKEN || "";
+const JOYVERSE_STUDIO_TOKEN = process.env.JOYVERSE_STUDIO_TOKEN || "";
 const CHATGPT_DISPATCH_TOKEN = process.env.CHATGPT_DISPATCH_TOKEN || "";
 const MACRODROID_WEBHOOK_URL = process.env.MACRODROID_WEBHOOK_URL || "";
 if (!ACCESS_TOKEN || ACCESS_TOKEN.length < 32) {
@@ -26,6 +49,24 @@ const seenCommandIds = new Set();
 // Task records are stored in PostgreSQL; process memory is not used for queue state.
 const HERMES_TOOLSETS = new Set(["web", "browser", "video_gen"]);
 const HERMES_MAX_PROMPT = 12000;
+
+const VIDEO_WORKER_REPOSITORY = process.env.GITHUB_OIDC_REPOSITORY || "ramihossin/joyverse-video-studio";
+const VIDEO_WORKER_WORKFLOW = ".github/workflows/video-worker.yml";
+const VIDEO_WORKER_BRANCH = process.env.GITHUB_OIDC_BRANCH || "main";
+const VIDEO_WORKER_AUDIENCE = "joyverse-video-worker";
+let backgroundVideoWorker = null;
+let backgroundVideoWorkerBusy = false;
+
+function startBackgroundVideoTask() {
+  if (backgroundVideoWorkerBusy) return false;
+  backgroundVideoWorkerBusy = true;
+  backgroundVideoWorker ||= createVideoWorker();
+  void backgroundVideoWorker.runOnce()
+    .catch(error => console.error("Background video worker failed:", String(error?.message || error).slice(0, 300)))
+    .finally(() => { backgroundVideoWorkerBusy = false; });
+  return true;
+}
+
 
 
 function isValidMacroDroidWebhook(value) {
@@ -131,7 +172,11 @@ function createMcpServer() {
       }
       return { content: [{ type: "text", text: JSON.stringify({
         task_id: task.task_id, scene_id: task.scene_id, status: task.status,
-        result: task.result, error: task.error,
+        video_options: task.video_options || {}, result: task.result, error: task.error,
+        stage: task.stage, provider: task.provider,
+        provider_job_id: task.provider_job_id, output_url: task.output_url,
+        storage_key: task.storage_key, heartbeat_at: task.heartbeat_at,
+        attempts: task.attempts,
         created_at: task.created_at, finished_at: task.finished_at ?? null
       }) }] };
     }
@@ -169,6 +214,19 @@ function hermesWorkerAuthorized(req) {
   const supplied = Buffer.from(match[1]);
   const expected = Buffer.from(HERMES_WORKER_TOKEN);
   return supplied.length === expected.length && timingSafeEqual(supplied, expected);
+}
+
+function studioAuthorized(req) {
+  const header = req.get("authorization") || "";
+  const match = /^Bearer ([A-Za-z0-9._~+\/-]+=*)$/.exec(header);
+  if (!JOYVERSE_STUDIO_TOKEN || !match) return false;
+  const supplied = Buffer.from(match[1]);
+  const expected = Buffer.from(JOYVERSE_STUDIO_TOKEN);
+  return supplied.length === expected.length && timingSafeEqual(supplied, expected);
+}
+
+function studioOrWorkerAuthorized(req) {
+  return studioAuthorized(req) || hermesWorkerAuthorized(req);
 }
 
 function chatgptDispatchAuthorized(req) {
@@ -315,15 +373,99 @@ app.get("/api/hermes/status-chatgpt/:taskId", async (req, res) => {
   if (!task) return res.status(404).json({ error: "task_not_found" });
   res.set("Cache-Control", "no-store");
   return res.json({ task_id: task.task_id, scene_id: task.scene_id, status: task.status,
-    result: task.result, error: task.error, created_at: task.created_at,
-    finished_at: task.finished_at ?? null });
+    video_options: task.video_options || {}, result: task.result, error: task.error, stage: task.stage,
+    provider: task.provider, provider_job_id: task.provider_job_id,
+    output_url: task.output_url, storage_key: task.storage_key,
+    heartbeat_at: task.heartbeat_at, attempts: task.attempts,
+    created_at: task.created_at, finished_at: task.finished_at ?? null });
+});
+
+// Upload a staged reference image before dispatch; dispatch atomically associates its key with the new task.
+app.post("/api/hermes/reference-upload", express.raw({
+  type: ["image/png", "image/jpeg", "image/webp", "application/octet-stream"],
+  limit: "10mb"
+}), async (req, res) => {
+  if (!JOYVERSE_STUDIO_TOKEN && !HERMES_WORKER_TOKEN) return res.status(503).json({ error: "studio_api_not_configured" });
+  if (!studioOrWorkerAuthorized(req)) return res.status(401).json({ error: "unauthorized" });
+  if (!Buffer.isBuffer(req.body) || req.body.length < 12 || req.body.length > 10 * 1024 * 1024) {
+    return res.status(400).json({ error: "invalid_image_body", max_bytes: 10485760 });
+  }
+  const bytes = req.body;
+  let extension, contentType;
+  if (bytes.subarray(0, 8).equals(Buffer.from([137,80,78,71,13,10,26,10]))) {
+    extension = "png"; contentType = "image/png";
+  } else if (bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) {
+    extension = "jpg"; contentType = "image/jpeg";
+  } else if (bytes.toString("ascii", 0, 4) === "RIFF" &&
+             bytes.toString("ascii", 8, 12) === "WEBP") {
+    extension = "webp"; contentType = "image/webp";
+  } else {
+    return res.status(415).json({ error: "unsupported_image_format" });
+  }
+  const key = "references/pending/" + randomUUID() + "." + extension;
+  try {
+    await createObjectStorage().put(key, bytes, contentType);
+    res.set("Cache-Control", "no-store");
+    return res.status(201).json({ reference_image_key: key, content_type: contentType, bytes: bytes.length });
+  } catch (error) {
+    console.error("Staged reference upload failed:", String(error?.message || error).slice(0, 200));
+    return res.status(502).json({ error: "reference_image_storage_failed" });
+  }
+});
+
+// Upload one validated reference image and bind it to a queued, explicitly confirmed video task.
+app.post("/api/hermes/reference/:taskId", express.raw({
+  type: ["image/png", "image/jpeg", "image/webp", "application/octet-stream"],
+  limit: "10mb"
+}), async (req, res) => {
+  if (!JOYVERSE_STUDIO_TOKEN && !HERMES_WORKER_TOKEN) return res.status(503).json({ error: "studio_api_not_configured" });
+  if (!studioOrWorkerAuthorized(req)) return res.status(401).json({ error: "unauthorized" });
+  const taskId = req.params.taskId;
+  if (typeof taskId !== "string" || !/^hermes_[0-9a-f-]{36}$/i.test(taskId)) {
+    return res.status(400).json({ error: "invalid_task_id" });
+  }
+  if (!Buffer.isBuffer(req.body) || req.body.length < 12 || req.body.length > 10 * 1024 * 1024) {
+    return res.status(400).json({ error: "invalid_image_body", max_bytes: 10485760 });
+  }
+  const bytes = req.body;
+  let extension, contentType;
+  if (bytes.subarray(0, 8).equals(Buffer.from([137,80,78,71,13,10,26,10]))) {
+    extension = "png"; contentType = "image/png";
+  } else if (bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) {
+    extension = "jpg"; contentType = "image/jpeg";
+  } else if (bytes.toString("ascii", 0, 4) === "RIFF" &&
+             bytes.toString("ascii", 8, 12) === "WEBP") {
+    extension = "webp"; contentType = "image/webp";
+  } else {
+    return res.status(415).json({ error: "unsupported_image_format" });
+  }
+  const task = await getTask(taskId);
+  if (!task) return res.status(404).json({ error: "task_not_found" });
+  if (task.status !== "queued" || task.confirm_video_generation !== true ||
+      !Array.isArray(task.toolsets) || !task.toolsets.includes("video_gen")) {
+    return res.status(409).json({ error: "task_not_eligible_for_reference_image" });
+  }
+  const key = "references/" + taskId + "/" + randomUUID() + "." + extension;
+  try {
+    await createObjectStorage().put(key, bytes, contentType);
+    const linked = await setTaskReferenceImage(taskId, key);
+    if (!linked) return res.status(409).json({ error: "task_no_longer_queued" });
+    res.set("Cache-Control", "no-store");
+    return res.status(201).json({
+      task_id: taskId, reference_image_key: key,
+      content_type: contentType, bytes: bytes.length
+    });
+  } catch (error) {
+    console.error("Reference image upload failed:", String(error?.message || error).slice(0, 200));
+    return res.status(502).json({ error: "reference_image_storage_failed" });
+  }
 });
 
 // Hermes phone-worker queue. All endpoints use the existing bearer token.
 app.post("/api/hermes/dispatch", async (req, res) => {
-  if (!HERMES_WORKER_TOKEN) return res.status(503).json({ error: "hermes_worker_token_not_configured" });
-  if (!hermesWorkerAuthorized(req)) return res.status(401).json({ error: "unauthorized" });
-  const { scene_id, prompt, toolsets = ["web"], confirm_video_generation = false } = req.body ?? {};
+  if (!JOYVERSE_STUDIO_TOKEN && !HERMES_WORKER_TOKEN) return res.status(503).json({ error: "studio_api_not_configured" });
+  if (!studioOrWorkerAuthorized(req)) return res.status(401).json({ error: "unauthorized" });
+  const { scene_id, prompt, toolsets = ["web"], confirm_video_generation = false, video_options, reference_image_key } = req.body ?? {};
   if (typeof scene_id !== "string" || !scene_id.trim() || scene_id.length > 100) {
     return res.status(400).json({ error: "invalid_scene_id" });
   }
@@ -341,14 +483,52 @@ app.post("/api/hermes/dispatch", async (req, res) => {
   if (confirm_video_generation === true && !selected.includes("video_gen")) {
     return res.status(400).json({ error: "confirmation_without_video_gen" });
   }
+  let normalizedVideoOptions = {};
+  if (selected.includes("video_gen")) {
+    try { normalizedVideoOptions = normalizeVideoOptions(video_options === undefined ? {} : video_options); }
+    catch (error) { return res.status(400).json({ error: "invalid_video_options", message: error.message }); }
+  } else if (video_options !== undefined) {
+    return res.status(400).json({ error: "video_options_require_video_gen" });
+  }
+  if (reference_image_key !== undefined &&
+      (typeof reference_image_key !== "string" ||
+       !/^references\/pending\/[0-9a-f-]{36}\.(png|jpg|webp)$/.test(reference_image_key))) {
+    return res.status(400).json({ error: "invalid_reference_image_key" });
+  }
+  if (reference_image_key && !selected.includes("video_gen")) {
+    return res.status(400).json({ error: "reference_image_requires_video_gen" });
+  }
   const taskId = "hermes_" + randomUUID();
   await enqueueTask({
     task_id: taskId, scene_id, prompt, toolsets: selected,
-    confirm_video_generation, status: "queued",
+    confirm_video_generation, video_options: normalizedVideoOptions,
+    reference_image_key: reference_image_key || null, status: "queued",
     created_at: new Date().toISOString(), claimed_at: null,
     result: null, error: null
   });
   return res.status(202).json({ accepted: true, task_id: taskId, scene_id, status: "queued" });
+});
+
+// GitHub Actions uses short-lived OIDC identity tokens; no database or storage secret is copied into GitHub.
+app.post("/api/hermes/worker/tick", async (req, res) => {
+  const authorization = req.get("authorization") || "";
+  const token = authorization.startsWith("Bearer ") ? authorization.slice(7) : "";
+  try {
+    await verifyGithubActionsToken(token, {
+      repository: VIDEO_WORKER_REPOSITORY,
+      workflowFile: VIDEO_WORKER_WORKFLOW,
+      branch: VIDEO_WORKER_BRANCH,
+      audience: VIDEO_WORKER_AUDIENCE
+    });
+  } catch {
+    return res.status(401).json({ error: "invalid_github_actions_identity" });
+  }
+  if (!startBackgroundVideoTask()) {
+    res.set("Cache-Control", "no-store");
+    return res.status(202).json({ accepted: true, status: "busy" });
+  }
+  res.set("Cache-Control", "no-store");
+  return res.status(202).json({ accepted: true, status: "worker_started" });
 });
 
 app.get("/api/hermes/next", async (req, res) => {
@@ -360,33 +540,160 @@ app.get("/api/hermes/next", async (req, res) => {
   return res.json({
     task_id: task.task_id, scene_id: task.scene_id,
     prompt: task.prompt, toolsets: task.toolsets,
-    confirm_video_generation: task.confirm_video_generation
+    confirm_video_generation: task.confirm_video_generation,
+    video_options: task.video_options || {},
+    // Checkpoint metadata is essential for restart-safe provider polling.
+    stage: task.stage, provider: task.provider,
+    provider_job_id: task.provider_job_id,
+    output_url: task.output_url, storage_key: task.storage_key,
+    reference_image_key: task.reference_image_key || null,
+    attempts: task.attempts, claim_token: task.claim_token
   });
+});
+
+app.post("/api/hermes/checkpoint", async (req, res) => {
+  if (!HERMES_WORKER_TOKEN) return res.status(503).json({ error: "hermes_worker_token_not_configured" });
+  if (!hermesWorkerAuthorized(req)) return res.status(401).json({ error: "unauthorized" });
+  const { task_id, claim_token, stage, provider, provider_job_id, output_url, storage_key } = req.body ?? {};
+  if (typeof task_id !== "string" || !task_id.trim() || task_id.length > 100)
+    return res.status(400).json({ error: "invalid_task_id" });
+  if (typeof claim_token !== "string" || claim_token.length < 32 || claim_token.length > 128)
+    return res.status(400).json({ error: "invalid_claim_token" });
+  if (output_url !== undefined) {
+    try {
+      const url = new URL(output_url);
+      if (!["https:", "http:"].includes(url.protocol)) throw new Error("invalid protocol");
+    } catch {
+      return res.status(400).json({ error: "invalid_output_url" });
+    }
+  }
+  try {
+    const checkpoint = await updateTaskCheckpoint(task_id, claim_token, {
+      stage, provider, provider_job_id, output_url, storage_key
+    });
+    if (!checkpoint) return res.status(404).json({ error: "task_not_found_or_not_claimed" });
+    res.set("Cache-Control", "no-store");
+    return res.json({ accepted: true, ...checkpoint });
+  } catch (error) {
+    return res.status(400).json({ error: "invalid_checkpoint", message: String(error?.message || error).slice(0, 160) });
+  }
 });
 
 app.post("/api/hermes/result", async (req, res) => {
   if (!HERMES_WORKER_TOKEN) return res.status(503).json({ error: "hermes_worker_token_not_configured" });
   if (!hermesWorkerAuthorized(req)) return res.status(401).json({ error: "unauthorized" });
-  const { task_id, status, result, error } = req.body ?? {};
+  const { task_id, claim_token, status, result, error } = req.body ?? {};
   if (typeof task_id !== "string") return res.status(404).json({ error: "task_not_found" });
+  if (typeof claim_token !== "string" || claim_token.length < 32 || claim_token.length > 128)
+    return res.status(400).json({ error: "invalid_claim_token" });
   if (!["completed", "failed"].includes(status)) return res.status(400).json({ error: "invalid_status" });
-  const updated = await finishTask(task_id, status,
+  const updated = await finishTask(task_id, claim_token, status,
     status === "completed" && result && typeof result === "object" ? result : null, error);
   if (!updated) return res.status(404).json({ error: "task_not_found_or_not_claimed" });
   return res.json({ accepted: true, task_id, status: updated.status });
 });
 
 app.get("/api/hermes/tasks/:taskId", async (req, res) => {
-  if (!HERMES_WORKER_TOKEN) return res.status(503).json({ error: "hermes_worker_token_not_configured" });
-  if (!hermesWorkerAuthorized(req)) return res.status(401).json({ error: "unauthorized" });
+  if (!JOYVERSE_STUDIO_TOKEN && !HERMES_WORKER_TOKEN) return res.status(503).json({ error: "studio_api_not_configured" });
+  if (!studioOrWorkerAuthorized(req)) return res.status(401).json({ error: "unauthorized" });
   const task = await getTask(req.params.taskId);
   if (!task) return res.status(404).json({ error: "task_not_found" });
   res.set("Cache-Control", "no-store");
   return res.json({
     task_id: task.task_id, scene_id: task.scene_id, status: task.status,
-    result: task.result, error: task.error, created_at: task.created_at,
+    result: task.result, error: task.error,
+    stage: task.stage, provider: task.provider,
+    provider_job_id: task.provider_job_id, output_url: task.output_url,
+    storage_key: task.storage_key, reference_image_attached: Boolean(task.reference_image_key),
+    heartbeat_at: task.heartbeat_at, attempts: task.attempts, created_at: task.created_at,
     finished_at: task.finished_at ?? null
   });
+});
+
+app.post("/api/hermes/assemble", async (req, res) => {
+  if (!JOYVERSE_STUDIO_TOKEN && !HERMES_WORKER_TOKEN) return res.status(503).json({ error: "studio_api_not_configured" });
+  if (!studioOrWorkerAuthorized(req)) return res.status(401).json({ error: "unauthorized" });
+  const { task_ids } = req.body ?? {};
+  if (!Array.isArray(task_ids) || task_ids.length < 1 || task_ids.length > 40 ||
+      task_ids.some(id => typeof id !== "string" || !id.trim() || id.length > 100)) {
+    return res.status(400).json({ error: "task_ids_must_contain_1_to_40_valid_ids_in_playback_order" });
+  }
+  if (new Set(task_ids).size !== task_ids.length) return res.status(400).json({ error: "duplicate_task_ids" });
+  try {
+    const tasks = [];
+    for (const id of task_ids) {
+      const task = await getTask(id);
+      if (!task || task.status !== "completed") {
+        return res.status(409).json({ error: "scene_not_completed", task_id: id });
+      }
+      const key = task.storage_key || task.result?.storage_key;
+      if (typeof key !== "string" || !key.startsWith("jobs/")) {
+        return res.status(409).json({ error: "scene_video_missing", task_id: id });
+      }
+      tasks.push({ id, key });
+    }
+    const storage = createObjectStorage();
+    const clips = [];
+    for (const task of tasks) clips.push(await storage.get(task.key));
+    const finalVideo = await assembleMp4(clips);
+    const finalId = randomUUID();
+    const finalKey = "finals/" + finalId + ".mp4";
+    await storage.put(finalKey, finalVideo, "video/mp4");
+    res.set("Cache-Control", "no-store");
+    return res.status(201).json({
+      status: "completed", final_id: finalId, storage_key: finalKey,
+      scene_count: tasks.length, bytes: finalVideo.length,
+      download_path: "/api/hermes/final/" + finalId
+    });
+  } catch (error) {
+    console.error("Server-side assembly failed:", String(error?.message || error).slice(0, 300));
+    return res.status(502).json({ error: "assembly_failed", message: String(error?.message || error).slice(0, 180) });
+  }
+});
+
+app.get("/api/hermes/final/:finalId", async (req, res) => {
+  if (!JOYVERSE_STUDIO_TOKEN && !HERMES_WORKER_TOKEN) return res.status(503).json({ error: "studio_api_not_configured" });
+  if (!studioOrWorkerAuthorized(req)) return res.status(401).json({ error: "unauthorized" });
+  if (!/^[0-9a-f-]{36}$/i.test(req.params.finalId)) return res.status(400).json({ error: "invalid_final_id" });
+  try {
+    const video = await createObjectStorage().get("finals/" + req.params.finalId + ".mp4");
+    res.set({
+      "Content-Type": "video/mp4",
+      "Content-Length": String(video.length),
+      "Content-Disposition": 'attachment; filename="joyverse-final.mp4"',
+      "Cache-Control": "private, no-store",
+      "X-Content-Type-Options": "nosniff"
+    });
+    return res.status(200).send(video);
+  } catch (error) {
+    return res.status(404).json({ error: "final_video_not_found" });
+  }
+});
+
+app.get("/api/hermes/video/:taskId", async (req, res) => {
+  if (!JOYVERSE_STUDIO_TOKEN && !HERMES_WORKER_TOKEN) return res.status(503).json({ error: "studio_api_not_configured" });
+  if (!studioOrWorkerAuthorized(req)) return res.status(401).json({ error: "unauthorized" });
+  const task = await getTask(req.params.taskId);
+  if (!task) return res.status(404).json({ error: "task_not_found" });
+  const key = task.storage_key || task.result?.storage_key;
+  if (task.status !== "completed" || typeof key !== "string" || !key) {
+    return res.status(409).json({ error: "video_not_ready", status: task.status, stage: task.stage });
+  }
+  try {
+    const storage = createObjectStorage();
+    const video = await storage.get(key);
+    res.set({
+      "Content-Type": "video/mp4",
+      "Content-Length": String(video.length),
+      "Content-Disposition": 'attachment; filename="joyverse-' + encodeURIComponent(task.scene_id).replace(/%/g, "_") + '.mp4"',
+      "Cache-Control": "private, no-store",
+      "X-Content-Type-Options": "nosniff"
+    });
+    return res.status(200).send(video);
+  } catch (error) {
+    console.error("Stored video retrieval failed:", String(error?.message || error).slice(0, 200));
+    return res.status(502).json({ error: "video_storage_unavailable" });
+  }
 });
 
 app.get("/api/status", async (req, res) => {

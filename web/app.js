@@ -1,13 +1,9 @@
-import { preloadFfmpegRuntime } from "./ffmpeg-cache.js";
-import { assembleVideos } from "./assembler.js";
-import { getVideoBlob, deleteVideoBlob } from "./video-storage.js";
-import { Client, handle_file } from "https://esm.sh/@gradio/client@2.0.0";
+import { saveVideoBlob, getVideoBlob, deleteVideoBlob } from "./video-storage.js";
+import { parseManifest, serializeManifest } from "./manifest.js";
 
-const PROVIDER = { space: "Lightricks/LTX-2.5", endpoint: "/run" };
 const $ = (id) => document.getElementById(id);
 const form = $("studio-form");
 const imageInput = $("image");
-const tokenInput = $("hf-token");
 const preview = $("preview");
 const uploadTitle = $("upload-title");
 const uploadHelp = $("upload-help");
@@ -25,107 +21,133 @@ const assemblyDownload = $("assembly-download");
 const resultBox = $("result-box");
 const resultVideo = $("result-video");
 const downloadLink = $("download");
+const bridgeInput = $("bridge-url");
+const studioTokenInput = $("studio-token");
 
-const STORAGE_KEY = "joyverse-scene-queue-v1";
+const STORAGE_KEY = "joyverse-scene-queue-v2";
+const FINAL_KEY = "joyverse-final-video-v1";
 let queue = [];
 let queueRunning = false;
 let stopRequested = false;
 let assemblyRunning = false;
-let assemblyUrl = null;
 let previewUrl = null;
+let assemblyUrl = null;
+const clipUrls = new Map();
 
 try {
-  queue = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+  const saved = localStorage.getItem(STORAGE_KEY);
+  if (saved) queue = JSON.parse(saved);
+  else {
+    const legacy = JSON.parse(localStorage.getItem("joyverse-scene-queue-v1") || "[]");
+    queue = Array.isArray(legacy) ? legacy.map(scene => ({
+      ...scene, status: scene.status === "running" ? "waiting" : scene.status,
+      serverTaskId: null, referenceBlobId: null, referenceImageKey: null
+    })) : [];
+  }
   if (!Array.isArray(queue)) queue = [];
-  queue.forEach((scene) => {
-    if (scene.status === "running") scene.status = "waiting";
-  });
 } catch { queue = []; }
 
-function saveQueue() {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(queue));
-  } catch (error) {
-    console.warn("Could not persist scene queue", error);
-  }
-}
+bridgeInput.value = localStorage.getItem("joyverse-bridge-url") || bridgeInput.value;
+studioTokenInput.value = sessionStorage.getItem("joyverse-studio-token") || "";
 
+function saveQueue() {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(queue)); }
+  catch (error) { console.warn("Could not persist scene queue", error); }
+}
 function setStatus(message, busy = false) {
   statusBox.hidden = false;
   statusText.textContent = message;
   spinner.hidden = !busy;
 }
-
-function getVideoUrl(value) {
-  if (typeof value === "string") return value;
-  if (!value || typeof value !== "object") return null;
-  return value.url || value.video?.url || value.video || value.path || null;
+function apiConfig() {
+  const base = bridgeInput.value.trim().replace(/\/+$/, "");
+  const token = studioTokenInput.value.trim();
+  if (!/^https:\/\//i.test(base)) throw new Error("عنوان الخادم يجب أن يبدأ بـ https://");
+  if (!token || token.length < 32) throw new Error("أدخل رمز ربط الاستوديو الصحيح.");
+  localStorage.setItem("joyverse-bridge-url", base);
+  sessionStorage.setItem("joyverse-studio-token", token);
+  return { base, token };
 }
-
+async function apiRequest(path, options = {}) {
+  const { base, token } = apiConfig();
+  const headers = new Headers(options.headers || {});
+  headers.set("Authorization", "Bearer " + token);
+  if (options.json !== undefined) {
+    headers.set("Content-Type", "application/json");
+    options.body = JSON.stringify(options.json);
+    delete options.json;
+  }
+  const response = await fetch(base + path, { ...options, headers, cache: "no-store" });
+  if (!response.ok) {
+    let detail = "HTTP " + response.status;
+    try {
+      const body = await response.json();
+      detail = body.message || body.error || detail;
+    } catch {}
+    throw new Error(detail);
+  }
+  return response;
+}
 function dimensionsFor(aspect) {
   if (aspect === "landscape") return { width: 1472, height: 832 };
   if (aspect === "square") return { width: 1024, height: 1024 };
   return { width: 832, height: 1472 };
 }
-
 function statusLabel(status) {
-  return ({
-    waiting: "بانتظار الدور",
-    running: "قيد التوليد",
-    done: "مكتمل",
-    failed: "تعذّر",
-  })[status] || status;
+  return ({ waiting: "بانتظار الدور — لم يُرسل بعد", queued: "محفوظ على الخادم — بانتظار العامل",
+    running: "العامل يولّد المشهد", done: "مكتمل ومحفوظ سحابياً", failed: "تعذّر" })[status] || status;
 }
-
 function renderQueue() {
   sceneList.replaceChildren();
-  const counts = { waiting: 0, running: 0, done: 0, failed: 0 };
+  const counts = { waiting: 0, queued: 0, running: 0, done: 0, failed: 0 };
   queue.forEach((scene, index) => {
     counts[scene.status] = (counts[scene.status] || 0) + 1;
     const item = document.createElement("li");
     item.className = "scene-item";
-
     const copy = document.createElement("div");
     copy.className = "scene-copy";
     const title = document.createElement("strong");
     title.textContent = scene.title || ("مشهد " + (index + 1));
     const detail = document.createElement("small");
-    detail.textContent = statusLabel(scene.status) + (scene.localVideoName ? " — من الهاتف: " + scene.localVideoName : "") + (scene.error ? " — " + scene.error : "");
+    detail.textContent = statusLabel(scene.status) +
+      (scene.referenceBlobId ? " · صورة مرجعية مرفقة" : "") +
+      (scene.error ? " · " + scene.error : "");
     copy.append(title, detail);
     item.append(copy);
-
-    if (scene.videoUrl) {
-      const link = document.createElement("a");
-      link.href = scene.videoUrl;
-      link.target = "_blank";
-      link.rel = "noopener noreferrer";
-      link.textContent = "فتح MP4";
-      item.append(link);
-    } else if (scene.localVideoId) {
-      const localLabel = document.createElement("small");
-      localLabel.textContent = "فيديو محلي محفوظ على الهاتف";
-      item.append(localLabel);
+    if (scene.status === "done" && scene.videoUrl && !scene.serverTaskId) {
+      const legacyLink = document.createElement("a");
+      legacyLink.href = scene.videoUrl; legacyLink.target = "_blank"; legacyLink.rel = "noopener noreferrer";
+      legacyLink.textContent = "فتح الفيديو السابق";
+      item.append(legacyLink);
     }
-    if (!queueRunning && !assemblyRunning && scene.status !== "running") {
+    if (scene.status === "done" && scene.serverTaskId) {
+      const getClip = document.createElement("button");
+      getClip.type = "button";
+      getClip.className = "scene-action";
+      getClip.textContent = "استرجاع MP4";
+      getClip.addEventListener("click", () => downloadScene(scene).catch(error => setStatus("تعذّر استرجاع المقطع: " + error.message)));
+      item.append(getClip);
+    }
+    if (!queueRunning && !assemblyRunning && scene.status !== "running" && scene.status !== "queued") {
       const remove = document.createElement("button");
       remove.type = "button";
       remove.className = "remove-scene";
-      remove.textContent = "حذف";
+      remove.textContent = "حذف من القائمة";
       remove.addEventListener("click", () => {
+        if (scene.referenceBlobId) deleteVideoBlob(scene.referenceBlobId).catch(console.warn);
         if (scene.localVideoId) deleteVideoBlob(scene.localVideoId).catch(console.warn);
-        queue = queue.filter((entry) => entry.id !== scene.id);
-        saveQueue();
-        renderQueue();
+        queue = queue.filter(entry => entry.id !== scene.id);
+        saveQueue(); renderQueue();
       });
       item.append(remove);
     }
     sceneList.append(item);
   });
-  queueSummary.textContent = `الإجمالي: ${queue.length} · بانتظار الدور: ${counts.waiting} · قيد التوليد: ${counts.running} · مكتمل: ${counts.done} · تعذّر: ${counts.failed}`;
-  startButton.disabled = queueRunning || assemblyRunning || !queue.some((scene) => scene.status === "waiting");
+  queueSummary.textContent = `الإجمالي: ${queue.length} · محلي: ${counts.waiting} · في طابور الخادم: ${counts.queued} · قيد التوليد: ${counts.running} · مكتمل: ${counts.done} · متعذّر: ${counts.failed}`;
+  startButton.disabled = queueRunning || assemblyRunning || !queue.some(scene => scene.status === "waiting" || scene.serverTaskId && ["queued","running"].includes(scene.status));
   stopButton.disabled = !queueRunning;
-  const completedCount = queue.filter((scene) => scene.status === "done" && (scene.videoUrl || scene.localVideoId)).length;
-  assembleButton.disabled = queueRunning || assemblyRunning || completedCount < 2;
+  const completed = queue.filter(scene => scene.status === "done" && scene.serverTaskId).length;
+  assembleButton.disabled = queueRunning || assemblyRunning || completed < 1;
 }
 
 imageInput.addEventListener("change", () => {
@@ -136,198 +158,235 @@ imageInput.addEventListener("change", () => {
   preview.src = previewUrl;
   preview.hidden = false;
   uploadTitle.textContent = file.name;
-  uploadHelp.textContent = Math.ceil(file.size / 1024) + " KB — سيُستخدم كمرجع للمشاهد التالية";
+  uploadHelp.textContent = Math.ceil(file.size / 1024) + " KB — ستُرفع مع هذا المشهد إلى التخزين السحابي";
 });
 
-form.addEventListener("submit", (event) => {
+form.addEventListener("submit", async event => {
   event.preventDefault();
   const prompt = $("prompt").value.trim();
   if (!prompt) return setStatus("اكتب وصف المشهد أولاً.");
   if (!$("consent").checked) return setStatus("يرجى الموافقة على إرسال الوصف والصورة الاختيارية إلى مزود النموذج.");
-
-  const title = $("scene-title").value.trim() || ("مشهد " + (queue.length + 1));
+  let referenceBlobId = null;
+  const file = imageInput.files?.[0] || null;
+  if (file) {
+    if (!["image/png","image/jpeg","image/webp"].includes(file.type) || file.size > 10 * 1024 * 1024) {
+      return setStatus("الصورة يجب أن تكون PNG أو JPEG أو WebP وبحجم لا يتجاوز 10 ميغابايت.");
+    }
+    referenceBlobId = "reference:" + crypto.randomUUID();
+    try { await saveVideoBlob(referenceBlobId, file); }
+    catch (error) { return setStatus("تعذّر حفظ الصورة المرجعية على الهاتف: " + error.message); }
+  }
   queue.push({
-    id: (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random()),
-    title,
-    prompt,
-    status: "waiting",
-    videoUrl: null,
-    error: null,
-    createdAt: new Date().toISOString()
+    id: crypto.randomUUID(), title: $("scene-title").value.trim() || ("مشهد " + (queue.length + 1)),
+    prompt, status: "waiting", serverTaskId: null, referenceBlobId,
+    referenceImageKey: null, videoUrl: null, error: null, createdAt: new Date().toISOString()
   });
-  saveQueue();
-  renderQueue();
-  $("scene-title").value = "";
-  $("prompt").value = "";
-  setStatus("أُضيف المشهد إلى قائمة الإنتاج. لم يُرسل بعد إلى مزود النموذج.");
+  saveQueue(); renderQueue();
+  $("scene-title").value = ""; $("prompt").value = "";
+  imageInput.value = "";
+  if (previewUrl) URL.revokeObjectURL(previewUrl);
+  previewUrl = null; preview.hidden = true;
+  uploadTitle.textContent = "اختر صورة مرجعية";
+  uploadHelp.textContent = "PNG أو JPG أو WEBP";
+  setStatus("أُضيف المشهد محلياً. عند تشغيل القائمة سيُرفع إلى الخادم ويصبح مستقلاً عن المتصفح.");
 });
 
-async function generateScene(client, scene) {
-  const file = imageInput.files?.[0] || null;
-  const image = file ? await handle_file(file) : null;
-  const duration = Number($("duration").value);
-  const seedValue = Number($("seed").value) || 42;
-  const { width, height } = dimensionsFor($("aspect").value);
-  const args = [
-    scene.prompt,
-    image,
-    height,
-    width,
-    duration,
-    seedValue,
-    "conv",
-    false,
-    $("random-seed").checked,
-    $("enhance-prompt").checked
-  ];
-
-  const job = client.submit(PROVIDER.endpoint, args);
-  let output = null;
-  for await (const message of job) {
-    if (message.type === "status") {
-      const stage = message.stage || message.status || message.message || "قيد المعالجة";
-      const position = Number.isInteger(message.position) ? " · ترتيب الطابور: " + (message.position + 1) : "";
-      const eta = Number.isFinite(message.eta) && message.eta > 0 ? " · الوقت المتوقع: " + Math.ceil(message.eta) + " ثانية" : "";
-      setStatus(scene.title + ": " + stage + position + eta, true);
-    } else if (message.type === "data") {
-      output = message.data;
-    }
-  }
-  const videoUrl = getVideoUrl(output?.[0]);
-  if (!videoUrl) throw new Error("لم يُرجع المحرك رابط فيديو صالحاً.");
-  return { videoUrl, output, duration };
+async function uploadReference(scene) {
+  if (!scene.referenceBlobId || scene.referenceImageKey) return scene.referenceImageKey || null;
+  const blob = await getVideoBlob(scene.referenceBlobId);
+  if (!blob) throw new Error("الصورة المرجعية غير موجودة في مساحة الهاتف؛ أعد إرفاقها بهذا المشهد.");
+  const response = await apiRequest("/api/hermes/reference-upload", {
+    method: "POST", headers: { "Content-Type": blob.type || "application/octet-stream" }, body: blob
+  });
+  const data = await response.json();
+  scene.referenceImageKey = data.reference_image_key;
+  saveQueue();
+  return scene.referenceImageKey;
 }
-
+async function dispatchScene(scene) {
+  if (scene.serverTaskId) return;
+  setStatus("رفع وتجهيز: " + scene.title, true);
+  const reference_image_key = await uploadReference(scene);
+  const video_options = {
+    aspect: $("aspect").value, duration: Number($("duration").value),
+    seed: Number($("seed").value) || 42,
+    randomize_seed: $("random-seed").checked,
+    enhance_prompt: $("enhance-prompt").checked
+  };
+  const response = await apiRequest("/api/hermes/dispatch", {
+    method: "POST",
+    json: { scene_id: scene.id, prompt: scene.prompt, toolsets: ["video_gen"],
+      confirm_video_generation: true, video_options, ...(reference_image_key ? { reference_image_key } : {}) }
+  });
+  const data = await response.json();
+  scene.serverTaskId = data.task_id;
+  scene.status = "queued";
+  scene.error = null;
+  saveQueue(); renderQueue();
+}
+async function refreshScene(scene) {
+  const response = await apiRequest("/api/hermes/tasks/" + encodeURIComponent(scene.serverTaskId));
+  const task = await response.json();
+  scene.serverStatus = task.status;
+  scene.status = task.status === "queued" ? "queued" : task.status === "claimed" ? "running" :
+    task.status === "completed" ? "done" : task.status === "failed" ? "failed" : scene.status;
+  scene.error = task.error || null;
+  scene.storageKey = task.storage_key || task.result?.storage_key || null;
+  return task;
+}
+async function pollTasks() {
+  if (queueRunning) return;
+  queueRunning = true; renderQueue();
+  try {
+    while (!stopRequested) {
+      const active = queue.filter(scene => scene.serverTaskId && ["queued","running"].includes(scene.status));
+      if (!active.length) break;
+      await Promise.all(active.map(async scene => {
+        try { await refreshScene(scene); }
+        catch (error) { scene.error = error.message; }
+      }));
+      saveQueue(); renderQueue();
+      const remaining = queue.some(scene => scene.serverTaskId && ["queued","running"].includes(scene.status));
+      if (!remaining || stopRequested) break;
+      setStatus("العامل الخلفي يعمل. تتم مزامنة حالات " + active.length + " مشاهد…", true);
+      await new Promise(resolve => setTimeout(resolve, 3500));
+    }
+    if (stopRequested) setStatus("أوقفت متابعة الحالة فقط. العامل الخلفي يواصل عمله على الخادم.");
+    else setStatus("اكتملت مزامنة المهام. يمكنك إغلاق المتصفح؛ المهام المرسلة محفوظة على الخادم.");
+  } finally {
+    queueRunning = false; saveQueue(); renderQueue();
+  }
+}
 async function runQueue() {
   if (queueRunning || assemblyRunning) return;
-  if (!queue.some((scene) => scene.status === "waiting")) {
-    setStatus("لا توجد مشاهد بانتظار التوليد.");
-    return;
+  if (!$("consent").checked && queue.some(scene => scene.status === "waiting")) {
+    return setStatus("فعّل الموافقة قبل إرسال المشاهد إلى مزود النموذج.");
   }
-  if (!$("consent").checked) {
-    setStatus("فعّل الموافقة قبل إرسال أي مشهد إلى مزود النموذج.");
-    return;
-  }
-
-  queueRunning = true;
-  stopRequested = false;
-  renderQueue();
-  let client;
-
   try {
-    setStatus("جارٍ الاتصال بمحرك LTX‑2.5 المجاني…", true);
-    const connectOptions = { events: ["status", "data"] };
-    const hfToken = tokenInput.value.trim();
-    if (hfToken) connectOptions.token = hfToken;
-    client = await Client.connect(PROVIDER.space, connectOptions);
-
-    for (const scene of queue) {
+    apiConfig();
+    stopRequested = false;
+    queueRunning = true; renderQueue();
+    const pending = queue.filter(scene => scene.status === "waiting");
+    for (const scene of pending) {
       if (stopRequested) break;
-      if (scene.status !== "waiting") continue;
-
-      scene.status = "running";
-      scene.error = null;
-      saveQueue();
-      renderQueue();
-      setStatus("بدأ إرسال: " + scene.title, true);
-
-      try {
-        const result = await generateScene(client, scene);
-        scene.status = "done";
-        scene.videoUrl = result.videoUrl;
-        scene.error = null;
-        saveQueue();
-        renderQueue();
-
-        resultVideo.src = result.videoUrl;
-        downloadLink.href = result.videoUrl;
-        $("result-title").textContent = scene.title;
-        $("result-meta").textContent = "LTX‑2.5 · " + result.duration + " ثوانٍ · " + $("aspect").value;
-        resultBox.hidden = false;
-        setStatus("اكتمل " + scene.title + " بنجاح. الانتقال إلى المشهد التالي.", false);
-      } catch (error) {
-        scene.status = "failed";
-        scene.error = error?.message || String(error);
-        saveQueue();
-        renderQueue();
-        setStatus("تعذّر توليد " + scene.title + ": " + scene.error + ". ستستمر القائمة بالمشهد التالي إن وُجد.", false);
-      }
+      try { await dispatchScene(scene); }
+      catch (error) { scene.status = "waiting"; scene.error = error.message; saveQueue(); renderQueue(); }
     }
+    queueRunning = false; renderQueue();
+    if (stopRequested) setStatus("توقفت عن إرسال مشاهد إضافية ومتابعة الحالة فقط؛ المهام التي أُرسلت تواصل عملها على الخادم.");
+    else await pollTasks();
   } catch (error) {
-    setStatus("تعذّر الاتصال بمحرك LTX‑2.5: " + (error?.message || String(error)), false);
-  } finally {
-    queueRunning = false;
-    saveQueue();
-    renderQueue();
-    if (stopRequested) setStatus("توقف الطابور بعد انتهاء الطلب الجاري. المشاهد المتبقية محفوظة.");
-    else if (!queue.some((scene) => scene.status === "waiting")) setStatus("انتهت محاولة تشغيل القائمة. راجع حالات المشاهد وروابط MP4.");
+    queueRunning = false; renderQueue();
+    setStatus("تعذّر الاتصال بخادم JoyVerse: " + error.message);
   }
 }
-
+async function fetchBlob(path) {
+  const response = await apiRequest(path, { method: "GET" });
+  return response.blob();
+}
+async function downloadScene(scene) {
+  if (!scene.serverTaskId) throw new Error("معرّف المهمة غير موجود.");
+  setStatus("استرجاع المقطع من التخزين السحابي…", true);
+  const blob = await fetchBlob("/api/hermes/video/" + encodeURIComponent(scene.serverTaskId));
+  const id = "clip:" + scene.serverTaskId;
+  await saveVideoBlob(id, blob);
+  const old = clipUrls.get(scene.serverTaskId);
+  if (old) URL.revokeObjectURL(old);
+  const url = URL.createObjectURL(blob);
+  clipUrls.set(scene.serverTaskId, url);
+  scene.localVideoId = id; scene.videoUrl = url; saveQueue();
+  resultVideo.src = url; downloadLink.href = url;
+  $("result-title").textContent = scene.title;
+  $("result-meta").textContent = "LTX‑2.5 · محفوظ على خادم JoyVerse";
+  resultBox.hidden = false;
+  setStatus("تم استرجاع " + scene.title + " بنجاح.");
+}
+async function showFinal(finalId) {
+  const blob = await fetchBlob("/api/hermes/final/" + encodeURIComponent(finalId));
+  if (assemblyUrl) URL.revokeObjectURL(assemblyUrl);
+  assemblyUrl = URL.createObjectURL(blob);
+  assemblyVideo.src = assemblyUrl;
+  assemblyDownload.href = assemblyUrl;
+  assemblyBox.hidden = false;
+}
 async function assembleCompletedScenes() {
   if (queueRunning || assemblyRunning) return;
-  const completed = queue.filter((scene) => scene.status === "done" && (scene.videoUrl || scene.localVideoId));
-  if (completed.length < 2) return setStatus("يلزم مشهدان مكتملان على الأقل قبل الدمج.");
-  if (completed.length > 8) return setStatus("الدمج المحلي يدعم 8 مشاهد كحد أقصى في المرة الواحدة.");
-
-  assemblyRunning = true;
-  renderQueue();
-  assembleButton.textContent = "جارٍ تجهيز الدمج…";
+  const completed = queue.filter(scene => scene.status === "done" && scene.serverTaskId);
+  if (!completed.length) return setStatus("لا توجد مشاهد مكتملة محفوظة على الخادم.");
+  if (completed.length > 40) return setStatus("الدمج على الخادم يدعم 40 مشهداً كحد أقصى في المرة الواحدة.");
+  assemblyRunning = true; renderQueue();
   try {
-    setStatus("جارٍ تجهيز المقاطع المكتملة للدمج…", true);
-    const clipsForAssembly = await Promise.all(completed.map(async scene => scene.localVideoId ? { ...scene, videoBlob: await getVideoBlob(scene.localVideoId) } : scene));
-    if (clipsForAssembly.some(scene => scene.localVideoId && !scene.videoBlob)) throw new Error("تعذّر العثور على أحد ملفات الفيديو المحفوظة. أعد استيراده من الهاتف.");
-    const blob = await assembleVideos(clipsForAssembly, $("aspect").value, ({ stage, progress }) => {
-      const percent = Math.round((Number(progress) || 0) * 100);
-      const label = stage === "download" ? "تنزيل المقاطع" : stage === "load" ? "تحميل محرك الدمج" : "دمج وترميز الفيديو";
-      const progressText = stage === "download" || percent > 0 ? " · " + percent + "%" : "…";
-      setStatus(label + progressText, true);
+    setStatus("يرسل الاستوديو ترتيب المشاهد إلى FFmpeg على الخادم…", true);
+    const response = await apiRequest("/api/hermes/assemble", {
+      method: "POST", json: { task_ids: completed.map(scene => scene.serverTaskId) }
     });
-    if (assemblyUrl) URL.revokeObjectURL(assemblyUrl);
-    assemblyUrl = URL.createObjectURL(blob);
-    assemblyVideo.src = assemblyUrl;
-    assemblyDownload.href = assemblyUrl;
-    assemblyBox.hidden = false;
-    setStatus("اكتمل دمج " + completed.length + " مشاهد في فيديو واحد. الملف صامت وجاهز لإضافة الصوت لاحقاً.");
+    const data = await response.json();
+    localStorage.setItem(FINAL_KEY, data.final_id);
+    await showFinal(data.final_id);
+    setStatus("اكتمل دمج " + data.scene_count + " مشاهد. حُفظ الفيديو النهائي في التخزين السحابي.");
   } catch (error) {
-    const message = error?.message || String(error);
-    setStatus("تعذّر الدمج المحلي: " + message + " إذا ظهر خطأ شبكة، تحقق من اتصال الإنترنت أو دعم المتصفح.");
-  } finally {
-    assemblyRunning = false;
-    assembleButton.textContent = "دمج المشاهد المكتملة";
-    renderQueue();
-  }
+    setStatus("تعذّر الدمج على الخادم: " + error.message);
+  } finally { assemblyRunning = false; renderQueue(); }
 }
-
 assembleButton.addEventListener("click", assembleCompletedScenes);
 startButton.addEventListener("click", runQueue);
-stopButton.addEventListener("click", () => {
-  stopRequested = true;
-  setStatus("تم طلب الإيقاف. لن يبدأ مشهد جديد بعد انتهاء المشهد الجاري.", true);
-});
+stopButton.addEventListener("click", () => { stopRequested = true; });
 $("clear-queue").addEventListener("click", () => {
-  if (queueRunning) return;
-  queue.filter((scene) => scene.status === "done" && scene.localVideoId).forEach(scene => deleteVideoBlob(scene.localVideoId).catch(console.warn));
-  queue = queue.filter((scene) => scene.status !== "done");
-  saveQueue();
-  renderQueue();
+  if (queueRunning || assemblyRunning) return;
+  queue.filter(scene => scene.status === "done").forEach(scene => {
+    if (scene.referenceBlobId) deleteVideoBlob(scene.referenceBlobId).catch(console.warn);
+    if (scene.localVideoId) deleteVideoBlob(scene.localVideoId).catch(console.warn);
+  });
+  queue = queue.filter(scene => scene.status !== "done");
+  saveQueue(); renderQueue();
 });
+$("import-manifest").addEventListener("click", () => $("manifest-file").click());
+$("manifest-file").addEventListener("change", async event => {
+  const file = event.target.files?.[0]; if (!file) return;
+  try {
+    const scenes = parseManifest(JSON.parse(await file.text()));
+    scenes.forEach(scene => queue.push({ id: crypto.randomUUID(), ...scene, status: "waiting",
+      serverTaskId: null, referenceBlobId: null, referenceImageKey: null, error: null }));
+    saveQueue(); renderQueue(); setStatus("تم استيراد " + scenes.length + " مشاهد.");
+  } catch (error) { setStatus("تعذّر استيراد القائمة: " + error.message); }
+  event.target.value = "";
+});
+$("export-manifest").addEventListener("click", () => {
+  const blob = new Blob([serializeManifest(queue)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a"); link.href = url; link.download = "joyverse-scene-manifest.json"; link.click();
+  URL.revokeObjectURL(url);
+});
+bridgeInput.addEventListener("change", () => localStorage.setItem("joyverse-bridge-url", bridgeInput.value.trim()));
+studioTokenInput.addEventListener("change", () => { sessionStorage.setItem("joyverse-studio-token", studioTokenInput.value.trim()); restoreServerState(); });
+renderQueue();
+
+async function restoreServerState() {
+  const token = studioTokenInput.value.trim();
+  if (!token) return;
+  try {
+    const active = queue.filter(scene => scene.serverTaskId);
+    await Promise.all(active.map(async scene => {
+      try { await refreshScene(scene); } catch (error) { console.warn("Task restore failed", error.message); }
+    }));
+    saveQueue(); renderQueue();
+    const finalId = localStorage.getItem(FINAL_KEY);
+    if (finalId) {
+      try { await showFinal(finalId); } catch (error) { console.warn("Final video restore failed", error.message); }
+    }
+    if (queue.some(scene => scene.serverTaskId && ["queued","running"].includes(scene.status))) {
+      stopRequested = false;
+      pollTasks().catch(error => setStatus("تعذّرت مزامنة المهام: " + error.message));
+    } else if (active.length) {
+      setStatus("تم استرجاع حالات المشاهد من خادم JoyVerse.");
+    }
+  } catch (error) {
+    setStatus("تعذّر استرجاع حالة الخادم: " + error.message);
+  }
+}
+restoreServerState();
 window.addEventListener("beforeunload", () => {
   if (previewUrl) URL.revokeObjectURL(previewUrl);
   if (assemblyUrl) URL.revokeObjectURL(assemblyUrl);
+  for (const url of clipUrls.values()) URL.revokeObjectURL(url);
 });
-
-const engineCacheStatus = $("engine-cache-status");
-preloadFfmpegRuntime((status) => {
-  if (!engineCacheStatus) return;
-  if (status.state === "downloading") {
-    engineCacheStatus.textContent = "تنزيل محرك الدمج في الخلفية: " + status.completed + " من " + status.total + " ملفات";
-  } else if (status.state === "ready") {
-    engineCacheStatus.textContent = "محرك الدمج جاهز ومحفوظ في المتصفح.";
-  } else if (status.state === "unsupported") {
-    engineCacheStatus.textContent = status.message;
-  } else if (status.state === "error") {
-    engineCacheStatus.textContent = "تعذّر التخزين المسبق: " + status.message;
-  }
-});
-renderQueue();

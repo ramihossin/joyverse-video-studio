@@ -1,0 +1,37 @@
+name: JoyVerse background video worker
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: joyverse-background-video-worker
+  cancel-in-progress: false
+
+jobs:
+  wake-render-worker:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Request short-lived GitHub Actions identity
+        env:
+          BRIDGE_URL: https://joyverse-mcp-bridge.onrender.com
+        run: |
+          set -eu
+          test -n "$ACTIONS_ID_TOKEN_REQUEST_URL"
+          test -n "$ACTIONS_ID_TOKEN_REQUEST_TOKEN"
+          response="$(curl --fail --silent --show-error \
+            -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=joyverse-video-worker")"
+          oidc_token="$(printf '%s' "$response" | python -c 'import json,sys; print(json.load(sys.stdin)["value"])')"
+          test -n "$oidc_token"
+          curl --fail --silent --show-error --max-time 90 \
+            -X POST "$BRIDGE_URL/api/hermes/worker/tick" \
+            -H "Authorization: Bearer $oidc_token" \
+            -H "Content-Type: application/json" \
+            -d '{}'
