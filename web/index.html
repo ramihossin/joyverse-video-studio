@@ -17,7 +17,7 @@
         <h1>JoyVerse Scene Studio</h1>
         <p class="sub">أداة مستقلة لإدارة مشاهدك وتوليدها واحداً تلو الآخر.</p>
       </div>
-      <span class="free-tag">LTX‑2.5 · Free queue</span>
+      <span class="free-tag">LTX‑2.5 · Server worker</span>
     </header>
 
     <section class="panel">
@@ -25,6 +25,14 @@
         <span class="step">01</span>
         <div><h2>إضافة مشهد</h2><p>أضف مشهداً واحداً في كل مرة إلى قائمة الإنتاج.</p></div>
       </div>
+      <section class="studio-connection" aria-label="إعداد اتصال الخادم">
+        <h2>اتصال العامل الخلفي</h2>
+        <label class="field-title" for="bridge-url">عنوان خادم JoyVerse</label>
+        <input id="bridge-url" type="url" value="https://joyverse-mcp-bridge.onrender.com" autocomplete="url">
+        <label class="field-title" for="studio-token">رمز ربط الاستوديو</label>
+        <input id="studio-token" type="password" autocomplete="off" spellcheck="false" placeholder="أدخل JOYVERSE_STUDIO_TOKEN">
+        <p class="token-note">هذا رمز مخصص للواجهة، وليس رمز العامل الخلفي. لا تضعه في ملفات المشروع أو ترسله في المحادثات. يُحفظ في جلسة المتصفح فقط.</p>
+      </section>
       <form id="studio-form">
         <label class="field-title" for="prompt">عنوان المشهد</label>
         <input id="scene-title" type="text" maxlength="100" placeholder="مثال: Scene 17 — The First Symbol">
@@ -43,7 +51,7 @@
 
         <div class="section-heading settings-heading">
           <span class="step">03</span>
-          <div><h2>إعدادات التوليد</h2><p>اتصال مباشر بمساحة LTX‑2.5 العامة، دون TinyFish.</p></div>
+          <div><h2>إعدادات التوليد</h2><p>تُرسل المهام إلى الخادم؛ العامل الخلفي يتولى LTX والتخزين حتى عند إغلاق المتصفح.</p></div>
         </div>
         <div class="settings">
           <label>المحرك<input type="text" value="LTX‑2.5 · Free public Space" readonly></label>
@@ -59,9 +67,7 @@
           </label>
           <label>Seed<input id="seed" type="number" min="0" max="2147483647" value="42"></label>
         </div>
-        <label class="field-title" for="hf-token">رمز Hugging Face (اختياري)</label>
-        <input id="hf-token" type="password" autocomplete="off" spellcheck="false" placeholder="hf_… — أدخله هنا فقط ولا ترسله في المحادثة">
-        <p class="token-note">يُستخدم داخل هذه الجلسة فقط ولا يُحفظ في قائمة المشاهد. قد يساعد في ربط طلباتك بحسابك، لكنه لا يضمن تجاوز حصص ZeroGPU أو الحصول على GPU.</p>
+        <p class="token-note">يجب ضبط HF_TOKEN سراً في إعدادات خادم Render حتى يتمكن العامل من الاتصال بمحرك LTX.</p>
         <label class="toggle-row"><input id="random-seed" type="checkbox" checked><span>Seed عشوائي لكل مشهد</span></label>
         <label class="toggle-row"><input id="enhance-prompt" type="checkbox" checked><span>تحسين الوصف تلقائياً</span></label>
         <label class="consent"><input id="consent" type="checkbox"><span>أوافق على إرسال الوصف والصورة الاختيارية إلى مزود النموذج لتوليد الفيديو.</span></label>
@@ -76,13 +82,11 @@
       </div>
       <div class="queue-actions">
         <button id="import-manifest" class="secondary" type="button">استيراد قائمة وكيل (JSON)</button>
-        <button id="import-videos" class="secondary" type="button">استيراد مقاطع الفيديو من الهاتف</button>
         <button id="export-manifest" class="secondary" type="button">تصدير المشاهد JSON</button>
         <input id="manifest-file" type="file" accept="application/json,.json" hidden>
-        <input id="video-files" type="file" accept="video/mp4,video/*,.mp4" multiple hidden>
-        <p class="queue-summary">استيراد JSON لإضافة أوصاف المشاهد، أو استيراد MP4 لإضافة المقاطع الجاهزة للدمج. الحد: 8 مقاطع، 100 ميغابايت للمقطع، و350 ميغابايت إجمالاً.</p>
+                <p class="queue-summary">استورد ملف JSON للمشاهد أو صدّر قائمتك. بعد تشغيلها تُحفظ المهام على الخادم ويواصل العامل إنتاجها مستقلاً عن المتصفح.</p>
         <button id="start-queue" type="button">▶ تشغيل قائمة المشاهد</button>
-        <button id="stop-queue" class="secondary" type="button" disabled>إيقاف بعد المشهد الحالي</button>
+        <button id="stop-queue" class="secondary" type="button" disabled>إيقاف المتابعة فقط</button>
         <button id="clear-queue" class="secondary" type="button">مسح المكتمل</button>
         <button id="assemble-scenes" class="secondary" type="button" disabled>دمج المشاهد المكتملة</button>
       </div>
@@ -105,22 +109,21 @@
     <section id="assembly-box" class="panel assembly-panel" hidden>
       <div class="section-heading">
         <span class="step">05</span>
-        <div><h2>الفيديو النهائي</h2><p>دمج محلي على الهاتف، دون رفع المقاطع إلى خدمة مدفوعة.</p></div>
+        <div><h2>الفيديو النهائي</h2><p>دمج على الخادم من المقاطع المخزنة سحابياً.</p></div>
       </div>
       <video id="assembly-video" controls playsinline></video>
       <a id="assembly-download" class="download" download="joyverse-final.mp4">تنزيل الفيديو النهائي</a>
-      <p class="assembly-note">الدمج تجريبي ويحتاج اتصالاً لتحميل محرك FFmpeg أول مرة. تتم المعالجة داخل المتصفح، بلا صوت، وبحد أقصى 8 مشاهد و350 ميغابايت.</p>
+      <p class="assembly-note">تتم المعالجة على الخادم باستخدام FFmpeg، ويمكن استرجاع الملف بعد العودة إلى الاستوديو.</p>
       
     </section>
 
     <footer>
       <p>المحرك: LTX‑2.5 عبر مساحة Gradio عامة؛ لا نستخدم رصيد LoreMotion أو TinyFish.</p>
       <p>الطابور العام والحصة والتوفر يتحكم بها مزود النموذج. قد تتأخر الطلبات أو تفشل عند ازدحام GPU.</p>
-      <p>اترك الصفحة مفتوحة أثناء التشغيل. إذا أغلقتها، لا يمكن ضمان استمرار المعالجة في المتصفح.</p>
+      <p>بعد إرسال المهام إلى الخادم، يواصل العامل الخلفي العمل دون إبقاء صفحة الاستوديو مفتوحة. يجب أن تكون قاعدة البيانات والتخزين والعامل مهيأة على الخادم.</p>
       <p><a href="https://huggingface.co/spaces/Lightricks/LTX-2.5" target="_blank" rel="noopener noreferrer">صفحة محرك LTX‑2.5</a></p>
     </footer>
   </main>
   <script type="module" src="./app.js"></script>
-  <script type="module" src="./automation.js"></script>
 </body>
 </html>
