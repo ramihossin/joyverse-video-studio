@@ -21,7 +21,7 @@ Configure these values as private environment variables on the bridge host:
 - `HERMES_WORKER_TOKEN`: separate secret used only by the background worker and internal worker endpoints.
 - `JOYVERSE_STUDIO_TOKEN`: separate strong secret entered into the Studio UI; do not commit it.
 - `DATABASE_URL`: PostgreSQL connection string for durable tasks.
-- `OBJECT_STORAGE_BUCKET`, `OBJECT_STORAGE_REGION` (optional), `OBJECT_STORAGE_ENDPOINT`, `OBJECT_STORAGE_ACCESS_KEY_ID`, and `OBJECT_STORAGE_SECRET_ACCESS_KEY`; `OBJECT_STORAGE_FORCE_PATH_STYLE` is optional. Cloudflare R2 aliases are also accepted: `R2_BUCKET`, `R2_ENDPOINT` or `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, and optional `R2_REGION`.
+- Optional S3-compatible storage: `OBJECT_STORAGE_BUCKET`, `OBJECT_STORAGE_ENDPOINT`, `OBJECT_STORAGE_ACCESS_KEY_ID`, and `OBJECT_STORAGE_SECRET_ACCESS_KEY`; Cloudflare R2 aliases are accepted. If no S3/R2 settings are supplied, objects are stored in PostgreSQL automatically (50 MiB maximum per object). This is a temporary fallback for small tests, not a long-term video archive.
 - `HF_TOKEN` (optional): Hugging Face token for the server-side LTX provider.
 - `STUDIO_ALLOWED_ORIGINS` (optional): comma-separated exact HTTPS origins. Defaults include the project GitHub Pages and Render static-site origins.
 
@@ -31,7 +31,7 @@ The Studio's default bridge URL is `https://joyverse-mcp-bridge.onrender.com`. E
 
 - The API process and `npm run worker` are separate processes. The worker must be deployed and running continuously on a host that supports a persistent background process.
 - A sleeping/free web service does not guarantee background execution. A separate persistent worker host may be required; no keep-alive workaround is assumed.
-- PostgreSQL and S3-compatible storage must be configured before tasks can survive service restarts and before reference images, clips, or final MP4s can be stored durably.
+- PostgreSQL is required for durable tasks. Without S3/R2 settings, reference images, clips, and final MP4s use a PostgreSQL BYTEA table with a 50 MiB per-object limit. Use private object storage for production and larger videos.
 - The current Gradio submission iterator is process-local. If the worker dies after submitting to Gradio but before persisting a resumable provider job ID, automatic resubmission is blocked to avoid duplicate generation/quota use.
 - A successful dispatch response means the task was accepted by the queue, not that a video has completed. The Studio only marks a scene complete after reading the persisted task result.
 - Browser-side scene metadata is kept in local storage and reference blobs in IndexedDB until uploaded. After dispatch, the server-side task and object storage are the durable source of truth. The browser token is session-only and must be re-entered in a new browser session.
@@ -56,4 +56,4 @@ The Studio's default bridge URL is `https://joyverse-mcp-bridge.onrender.com`. E
 
 ## GitHub Actions worker option
 
-A scheduled one-task worker can run without keeping the Android browser open. Configure repository Actions secrets named `DATABASE_URL`, `OBJECT_STORAGE_BUCKET`, `OBJECT_STORAGE_ENDPOINT`, `OBJECT_STORAGE_ACCESS_KEY_ID`, and `OBJECT_STORAGE_SECRET_ACCESS_KEY`; optionally add `OBJECT_STORAGE_REGION` and `HF_TOKEN`. The scheduled workflow uses the free GitHub-hosted runner allowance and processes one queued scene per run. It is not a permanent always-on server: GitHub scheduling is best-effort, jobs have a maximum runtime, and provider outages or a job timeout can leave a task failed rather than safely resumable. It does not bypass LTX provider limits or guarantee free GPU capacity.
+A scheduled one-task worker can run without keeping the Android browser open. Configure the repository Actions secret `DATABASE_URL`. S3/R2 secrets are optional for testing: without them the worker uses PostgreSQL object storage (50 MiB maximum per object). For production, configure the S3/R2 bucket, endpoint, access key, and secret key; optionally add `OBJECT_STORAGE_REGION` and `HF_TOKEN`. The scheduled workflow uses the free GitHub-hosted runner allowance and processes one queued scene per run. It is not a permanent always-on server: GitHub scheduling is best-effort, jobs have a maximum runtime, and provider outages or a job timeout can leave a task failed rather than safely resumable. It does not bypass LTX provider limits or guarantee free GPU capacity.
