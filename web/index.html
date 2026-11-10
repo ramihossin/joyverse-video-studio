@@ -81,6 +81,7 @@
         <button id="start-queue" type="button">▶ تشغيل قائمة المشاهد</button>
         <button id="stop-queue" class="secondary" type="button" disabled>إيقاف بعد المشهد الحالي</button>
         <button id="clear-queue" class="secondary" type="button">مسح المكتمل</button>
+        <button id="assemble-scenes" class="secondary" type="button" disabled>دمج المشاهد المكتملة</button>
       </div>
       <p id="queue-summary" class="queue-summary">لا توجد مشاهد في القائمة بعد.</p>
       <ol id="scene-list" class="scene-list"></ol>
@@ -94,6 +95,16 @@
       <div class="result-head"><div><p class="eyebrow">LATEST COMPLETED SCENE</p><h2 id="result-title">نتيجة المشهد</h2><p id="result-meta"></p></div></div>
       <video id="result-video" controls playsinline></video>
       <a id="download" class="download" download="joyverse-scene.mp4">تنزيل المشهد</a>
+    </section>
+
+    <section id="assembly-box" class="panel assembly-panel" hidden>
+      <div class="section-heading">
+        <span class="step">05</span>
+        <div><h2>الفيديو النهائي</h2><p>دمج محلي على الهاتف، دون رفع المقاطع إلى خدمة مدفوعة.</p></div>
+      </div>
+      <video id="assembly-video" controls playsinline></video>
+      <a id="assembly-download" class="download" download="joyverse-final.mp4">تنزيل الفيديو النهائي</a>
+      <p class="assembly-note">الدمج تجريبي ويحتاج اتصالاً لتحميل محرك FFmpeg أول مرة. تتم المعالجة داخل المتصفح، بلا صوت، وبحد أقصى 8 مشاهد و350 ميغابايت.</p>
     </section>
 
     <footer>
