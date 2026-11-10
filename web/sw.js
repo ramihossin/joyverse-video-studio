@@ -1,10 +1,15 @@
 const CACHE_NAME = "joyverse-ffmpeg-0.12.10-local";
 const ASSETS = [
-  new URL("./vendor/ffmpeg/core/ffmpeg-core.js", self.location.href).href,
-  new URL("./vendor/ffmpeg/core/ffmpeg-core.wasm", self.location.href).href,
-  new URL("./vendor/ffmpeg/esm/index.js", self.location.href).href,
-  new URL("./vendor/ffmpeg/esm/worker.js", self.location.href).href
-];
+  "core/ffmpeg-core.js",
+  "core/ffmpeg-core.wasm",
+  "esm/index.js",
+  "esm/classes.js",
+  "esm/const.js",
+  "esm/errors.js",
+  "esm/types.js",
+  "esm/utils.js",
+  "esm/worker.js"
+].map((path) => new URL("./vendor/ffmpeg/" + path, self.location.href).href);
 
 self.addEventListener("install", (event) => {
   event.waitUntil(self.skipWaiting());
