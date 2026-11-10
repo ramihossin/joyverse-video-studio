@@ -34,8 +34,8 @@ jobs:
           cp -R node_modules/@ffmpeg/ffmpeg/dist/esm/. web/vendor/ffmpeg/esm/
           cp node_modules/@ffmpeg/core/dist/umd/ffmpeg-core.js web/vendor/ffmpeg/core/
           cp node_modules/@ffmpeg/core/dist/umd/ffmpeg-core.wasm web/vendor/ffmpeg/core/
-          cp node_modules/@ffmpeg/ffmpeg/LICENSE web/vendor/ffmpeg/FFMPEG-LICENSE.txt
-          cp node_modules/@ffmpeg/core/LICENSE web/vendor/ffmpeg/CORE-LICENSE.txt
+          node -e 'const fs=require("fs"); for (const name of ["@ffmpeg/ffmpeg","@ffmpeg/core"]) { const p=require(name+"/package.json"); fs.appendFileSync("web/vendor/ffmpeg/THIRD-PARTY-NOTICES.txt", name+" "+p.version+" — license: "+p.license+" — "+(p.repository?.url || "upstream npm package")+"\\n"); }'
+          find node_modules/@ffmpeg -maxdepth 3 -type f \\( -iname 'LICENSE*' -o -iname 'COPYING*' \\) -exec sh -c 'for f do cp "$f" "web/vendor/ffmpeg/$(basename "$(dirname "$f")")-$(basename "$f")"; done' sh {} +
           test -s web/vendor/ffmpeg/esm/index.js
           test -s web/vendor/ffmpeg/esm/worker.js
           test -s web/vendor/ffmpeg/core/ffmpeg-core.js
