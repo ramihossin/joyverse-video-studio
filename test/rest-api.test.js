@@ -172,3 +172,74 @@ test("Hermes task survives dispatch, claim, completion, and status retrieval", a
   assert.equal(finalState.provider_job_id, "provider-job-test");
   assert.equal(finalState.storage_key, "joyverse/scenes/scene-test.mp4");
 });
+
+test("Hermes queue rejects checkpoints and results for unclaimed tasks", async () => {
+  const headers = {
+    "content-type": "application/json",
+    authorization: `Bearer ${WORKER_TOKEN}`
+  };
+  const dispatch = await fetch(`${baseUrl}/api/hermes/dispatch`, {
+    method: "POST", headers,
+    body: JSON.stringify({
+      scene_id: "scene-unclaimed", prompt: "This task must be claimed first.",
+      toolsets: ["web"], confirm_video_generation: false
+    })
+  });
+  assert.equal(dispatch.status, 202);
+  const accepted = await dispatch.json();
+
+  const checkpoint = await fetch(`${baseUrl}/api/hermes/checkpoint`, {
+    method: "POST", headers,
+    body: JSON.stringify({ task_id: accepted.task_id, stage: "generating" })
+  });
+  assert.equal(checkpoint.status, 404);
+  assert.equal((await checkpoint.json()).error, "task_not_found_or_not_claimed");
+
+  const result = await fetch(`${baseUrl}/api/hermes/result`, {
+    method: "POST", headers,
+    body: JSON.stringify({
+      task_id: accepted.task_id, status: "completed", result: { message: "must not complete" }
+    })
+  });
+  assert.equal(result.status, 404);
+  assert.equal((await result.json()).error, "task_not_found_or_not_claimed");
+
+  const status = await fetch(`${baseUrl}/api/hermes/tasks/${encodeURIComponent(accepted.task_id)}`, { headers });
+  assert.equal(status.status, 200);
+  assert.equal((await status.json()).status, "queued");
+});
+
+test("Hermes queue rejects a second checkpoint after task completion", async () => {
+  const headers = {
+    "content-type": "application/json",
+    authorization: `Bearer ${WORKER_TOKEN}`
+  };
+  const dispatch = await fetch(`${baseUrl}/api/hermes/dispatch`, {
+    method: "POST", headers,
+    body: JSON.stringify({
+      scene_id: "scene-completed", prompt: "Complete then reject later writes.",
+      toolsets: ["web"], confirm_video_generation: false
+    })
+  });
+  assert.equal(dispatch.status, 202);
+  const accepted = await dispatch.json();
+
+  const claim = await fetch(`${baseUrl}/api/hermes/next`, { headers });
+  assert.equal(claim.status, 200);
+  const task = await claim.json();
+  assert.equal(task.task_id, accepted.task_id);
+
+  const complete = await fetch(`${baseUrl}/api/hermes/result`, {
+    method: "POST", headers,
+    body: JSON.stringify({ task_id: accepted.task_id, status: "completed", result: { ok: true } })
+  });
+  assert.equal(complete.status, 200);
+
+  const lateCheckpoint = await fetch(`${baseUrl}/api/hermes/checkpoint`, {
+    method: "POST", headers,
+    body: JSON.stringify({ task_id: accepted.task_id, stage: "uploading" })
+  });
+  assert.equal(lateCheckpoint.status, 404);
+  assert.equal((await lateCheckpoint.json()).error, "task_not_found_or_not_claimed");
+});
+
