@@ -214,6 +214,70 @@ export async function claimNextTask() {
   }
 }
 
+export async function claimNextVideoTask() {
+  if (testMemoryEnabled) {
+    const now = Date.now();
+    const task = [...testTasks.values()].sort((a, b) =>
+      new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+    ).find(item => item.confirm_video_generation === true &&
+      Array.isArray(item.toolsets) && item.toolsets.includes("video_gen") &&
+      (item.status === "queued" ||
+       (item.status === "claimed" && item.claimed_at &&
+        now - new Date(item.claimed_at).getTime() > 5 * 60 * 1000)));
+    if (!task) return null;
+    task.status = "claimed";
+    task.claim_token = randomUUID();
+    task.claimed_at = new Date().toISOString();
+    task.heartbeat_at = task.claimed_at;
+    task.attempts = (task.attempts || 0) + 1;
+    return {
+      task_id: task.task_id, scene_id: task.scene_id, prompt: task.prompt,
+      toolsets: task.toolsets, confirm_video_generation: task.confirm_video_generation,
+      video_options: task.video_options || {}, stage: task.stage,
+      provider: task.provider, provider_job_id: task.provider_job_id,
+      output_url: task.output_url, storage_key: task.storage_key,
+      attempts: task.attempts, claim_token: task.claim_token
+    };
+  }
+
+  const db = getTaskPool();
+  const client = await db.connect();
+  try {
+    await client.query("BEGIN");
+    const { rows } = await client.query(`
+      SELECT task_id FROM joyverse_tasks
+       WHERE confirm_video_generation = TRUE
+         AND toolsets @> '["video_gen"]'::jsonb
+         AND (
+           status = 'queued'
+           OR (status = 'claimed' AND COALESCE(heartbeat_at, claimed_at) < NOW() - INTERVAL '5 minutes')
+         )
+       ORDER BY created_at
+       LIMIT 1
+       FOR UPDATE SKIP LOCKED
+    `);
+    if (!rows.length) {
+      await client.query("COMMIT");
+      return null;
+    }
+    const { rows: claimed } = await client.query(`
+      UPDATE joyverse_tasks
+         SET status='claimed', claimed_at=NOW(), heartbeat_at=NOW(),
+             attempts=attempts+1, claim_token=$2
+       WHERE task_id=$1
+       RETURNING task_id, scene_id, prompt, toolsets, confirm_video_generation,
+                 video_options, stage, provider, provider_job_id, output_url, storage_key, attempts, claim_token
+    `, [rows[0].task_id, randomUUID()]);
+    await client.query("COMMIT");
+    return claimed[0] || null;
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
 export async function finishTask(taskId, claimToken, status, result, error) {
   if (typeof claimToken !== "string" || claimToken.length < 32) return null;
   if (testMemoryEnabled) {
