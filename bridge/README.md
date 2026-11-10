@@ -35,3 +35,28 @@ On the Android device, create a MacroDroid macro with:
 4. After each branch, add an HTTP Request (POST) to the device callback endpoint, sending JSON with `command_id`, `status`, `page`, and `message`.
 
 The webhook URL is a bearer capability. Do not publish it or put it in public source files. The ChatGPT MCP tool requires the user's own webhook URL as an argument for each command; it is not stored by this server.
+
+## Server-side video worker (foundation)
+
+The LTX worker is a separate process from the web/MCP bridge. It claims only tasks that explicitly include `video_gen` and `confirm_video_generation: true`, generates a clip through the Gradio LTX-2.5 Space, and writes the returned MP4 to S3-compatible object storage.
+
+Run it as a separate process with:
+
+```sh
+npm run worker
+```
+
+Required server-side environment:
+- `DATABASE_URL`: PostgreSQL connection string for the durable task queue.
+- `OBJECT_STORAGE_BUCKET`: bucket name.
+- `OBJECT_STORAGE_ENDPOINT`: S3-compatible endpoint.
+- `OBJECT_STORAGE_ACCESS_KEY_ID` and `OBJECT_STORAGE_SECRET_ACCESS_KEY`: server-only credentials.
+
+Optional:
+- `OBJECT_STORAGE_REGION` (defaults to `auto`).
+- `OBJECT_STORAGE_FORCE_PATH_STYLE` (defaults to enabled).
+- `HF_TOKEN` for a Space that requires authentication.
+- `LTX_SPACE` (defaults to `Lightricks/LTX-2.5`).
+- `VIDEO_WORKER_POLL_MS` (1000–60000; defaults to 5000).
+
+This is not yet a complete production pipeline: authenticated reference-image intake, live database/object-store integration, final-video retrieval, FFmpeg assembly, and the studio's reconnect/download interface are still outstanding. The current worker submits one LTX generation and stores its MP4; it does not yet resume an in-flight Gradio submission after a process crash. It deliberately blocks automatic resubmission in that situation to avoid duplicate generation.
