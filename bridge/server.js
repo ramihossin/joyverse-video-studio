@@ -4,11 +4,11 @@ import { fileURLToPath } from "node:url";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { z } from "zod";
-import { initializeTaskStore, enqueueTask, getTask, claimNextTask, finishTask } from "./task-store.js";
+import { initializeTaskStore, enqueueTask, getTask, claimNextTask, finishTask, getQueueCounts } from "./task-store.js";
 
 const app = express();
 app.disable("x-powered-by");
-app.use(express.json({ limit: "8kb" }));
+app.use(express.json({ limit: "20kb" }));
 
 const ACCESS_TOKEN = process.env.MCP_ACCESS_TOKEN;
 const HERMES_WORKER_TOKEN = process.env.HERMES_WORKER_TOKEN || "";
@@ -23,8 +23,7 @@ let lastDeviceResult = null;
 let lastCommand = null;
 const seenCommandIds = new Set();
 
-// Prototype queue: in-memory only; a Render restart clears queued tasks.
-// Durable task records are stored in PostgreSQL.
+// Task records are stored in PostgreSQL; process memory is not used for queue state.
 const HERMES_TOOLSETS = new Set(["web", "browser", "video_gen"]);
 const HERMES_MAX_PROMPT = 12000;
 
@@ -116,7 +115,7 @@ function createMcpServer() {
       await enqueueTask(task);
       return { content: [{ type: "text", text: JSON.stringify({
         accepted: true, task_id: taskId, scene_id, status: "queued",
-        note: "Queued in Render memory. The Android worker must claim and execute it; acceptance is not completion. Tasks are lost if the service restarts."
+        note: "Queued in PostgreSQL. The Android worker must claim and execute it; acceptance is not completion."
       }) }] };
     }
   );
@@ -128,7 +127,7 @@ function createMcpServer() {
     async ({ task_id }) => {
       const task = await getTask(task_id);
       if (!task) {
-        return { isError: true, content: [{ type: "text", text: "Hermes task not found. It may have expired or Render may have restarted." }] };
+        return { isError: true, content: [{ type: "text", text: "Hermes task not found." }] };
       }
       return { content: [{ type: "text", text: JSON.stringify({
         task_id: task.task_id, scene_id: task.scene_id, status: task.status,
@@ -390,8 +389,9 @@ app.get("/api/hermes/tasks/:taskId", async (req, res) => {
   });
 });
 
-app.get("/api/status", (req, res) => {
+app.get("/api/status", async (req, res) => {
   if (!bearerAuthorized(req)) return res.status(401).json({ error: "unauthorized" });
+  const queueCounts = await getQueueCounts();
   res.set("Cache-Control", "no-store");
   res.json({
     service: {
@@ -412,7 +412,7 @@ app.get("/api/status", (req, res) => {
     },
     last_command: lastCommand,
     last_device_result: lastDeviceResult,
-    hermes_queue: { persistence: "PostgreSQL durable storage" },
+    hermes_queue: { persistence: "PostgreSQL durable storage", queued: queueCounts.queued, active: queueCounts.active },
     persistence: "PostgreSQL required; service refuses startup without DATABASE_URL"
   });
 });
