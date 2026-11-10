@@ -6,6 +6,7 @@ import net from "node:net";
 const TOKEN = "test-only-token-with-at-least-32-characters";
 const WORKER_TOKEN = "test-worker-token-with-at-least-32-characters";
 let child;
+let childOutput = "";
 let baseUrl;
 
 before(async () => {
@@ -20,11 +21,13 @@ before(async () => {
       PORT: String(port), MCP_ACCESS_TOKEN: TOKEN,
       HERMES_WORKER_TOKEN: WORKER_TOKEN, JOYVERSE_STUDIO_TOKEN: "test-studio-token-with-at-least-32-characters", MACRODROID_WEBHOOK_URL: ""
     },
-    stdio: "ignore"
+    stdio: ["ignore", "pipe", "pipe"]
   });
+  child.stdout.on("data", chunk => { childOutput += chunk.toString(); });
+  child.stderr.on("data", chunk => { childOutput += chunk.toString(); });
   let ready = false;
   for (let i = 0; i < 50; i++) {
-    if (child.exitCode !== null) throw new Error("Bridge process exited before becoming ready");
+    if (child.exitCode !== null) throw new Error("Bridge process exited before becoming ready: " + childOutput.slice(-5000));
     try {
       const response = await fetch(`${baseUrl}/health`);
       if (response.ok) { ready = true; break; }
