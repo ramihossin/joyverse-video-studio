@@ -3,11 +3,38 @@ import { assembleVideos } from "./assembler.js";
 import { Client, handle_file } from "https://esm.sh/@gradio/client@2.0.0";
 
 const PROVIDER = { space: "Lightricks/LTX-2.5", endpoint: "/run" };
+
+async function composeReferenceImages(files) {
+  if (files.length > 6) throw new Error("يمكن إرفاق 6 صور مرجعية كحد أقصى للمشهد.");
+  const cellSize = 512;
+  const gap = 20;
+  const columns = files.length === 2 ? 2 : 2;
+  const rows = Math.ceil(files.length / columns);
+  const canvas = document.createElement("canvas");
+  canvas.width = columns * cellSize + (columns + 1) * gap;
+  canvas.height = rows * cellSize + (rows + 1) * gap;
+  const context = canvas.getContext("2d");
+  if (!context) throw new Error("تعذّر تجهيز لوحة الصور المرجعية في هذا المتصفح.");
+  context.fillStyle = "#f4f4f4";
+  context.fillRect(0, 0, canvas.width, canvas.height);
+  for (let index = 0; index < files.length; index += 1) {
+    const bitmap = await createImageBitmap(files[index]);
+    const scale = Math.min(cellSize / bitmap.width, cellSize / bitmap.height);
+    const width = Math.max(1, Math.round(bitmap.width * scale));
+    const height = Math.max(1, Math.round(bitmap.height * scale));
+    const x = gap + (index % columns) * (cellSize + gap) + Math.round((cellSize - width) / 2);
+    const y = gap + Math.floor(index / columns) * (cellSize + gap) + Math.round((cellSize - height) / 2);
+    context.drawImage(bitmap, x, y, width, height);
+    bitmap.close?.();
+  }
+  const blob = await new Promise((resolve, reject) => canvas.toBlob(value => value ? resolve(value) : reject(new Error("تعذّر إنشاء لوحة الصور المرجعية.")), "image/png"));
+  return new File([blob], "joyverse-reference-board.png", { type: "image/png" });
+}
 const $ = (id) => document.getElementById(id);
 const form = $("studio-form");
 const imageInput = $("image");
 const tokenInput = $("hf-token");
-const preview = $("preview");
+const previewList = $("preview-list");
 const uploadTitle = $("upload-title");
 const uploadHelp = $("upload-help");
 const statusBox = $("status-box");
@@ -31,7 +58,7 @@ let queueRunning = false;
 let stopRequested = false;
 let assemblyRunning = false;
 let assemblyUrl = null;
-let previewUrl = null;
+let previewUrls = [];
 
 try {
   queue = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
@@ -123,14 +150,45 @@ function renderQueue() {
 }
 
 imageInput.addEventListener("change", () => {
-  const file = imageInput.files?.[0];
-  if (!file) return;
-  if (previewUrl) URL.revokeObjectURL(previewUrl);
-  previewUrl = URL.createObjectURL(file);
-  preview.src = previewUrl;
-  preview.hidden = false;
-  uploadTitle.textContent = file.name;
-  uploadHelp.textContent = Math.ceil(file.size / 1024) + " KB — سيُستخدم كمرجع للمشاهد التالية";
+  previewUrls.forEach((url) => URL.revokeObjectURL(url));
+  previewUrls = [];
+  previewList.replaceChildren();
+  const files = Array.from(imageInput.files || []);
+  if (files.length > 6) {
+    imageInput.value = "";
+    uploadTitle.textContent = "اختر حتى 6 صور فقط";
+    uploadHelp.textContent = "قلّل عدد الصور ثم حاول مجدداً.";
+    previewList.hidden = true;
+    return;
+  }
+  if (files.some(file => !["image/png", "image/jpeg", "image/webp"].includes(file.type))) {
+    imageInput.value = "";
+    uploadTitle.textContent = "صيغة صورة غير مدعومة";
+    uploadHelp.textContent = "استخدم PNG أو JPG أو WEBP.";
+    previewList.hidden = true;
+    return;
+  }
+  if (!files.length) {
+    uploadTitle.textContent = "اختر صوراً مرجعية متعددة";
+    uploadHelp.textContent = "PNG أو JPG أو WEBP — حتى 6 صور";
+    previewList.hidden = true;
+    return;
+  }
+  files.forEach((file) => {
+    const url = URL.createObjectURL(file);
+    previewUrls.push(url);
+    const figure = document.createElement("figure");
+    const image = document.createElement("img");
+    image.src = url;
+    image.alt = file.name;
+    const caption = document.createElement("figcaption");
+    caption.textContent = file.name;
+    figure.append(image, caption);
+    previewList.append(figure);
+  });
+  previewList.hidden = false;
+  uploadTitle.textContent = "تم اختيار " + files.length + " صور مرجعية";
+  uploadHelp.textContent = "ستُجمع الصور في لوحة مرجعية واحدة قبل إرسالها للمحرك.";
 });
 
 form.addEventListener("submit", (event) => {
@@ -157,8 +215,9 @@ form.addEventListener("submit", (event) => {
 });
 
 async function generateScene(client, scene) {
-  const file = imageInput.files?.[0] || null;
-  const image = file ? await handle_file(file) : null;
+  const files = Array.from(imageInput.files || []);
+  const referenceFile = files.length > 1 ? await composeReferenceImages(files) : (files[0] || null);
+  const image = referenceFile ? await handle_file(referenceFile) : null;
   const duration = Number($("duration").value);
   const seedValue = Number($("seed").value) || 42;
   const { width, height } = dimensionsFor($("aspect").value);
@@ -304,7 +363,7 @@ $("clear-queue").addEventListener("click", () => {
   renderQueue();
 });
 window.addEventListener("beforeunload", () => {
-  if (previewUrl) URL.revokeObjectURL(previewUrl);
+  previewUrls.forEach((url) => URL.revokeObjectURL(url));
   if (assemblyUrl) URL.revokeObjectURL(assemblyUrl);
 });
 
