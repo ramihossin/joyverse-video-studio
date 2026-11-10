@@ -372,16 +372,18 @@ app.get("/api/hermes/next", async (req, res) => {
     stage: task.stage, provider: task.provider,
     provider_job_id: task.provider_job_id,
     output_url: task.output_url, storage_key: task.storage_key,
-    attempts: task.attempts
+    attempts: task.attempts, claim_token: task.claim_token
   });
 });
 
 app.post("/api/hermes/checkpoint", async (req, res) => {
   if (!HERMES_WORKER_TOKEN) return res.status(503).json({ error: "hermes_worker_token_not_configured" });
   if (!hermesWorkerAuthorized(req)) return res.status(401).json({ error: "unauthorized" });
-  const { task_id, stage, provider, provider_job_id, output_url, storage_key } = req.body ?? {};
+  const { task_id, claim_token, stage, provider, provider_job_id, output_url, storage_key } = req.body ?? {};
   if (typeof task_id !== "string" || !task_id.trim() || task_id.length > 100)
     return res.status(400).json({ error: "invalid_task_id" });
+  if (typeof claim_token !== "string" || claim_token.length < 32 || claim_token.length > 128)
+    return res.status(400).json({ error: "invalid_claim_token" });
   if (output_url !== undefined) {
     try {
       const url = new URL(output_url);
@@ -391,7 +393,7 @@ app.post("/api/hermes/checkpoint", async (req, res) => {
     }
   }
   try {
-    const checkpoint = await updateTaskCheckpoint(task_id, {
+    const checkpoint = await updateTaskCheckpoint(task_id, claim_token, {
       stage, provider, provider_job_id, output_url, storage_key
     });
     if (!checkpoint) return res.status(404).json({ error: "task_not_found_or_not_claimed" });
@@ -405,10 +407,12 @@ app.post("/api/hermes/checkpoint", async (req, res) => {
 app.post("/api/hermes/result", async (req, res) => {
   if (!HERMES_WORKER_TOKEN) return res.status(503).json({ error: "hermes_worker_token_not_configured" });
   if (!hermesWorkerAuthorized(req)) return res.status(401).json({ error: "unauthorized" });
-  const { task_id, status, result, error } = req.body ?? {};
+  const { task_id, claim_token, status, result, error } = req.body ?? {};
   if (typeof task_id !== "string") return res.status(404).json({ error: "task_not_found" });
+  if (typeof claim_token !== "string" || claim_token.length < 32 || claim_token.length > 128)
+    return res.status(400).json({ error: "invalid_claim_token" });
   if (!["completed", "failed"].includes(status)) return res.status(400).json({ error: "invalid_status" });
-  const updated = await finishTask(task_id, status,
+  const updated = await finishTask(task_id, claim_token, status,
     status === "completed" && result && typeof result === "object" ? result : null, error);
   if (!updated) return res.status(404).json({ error: "task_not_found_or_not_claimed" });
   return res.json({ accepted: true, task_id, status: updated.status });
