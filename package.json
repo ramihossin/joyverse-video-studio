@@ -6,7 +6,9 @@
   "scripts": {
     "start": "node bridge/server.js",
     "test": "node --test",
-    "worker": "node bridge/video-worker-main.js"
+    "worker": "node bridge/video-worker-main.js",
+    "worker:once": "node bridge/video-worker-main.js --once",
+    "check:worker": "node --check bridge/video-worker-main.js && node --check bridge/video-worker.js"
   },
   "engines": {
     "node": ">=20"
