@@ -5,7 +5,10 @@
   "type": "module",
   "scripts": {
     "start": "node bridge/server.js",
-    "test": "node --test"
+    "test": "node --test",
+    "worker": "node bridge/video-worker-main.js",
+    "worker:once": "node bridge/video-worker-main.js --once",
+    "check:worker": "node --check bridge/video-worker-main.js && node --check bridge/video-worker.js"
   },
   "engines": {
     "node": ">=20"
@@ -14,6 +17,10 @@
     "@modelcontextprotocol/sdk": "^1.12.1",
     "express": "^4.21.2",
     "zod": "^3.24.2",
-    "pg": "^8.13.1"
+    "pg": "^8.13.1",
+    "@aws-sdk/client-s3": "^3.850.0",
+    "@aws-sdk/s3-request-presigner": "^3.850.0",
+    "@gradio/client": "^2.7.2",
+    "ffmpeg-static": "^5.2.0"
   }
 }
