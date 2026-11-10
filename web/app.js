@@ -358,7 +358,7 @@ $("export-manifest").addEventListener("click", () => {
   URL.revokeObjectURL(url);
 });
 bridgeInput.addEventListener("change", () => localStorage.setItem("joyverse-bridge-url", bridgeInput.value.trim()));
-studioTokenInput.addEventListener("change", () => sessionStorage.setItem("joyverse-studio-token", studioTokenInput.value.trim()));
+studioTokenInput.addEventListener("change", () => { sessionStorage.setItem("joyverse-studio-token", studioTokenInput.value.trim()); restoreServerState(); });
 renderQueue();
 
 async function restoreServerState() {
