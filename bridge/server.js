@@ -6,6 +6,7 @@ import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/
 import { z } from "zod";
 import { initializeTaskStore, enqueueTask, getTask, claimNextTask, finishTask, getQueueCounts, updateTaskCheckpoint } from "./task-store.js";
 import { normalizeVideoOptions } from "./video-job.js";
+import { createObjectStorage } from "./object-storage.js";
 
 const app = express();
 app.disable("x-powered-by");
@@ -442,6 +443,32 @@ app.get("/api/hermes/tasks/:taskId", async (req, res) => {
     attempts: task.attempts, created_at: task.created_at,
     finished_at: task.finished_at ?? null
   });
+});
+
+app.get("/api/hermes/video/:taskId", async (req, res) => {
+  if (!HERMES_WORKER_TOKEN) return res.status(503).json({ error: "hermes_worker_token_not_configured" });
+  if (!hermesWorkerAuthorized(req)) return res.status(401).json({ error: "unauthorized" });
+  const task = await getTask(req.params.taskId);
+  if (!task) return res.status(404).json({ error: "task_not_found" });
+  const key = task.storage_key || task.result?.storage_key;
+  if (task.status !== "completed" || typeof key !== "string" || !key) {
+    return res.status(409).json({ error: "video_not_ready", status: task.status, stage: task.stage });
+  }
+  try {
+    const storage = createObjectStorage();
+    const video = await storage.get(key);
+    res.set({
+      "Content-Type": "video/mp4",
+      "Content-Length": String(video.length),
+      "Content-Disposition": 'attachment; filename="joyverse-' + encodeURIComponent(task.scene_id).replace(/%/g, "_") + '.mp4"',
+      "Cache-Control": "private, no-store",
+      "X-Content-Type-Options": "nosniff"
+    });
+    return res.status(200).send(video);
+  } catch (error) {
+    console.error("Stored video retrieval failed:", String(error?.message || error).slice(0, 200));
+    return res.status(502).json({ error: "video_storage_unavailable" });
+  }
 });
 
 app.get("/api/status", async (req, res) => {
