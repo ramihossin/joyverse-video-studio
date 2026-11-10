@@ -24,7 +24,14 @@ async function fetchRuntimeAsset(url, fallbackUrls = []) {
   let lastError;
   for (const candidate of [url, ...fallbackUrls]) {
     try {
-      const response = await fetch(candidate, { mode: "cors", credentials: "omit" });
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 45000);
+      let response;
+      try {
+        response = await fetch(candidate, { mode: "cors", credentials: "omit", signal: controller.signal });
+      } finally {
+        clearTimeout(timer);
+      }
       if (!response.ok || response.type === "opaque") {
         lastError = new Error("HTTP " + response.status + " from " + candidate);
         continue;
