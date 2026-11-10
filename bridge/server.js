@@ -132,6 +132,10 @@ function createMcpServer() {
       return { content: [{ type: "text", text: JSON.stringify({
         task_id: task.task_id, scene_id: task.scene_id, status: task.status,
         result: task.result, error: task.error,
+        stage: task.stage, provider: task.provider,
+        provider_job_id: task.provider_job_id, output_url: task.output_url,
+        storage_key: task.storage_key, heartbeat_at: task.heartbeat_at,
+        attempts: task.attempts,
         created_at: task.created_at, finished_at: task.finished_at ?? null
       }) }] };
     }
@@ -315,8 +319,11 @@ app.get("/api/hermes/status-chatgpt/:taskId", async (req, res) => {
   if (!task) return res.status(404).json({ error: "task_not_found" });
   res.set("Cache-Control", "no-store");
   return res.json({ task_id: task.task_id, scene_id: task.scene_id, status: task.status,
-    result: task.result, error: task.error, created_at: task.created_at,
-    finished_at: task.finished_at ?? null });
+    result: task.result, error: task.error, stage: task.stage,
+    provider: task.provider, provider_job_id: task.provider_job_id,
+    output_url: task.output_url, storage_key: task.storage_key,
+    heartbeat_at: task.heartbeat_at, attempts: task.attempts,
+    created_at: task.created_at, finished_at: task.finished_at ?? null });
 });
 
 // Hermes phone-worker queue. All endpoints use the existing bearer token.
@@ -410,7 +417,11 @@ app.get("/api/hermes/tasks/:taskId", async (req, res) => {
   res.set("Cache-Control", "no-store");
   return res.json({
     task_id: task.task_id, scene_id: task.scene_id, status: task.status,
-    result: task.result, error: task.error, created_at: task.created_at,
+    result: task.result, error: task.error,
+    stage: task.stage, provider: task.provider,
+    provider_job_id: task.provider_job_id, output_url: task.output_url,
+    storage_key: task.storage_key, heartbeat_at: task.heartbeat_at,
+    attempts: task.attempts, created_at: task.created_at,
     finished_at: task.finished_at ?? null
   });
 });
