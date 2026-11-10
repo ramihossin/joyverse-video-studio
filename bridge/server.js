@@ -367,7 +367,12 @@ app.get("/api/hermes/next", async (req, res) => {
   return res.json({
     task_id: task.task_id, scene_id: task.scene_id,
     prompt: task.prompt, toolsets: task.toolsets,
-    confirm_video_generation: task.confirm_video_generation
+    confirm_video_generation: task.confirm_video_generation,
+    // Checkpoint metadata is essential for restart-safe provider polling.
+    stage: task.stage, provider: task.provider,
+    provider_job_id: task.provider_job_id,
+    output_url: task.output_url, storage_key: task.storage_key,
+    attempts: task.attempts
   });
 });
 
