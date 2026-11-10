@@ -29,7 +29,14 @@ async function fetchFirstAvailable(urls) {
   let lastError;
   for (const url of urls) {
     try {
-      const response = await fetch(url, { mode: "cors", credentials: "omit", cache: "reload" });
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 45000);
+      let response;
+      try {
+        response = await fetch(url, { mode: "cors", credentials: "omit", cache: "reload", signal: controller.signal });
+      } finally {
+        clearTimeout(timer);
+      }
       if (response.ok && response.type !== "opaque") return response;
       lastError = new Error("HTTP " + response.status + " from " + url);
     } catch (error) {
