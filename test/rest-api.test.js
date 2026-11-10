@@ -371,6 +371,39 @@ test("video generation dispatch persists validated LTX settings for the worker",
   assert.equal(complete.status, 200);
 });
 
+test("video claim returns the durable reference-image key to the background worker", async () => {
+  const headers = {
+    "content-type": "application/json",
+    authorization: `Bearer ${WORKER_TOKEN}`
+  };
+  const referenceKey = "references/pending/123e4567-e89b-12d3-a456-426614174000.png";
+  const dispatch = await fetch(`${baseUrl}/api/hermes/dispatch`, {
+    method: "POST", headers,
+    body: JSON.stringify({
+      scene_id: "scene-reference-key",
+      prompt: "A colorful friendly dragon.",
+      toolsets: ["video_gen"],
+      confirm_video_generation: true,
+      reference_image_key: referenceKey
+    })
+  });
+  assert.equal(dispatch.status, 202);
+  const accepted = await dispatch.json();
+  const claim = await fetch(`${baseUrl}/api/hermes/next`, { headers });
+  assert.equal(claim.status, 200);
+  const task = await claim.json();
+  assert.equal(task.task_id, accepted.task_id);
+  assert.equal(task.reference_image_key, referenceKey);
+  const complete = await fetch(`${baseUrl}/api/hermes/result`, {
+    method: "POST", headers,
+    body: JSON.stringify({
+      task_id: task.task_id, claim_token: task.claim_token,
+      status: "completed", result: { test: true }
+    })
+  });
+  assert.equal(complete.status, 200);
+});
+
 test("reference image upload requires worker authentication and rejects invalid image bytes", async () => {
   const taskId = "hermes_123e4567-e89b-12d3-a456-426614174000";
   const unauthorized = await fetch(`${baseUrl}/api/hermes/reference/${taskId}`, {
