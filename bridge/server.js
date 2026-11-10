@@ -337,7 +337,7 @@ app.post("/api/hermes/dispatch-chatgpt", async (req, res) => {
   const selected = [...new Set(toolsets)];
   if (reference_image_key !== undefined &&
       (typeof reference_image_key !== "string" ||
-       !/^references\\/pending\\/[0-9a-f-]{36}\\.(png|jpg|webp)$/.test(reference_image_key))) {
+       !/^references\/pending\/[0-9a-f-]{36}\.(png|jpg|webp)$/.test(reference_image_key))) {
     return res.status(400).json({ error: "invalid_reference_image_key" });
   }
   if (reference_image_key && !selected.includes("video_gen")) {
