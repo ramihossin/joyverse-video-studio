@@ -1,7 +1,11 @@
 const CACHE_NAME = "joyverse-ffmpeg-0.12.10-local";
-const ASSETS = [
-  "core/ffmpeg-core.js",
-  "core/ffmpeg-core.wasm",
+const CORE_CDN = "https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.10/dist/umd/";
+const CORE_MIRRORS = [
+  "https://unpkg.com/@ffmpeg/core@0.12.10/dist/umd/",
+  "https://fastly.jsdelivr.net/npm/@ffmpeg/core@0.12.10/dist/umd/"
+];
+
+const localAssets = [
   "esm/index.js",
   "esm/classes.js",
   "esm/const.js",
@@ -9,7 +13,40 @@ const ASSETS = [
   "esm/types.js",
   "esm/utils.js",
   "esm/worker.js"
-].map((path) => new URL("./vendor/ffmpeg/" + path, self.location.href).href);
+].map((path) => {
+  const url = new URL("./vendor/ffmpeg/" + path, self.location.href).href;
+  return { key: url, urls: [url] };
+});
+
+const coreAssets = ["ffmpeg-core.js", "ffmpeg-core.wasm"].map((file) => ({
+  key: CORE_CDN + file,
+  urls: [CORE_CDN, ...CORE_MIRRORS].map((base) => base + file)
+}));
+
+const ASSETS = [...localAssets, ...coreAssets];
+
+async function fetchFirstAvailable(urls) {
+  let lastError;
+  for (const url of urls) {
+    try {
+      const response = await fetch(url, { mode: "cors", credentials: "omit", cache: "reload" });
+      if (response.ok && response.type !== "opaque") return response;
+      lastError = new Error("HTTP " + response.status + " from " + url);
+    } catch (error) {
+      lastError = error;
+    }
+  }
+  throw new Error("تعذّر الوصول إلى ملف FFmpeg عبر مصادره الاحتياطية: " + (lastError?.message || "unknown error"));
+}
+
+async function getCachedAsset(entry) {
+  const cache = await caches.open(CACHE_NAME);
+  const cached = await cache.match(entry.key);
+  if (cached) return cached;
+  const response = await fetchFirstAvailable(entry.urls);
+  await cache.put(entry.key, response.clone());
+  return response;
+}
 
 self.addEventListener("install", (event) => {
   event.waitUntil(self.skipWaiting());
@@ -24,17 +61,8 @@ self.addEventListener("activate", (event) => {
 });
 
 self.addEventListener("fetch", (event) => {
-  const url = event.request.url;
-  if (ASSETS.includes(url)) {
-    event.respondWith((async () => {
-      const cache = await caches.open(CACHE_NAME);
-      const cached = await cache.match(url);
-      if (cached) return cached;
-      const response = await fetch(event.request);
-      if (response.ok && response.type !== "opaque") await cache.put(url, response.clone());
-      return response;
-    })());
-  }
+  const entry = ASSETS.find((asset) => asset.urls.includes(event.request.url) || asset.key === event.request.url);
+  if (entry) event.respondWith(getCachedAsset(entry));
 });
 
 self.addEventListener("message", (event) => {
@@ -43,18 +71,12 @@ self.addEventListener("message", (event) => {
   const send = (payload) => port?.postMessage(payload);
   event.waitUntil((async () => {
     try {
-      const cache = await caches.open(CACHE_NAME);
       let completed = 0;
-      for (const url of ASSETS) {
-        const existing = await cache.match(url);
-        if (!existing) {
-          send({ type: "progress", completed, total: ASSETS.length, current: url });
-          const response = await fetch(url, { cache: "reload" });
-          if (!response.ok || response.type === "opaque") throw new Error("تعذّر تنزيل أحد ملفات FFmpeg المستضافة داخل الاستوديو.");
-          await cache.put(url, response);
-        }
+      for (const entry of ASSETS) {
+        send({ type: "progress", completed, total: ASSETS.length, current: entry.key });
+        await getCachedAsset(entry);
         completed += 1;
-        send({ type: "progress", completed, total: ASSETS.length, current: url });
+        send({ type: "progress", completed, total: ASSETS.length, current: entry.key });
       }
       send({ type: "complete", cached: true });
     } catch (error) {
