@@ -106,6 +106,27 @@ test("ChatGPT dispatch relay accepts valid text-only tasks and persists them in 
   assert.equal(accepted.scene_id, "chatgpt-relay-test");
   assert.equal(accepted.status, "queued");
   assert.match(accepted.task_id, /^hermes_[0-9a-f-]{36}$/);
+
+  // Complete the relay task here so later FIFO queue tests start from an empty queue.
+  const workerHeaders = {
+    "content-type": "application/json",
+    authorization: `Bearer ${WORKER_TOKEN}`
+  };
+  const claim = await fetch(`${baseUrl}/api/hermes/next`, { headers: workerHeaders });
+  assert.equal(claim.status, 200);
+  const task = await claim.json();
+  assert.equal(task.task_id, accepted.task_id);
+  const completed = await fetch(`${baseUrl}/api/hermes/result`, {
+    method: "POST",
+    headers: workerHeaders,
+    body: JSON.stringify({
+      task_id: accepted.task_id,
+      claim_token: task.claim_token,
+      status: "completed",
+      result: { message: "relay test cleanup" }
+    })
+  });
+  assert.equal(completed.status, 200);
 });
 
 test("health endpoint remains available and reports runtime metadata", async () => {
