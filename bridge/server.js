@@ -13,11 +13,15 @@ import { verifyGithubActionsToken } from "./github-oidc.js";
 
 const app = express();
 app.disable("x-powered-by");
-const STUDIO_ALLOWED_ORIGINS = new Set(
-  (process.env.STUDIO_ALLOWED_ORIGINS ||
-    "https://ramihossin.github.io,https://joyverse-video-studio.onrender.com")
+const DEFAULT_STUDIO_ORIGINS = [
+  "https://ramihossin.github.io",
+  "https://joyverse-video-studio.onrender.com"
+];
+const STUDIO_ALLOWED_ORIGINS = new Set([
+  ...DEFAULT_STUDIO_ORIGINS,
+  ...(process.env.STUDIO_ALLOWED_ORIGINS || "")
     .split(",").map(value => value.trim()).filter(Boolean)
-);
+]);
 app.use((req, res, next) => {
   const origin = req.get("origin");
   if (origin && STUDIO_ALLOWED_ORIGINS.has(origin)) {
