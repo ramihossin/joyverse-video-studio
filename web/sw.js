@@ -18,7 +18,9 @@ const localAssets = [
   return { key: url, urls: [url] };
 });
 
-const coreAssets = ["ffmpeg-core.js", "ffmpeg-core.wasm"].map((file) => ({
+// Preload only the small JS bootstrap. The large WASM binary is fetched on demand
+// during an explicit foreground assembly, avoiding long background downloads on mobile.
+const coreAssets = ["ffmpeg-core.js"].map((file) => ({
   key: CORE_CDN + file,
   urls: [CORE_CDN, ...CORE_MIRRORS].map((base) => base + file)
 }));
