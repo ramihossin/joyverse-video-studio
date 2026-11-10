@@ -81,8 +81,8 @@ def local_task_if_present(local_id: str, key: str):
         raise
 
 
-def save_checkpoint(task_id: str, worker_token: str, **fields):
-    payload = {"task_id": task_id, **fields}
+def save_checkpoint(task_id: str, worker_token: str, claim_token: str, **fields):
+    payload = {"task_id": task_id, "claim_token": claim_token, **fields}
     status, saved = request_json(
         RENDER_BASE + "/api/hermes/checkpoint", worker_token, "POST", payload
     )
@@ -112,6 +112,9 @@ def main():
                 continue
 
             task_id = task["task_id"]
+            claim_token = task.get("claim_token")
+            if not isinstance(claim_token, str) or len(claim_token) < 32:
+                raise RuntimeError("Server did not provide a valid task-claim token.")
             print(f"Received task {task_id} ({task.get('scene_id', 'no scene id')}).")
             local_payload = {
                 "scene_id": task["scene_id"],
@@ -132,7 +135,7 @@ def main():
                     pass
 
             if local_id is None:
-                save_checkpoint(task_id, worker_token, stage="preparing", provider="local-hermes")
+                save_checkpoint(task_id, worker_token, claim_token, stage="preparing", provider="local-hermes")
                 _, submitted = local_request(LOCAL_BASE + "/tasks", bridge_key, "POST", local_payload)
                 local_id = submitted["task_id"]
                 save_checkpoint(task_id, worker_token, stage="generating",
@@ -167,10 +170,10 @@ def main():
 
             if final["status"] == "completed":
                 result = final.get("result") or {}
-                report = {"task_id": task_id, "status": "completed", "result": result}
+                report = {"task_id": task_id, "claim_token": claim_token, "status": "completed", "result": result}
             else:
                 error = final.get("error") or "Local Hermes task failed."
-                report = {"task_id": task_id, "status": "failed", "error": error}
+                report = {"task_id": task_id, "claim_token": claim_token, "status": "failed", "error": error}
 
             _, acknowledged = request_json(
                 RENDER_BASE + "/api/hermes/result", worker_token, "POST", report
