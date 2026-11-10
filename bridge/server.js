@@ -504,6 +504,7 @@ app.get("/api/hermes/next", async (req, res) => {
     stage: task.stage, provider: task.provider,
     provider_job_id: task.provider_job_id,
     output_url: task.output_url, storage_key: task.storage_key,
+    reference_image_key: task.reference_image_key || null,
     attempts: task.attempts, claim_token: task.claim_token
   });
 });
