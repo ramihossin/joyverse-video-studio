@@ -17,7 +17,7 @@ async function loadFFmpeg(onProgress) {
     if (Number.isFinite(progress)) onProgress(Math.max(0, Math.min(1, progress)));
   });
 
-  const coreBase = "https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/umd";
+  const coreBase = "https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.10/dist/umd";
   const [coreResponse, wasmResponse] = await Promise.all([
     fetch(coreBase + "/ffmpeg-core.js"),
     fetch(coreBase + "/ffmpeg-core.wasm")
@@ -34,7 +34,11 @@ async function loadFFmpeg(onProgress) {
   );
 
   try {
-    await ffmpeg.load({ coreURL: coreBlob, wasmURL: wasmBlob });
+    await ffmpeg.load({
+      coreURL: coreBlob,
+      wasmURL: wasmBlob,
+      classWorkerURL: "https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.10/dist/esm/worker.js"
+    });
     return ffmpeg;
   } catch (error) {
     ffmpeg.terminate();
