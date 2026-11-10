@@ -290,7 +290,7 @@ export async function claimNextVideoTask() {
              attempts=attempts+1, claim_token=$2
        WHERE task_id=$1
        RETURNING task_id, scene_id, prompt, toolsets, confirm_video_generation,
-                 video_options, stage, provider, provider_job_id, output_url, storage_key, attempts, claim_token
+                 video_options, stage, provider, provider_job_id, output_url, storage_key, reference_image_key, attempts, claim_token
     `, [rows[0].task_id, randomUUID()]);
     await client.query("COMMIT");
     return claimed[0] || null;
