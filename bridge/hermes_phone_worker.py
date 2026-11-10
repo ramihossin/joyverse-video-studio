@@ -83,7 +83,12 @@ def local_task_if_present(local_id: str, key: str):
 
 def save_checkpoint(task_id: str, worker_token: str, **fields):
     payload = {"task_id": task_id, **fields}
-    request_json(RENDER_BASE + "/api/hermes/checkpoint", worker_token, "POST", payload)
+    status, saved = request_json(
+        RENDER_BASE + "/api/hermes/checkpoint", worker_token, "POST", payload
+    )
+    if status != 200 or not saved or saved.get("accepted") is not True:
+        raise RuntimeError("Server did not confirm the durable task checkpoint.")
+    return saved
 
 
 def main():
@@ -151,16 +156,27 @@ def main():
                                 provider="local-hermes", provider_job_id=local_id)
                 time.sleep(3)
 
-            if final and final["status"] == "completed":
+            if final is None:
+                # Do not mark a still-running generation as failed merely because
+                # this polling window elapsed. Keep its provider task ID checkpointed;
+                # the queue lease will expire if this worker process later stops.
+                save_checkpoint(task_id, worker_token, stage="generating",
+                                provider="local-hermes", provider_job_id=local_id)
+                print(f"Task {task_id} is still running; durable checkpoint retained.")
+                continue
+
+            if final["status"] == "completed":
                 result = final.get("result") or {}
                 report = {"task_id": task_id, "status": "completed", "result": result}
             else:
-                error = (final or {}).get("error") or "Local Hermes task timed out."
+                error = final.get("error") or "Local Hermes task failed."
                 report = {"task_id": task_id, "status": "failed", "error": error}
 
             _, acknowledged = request_json(
                 RENDER_BASE + "/api/hermes/result", worker_token, "POST", report
             )
+            if not acknowledged or acknowledged.get("accepted") is not True:
+                raise RuntimeError("Server did not acknowledge the task result.")
             print(f"Task {task_id}: {acknowledged.get('status', 'reported')}.")
         except KeyboardInterrupt:
             print("\nWorker stopped.")
