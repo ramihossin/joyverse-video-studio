@@ -42,6 +42,14 @@ after(() => {
   if (child && child.exitCode === null) child.kill("SIGTERM");
 });
 
+test("background worker trigger rejects requests without a verified GitHub Actions identity", async () => {
+  const response = await fetch(`${baseUrl}/api/hermes/worker/tick`, {
+    method: "POST", headers: { "content-type": "application/json" }, body: "{}"
+  });
+  assert.equal(response.status, 401);
+  assert.deepEqual(await response.json(), { error: "invalid_github_actions_identity" });
+});
+
 test("REST status rejects missing bearer token", async () => {
   const response = await fetch(`${baseUrl}/api/status`);
   assert.equal(response.status, 401);
