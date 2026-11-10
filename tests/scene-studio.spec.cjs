@@ -28,3 +28,33 @@ test("scene queue accepts a scene, persists it, and supports YouTube landscape",
   await page.reload();
   await expect(page.locator("#scene-list")).toContainText("Automation smoke test");
 });
+
+test("agent manifest import adds scenes without starting generation", async ({ page }) => {
+  await page.goto("/");
+  const manifest = {
+    schema: "joyverse-scene-manifest",
+    version: 1,
+    scenes: [{ title: "Agent scene", prompt: "A friendly bear waves in a sunny garden." }]
+  };
+  await page.locator("#manifest-file").setInputFiles({
+    name: "joyverse-scenes.json",
+    mimeType: "application/json",
+    buffer: Buffer.from(JSON.stringify(manifest))
+  });
+  await expect(page).toHaveURL(/\\/$/);
+  await expect(page.locator("#scene-list")).toContainText("Agent scene");
+  await expect(page.locator("#scene-list")).toContainText("بانتظار الدور");
+  await expect(page.locator("#start-queue")).toBeEnabled();
+});
+
+test("agent manifest export downloads a reusable JSON file", async ({ page }) => {
+  await page.goto("/");
+  await page.locator("#scene-title").fill("Export scene");
+  await page.locator("#prompt").fill("A friendly bear waves.");
+  await page.locator("#consent").check();
+  await page.locator("#studio-form button[type=submit]").click();
+  const downloadPromise = page.waitForEvent("download");
+  await page.locator("#export-manifest").click();
+  const download = await downloadPromise;
+  expect(download.suggestedFilename()).toBe("joyverse-scene-manifest.json");
+});
