@@ -5,6 +5,7 @@ import net from "node:net";
 
 const TOKEN = "test-only-token-with-at-least-32-characters";
 const WORKER_TOKEN = "test-worker-token-with-at-least-32-characters";
+const CHATGPT_TOKEN = "test-chatgpt-dispatch-token-with-at-least-32-characters";
 let child;
 let childOutput = "";
 let baseUrl;
@@ -19,7 +20,7 @@ before(async () => {
     env: {
       ...process.env, NODE_ENV: "test", JOYVERSE_TEST_MEMORY_STORE: "1",
       PORT: String(port), MCP_ACCESS_TOKEN: TOKEN,
-      HERMES_WORKER_TOKEN: WORKER_TOKEN, JOYVERSE_STUDIO_TOKEN: "test-studio-token-with-at-least-32-characters", MACRODROID_WEBHOOK_URL: ""
+      HERMES_WORKER_TOKEN: WORKER_TOKEN, JOYVERSE_STUDIO_TOKEN: "test-studio-token-with-at-least-32-characters", CHATGPT_DISPATCH_TOKEN: CHATGPT_TOKEN, MACRODROID_WEBHOOK_URL: ""
     },
     stdio: ["ignore", "pipe", "pipe"]
   });
@@ -84,6 +85,27 @@ test("root serves the Arabic status dashboard without exposing the access token"
   assert.match(html, /لوحة حالة JoyVerse/);
   assert.match(html, /Authorization/);
   assert.doesNotMatch(html, new RegExp(TOKEN));
+});
+
+test("ChatGPT dispatch relay accepts valid text-only tasks and persists them in the queue", async () => {
+  const response = await fetch(`${baseUrl}/api/hermes/dispatch-chatgpt`, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      authorization: `Bearer ${CHATGPT_TOKEN}`
+    },
+    body: JSON.stringify({
+      scene_id: "chatgpt-relay-test",
+      prompt: "Reply with a short diagnostic acknowledgement.",
+      toolsets: ["web"]
+    })
+  });
+  assert.equal(response.status, 202);
+  const accepted = await response.json();
+  assert.equal(accepted.accepted, true);
+  assert.equal(accepted.scene_id, "chatgpt-relay-test");
+  assert.equal(accepted.status, "queued");
+  assert.match(accepted.task_id, /^hermes_[0-9a-f-]{36}$/);
 });
 
 test("health endpoint remains available and reports runtime metadata", async () => {
