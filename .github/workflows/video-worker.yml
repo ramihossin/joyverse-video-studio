@@ -27,28 +27,31 @@ jobs:
       - name: Validate required worker secrets
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          OBJECT_STORAGE_BUCKET: ${{ secrets.OBJECT_STORAGE_BUCKET }}
-          OBJECT_STORAGE_ENDPOINT: ${{ secrets.OBJECT_STORAGE_ENDPOINT }}
-          OBJECT_STORAGE_ACCESS_KEY_ID: ${{ secrets.OBJECT_STORAGE_ACCESS_KEY_ID }}
-          OBJECT_STORAGE_SECRET_ACCESS_KEY: ${{ secrets.OBJECT_STORAGE_SECRET_ACCESS_KEY }}
+          OBJECT_STORAGE_BUCKET: ${{ secrets.OBJECT_STORAGE_BUCKET || secrets.R2_BUCKET }}
+          OBJECT_STORAGE_ENDPOINT: ${{ secrets.OBJECT_STORAGE_ENDPOINT || secrets.R2_ENDPOINT }}
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          OBJECT_STORAGE_ACCESS_KEY_ID: ${{ secrets.OBJECT_STORAGE_ACCESS_KEY_ID || secrets.R2_ACCESS_KEY_ID }}
+          OBJECT_STORAGE_SECRET_ACCESS_KEY: ${{ secrets.OBJECT_STORAGE_SECRET_ACCESS_KEY || secrets.R2_SECRET_ACCESS_KEY }}
         run: |
           set -eu
-          for name in DATABASE_URL OBJECT_STORAGE_BUCKET OBJECT_STORAGE_ENDPOINT OBJECT_STORAGE_ACCESS_KEY_ID OBJECT_STORAGE_SECRET_ACCESS_KEY; do
-            eval "value=\${$name}"
-            if [ -z "$value" ]; then
-              echo "::error::Missing repository Actions secret: $name"
-              exit 1
-            fi
-          done
+          : "${DATABASE_URL:?Missing repository Actions secret: DATABASE_URL}"
+          : "${OBJECT_STORAGE_BUCKET:?Missing OBJECT_STORAGE_BUCKET or R2_BUCKET}"
+          : "${OBJECT_STORAGE_ACCESS_KEY_ID:?Missing object-storage access key}"
+          : "${OBJECT_STORAGE_SECRET_ACCESS_KEY:?Missing object-storage secret key}"
+          if [ -z "$OBJECT_STORAGE_ENDPOINT" ] && [ -z "$R2_ACCOUNT_ID" ]; then
+            echo "::error::Set OBJECT_STORAGE_ENDPOINT, R2_ENDPOINT, or R2_ACCOUNT_ID."
+            exit 1
+          fi
       - name: Install dependencies
         run: npm ci
       - name: Process one queued video task
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          OBJECT_STORAGE_BUCKET: ${{ secrets.OBJECT_STORAGE_BUCKET }}
-          OBJECT_STORAGE_REGION: ${{ secrets.OBJECT_STORAGE_REGION }}
-          OBJECT_STORAGE_ENDPOINT: ${{ secrets.OBJECT_STORAGE_ENDPOINT }}
-          OBJECT_STORAGE_ACCESS_KEY_ID: ${{ secrets.OBJECT_STORAGE_ACCESS_KEY_ID }}
-          OBJECT_STORAGE_SECRET_ACCESS_KEY: ${{ secrets.OBJECT_STORAGE_SECRET_ACCESS_KEY }}
+          OBJECT_STORAGE_BUCKET: ${{ secrets.OBJECT_STORAGE_BUCKET || secrets.R2_BUCKET }}
+          OBJECT_STORAGE_REGION: ${{ secrets.OBJECT_STORAGE_REGION || secrets.R2_REGION }}
+          OBJECT_STORAGE_ENDPOINT: ${{ secrets.OBJECT_STORAGE_ENDPOINT || secrets.R2_ENDPOINT }}
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          OBJECT_STORAGE_ACCESS_KEY_ID: ${{ secrets.OBJECT_STORAGE_ACCESS_KEY_ID || secrets.R2_ACCESS_KEY_ID }}
+          OBJECT_STORAGE_SECRET_ACCESS_KEY: ${{ secrets.OBJECT_STORAGE_SECRET_ACCESS_KEY || secrets.R2_SECRET_ACCESS_KEY }}
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: npm run worker:once
