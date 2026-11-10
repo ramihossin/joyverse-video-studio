@@ -66,7 +66,7 @@ export function createObjectStorage({
           body.byteLength === 0 || body.byteLength > limit) {
         throw new Error(`Object body must be a non-empty buffer up to ${limit} bytes.`);
       }
-      if (typeof contentType !== "string" || contentType.length > 120 || /[\\r\\n]/.test(contentType)) {
+      if (typeof contentType !== "string" || contentType.length > 120 || /[\r\n]/.test(contentType)) {
         throw new Error("Invalid content type.");
       }
       if (useDatabase) {
@@ -105,7 +105,7 @@ export function createObjectStorage({
       if (!Number.isInteger(expiresIn) || expiresIn < 60 || expiresIn > 3600) {
         throw new Error("Upload URL expiry must be from 60 to 3600 seconds.");
       }
-      if (typeof contentType !== "string" || contentType.length > 120 || /[\\r\\n]/.test(contentType)) {
+      if (typeof contentType !== "string" || contentType.length > 120 || /[\r\n]/.test(contentType)) {
         throw new Error("Invalid content type.");
       }
       const commands = await getCommands();
