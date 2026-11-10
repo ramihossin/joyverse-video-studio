@@ -21,7 +21,7 @@ Configure these values as private environment variables on the bridge host:
 - `HERMES_WORKER_TOKEN`: separate secret used only by the background worker and internal worker endpoints.
 - `JOYVERSE_STUDIO_TOKEN`: separate strong secret entered into the Studio UI; do not commit it.
 - `DATABASE_URL`: PostgreSQL connection string for durable tasks.
-- `OBJECT_STORAGE_BUCKET`, `OBJECT_STORAGE_REGION` (optional), `OBJECT_STORAGE_ENDPOINT`, `OBJECT_STORAGE_ACCESS_KEY_ID`, and `OBJECT_STORAGE_SECRET_ACCESS_KEY`; `OBJECT_STORAGE_FORCE_PATH_STYLE` is optional.
+- `OBJECT_STORAGE_BUCKET`, `OBJECT_STORAGE_REGION` (optional), `OBJECT_STORAGE_ENDPOINT`, `OBJECT_STORAGE_ACCESS_KEY_ID`, and `OBJECT_STORAGE_SECRET_ACCESS_KEY`; `OBJECT_STORAGE_FORCE_PATH_STYLE` is optional. Cloudflare R2 aliases are also accepted: `R2_BUCKET`, `R2_ENDPOINT` or `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, and optional `R2_REGION`.
 - `HF_TOKEN` (optional): Hugging Face token for the server-side LTX provider.
 - `STUDIO_ALLOWED_ORIGINS` (optional): comma-separated exact HTTPS origins. Defaults include the project GitHub Pages and Render static-site origins.
 
