@@ -1,6 +1,7 @@
 import { parseManifest, serializeManifest } from "./manifest.js";
 
 const STORAGE_KEY = "joyverse-scene-queue-v1";
+const MAX_MANIFEST_FILE_BYTES = 30 * 1024 * 1024;
 const fileInput = document.getElementById("manifest-file");
 const importButton = document.getElementById("import-manifest");
 const exportButton = document.getElementById("export-manifest");
@@ -22,7 +23,9 @@ fileInput.addEventListener("change", async () => {
   const file = fileInput.files?.[0];
   if (!file) return;
   try {
-    if (file.size > 1024 * 1024) throw new Error("حجم ملف الإنتاج يجب ألا يتجاوز 1 ميغابايت.");
+    if (file.size > MAX_MANIFEST_FILE_BYTES) {
+      throw new Error("حجم ملف الإنتاج يجب ألا يتجاوز 30 ميغابايت.");
+    }
     const imported = parseManifest(JSON.parse(await file.text()));
     const current = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
     if (!Array.isArray(current)) throw new Error("قائمة المشاهد المحلية تالفة؛ صدّر نسخة منها قبل المتابعة.");
