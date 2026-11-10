@@ -52,3 +52,8 @@ The Studio's default bridge URL is `https://joyverse-mcp-bridge.onrender.com`. E
 - Tests: `npm test`.
 - Browser acceptance tests: `npx playwright test`.
 - GitHub Pages deployment is configured in `.github/workflows/pages.yml`.
+
+
+## GitHub Actions worker option
+
+A scheduled one-task worker can run without keeping the Android browser open. Configure repository Actions secrets named `DATABASE_URL`, `OBJECT_STORAGE_BUCKET`, `OBJECT_STORAGE_ENDPOINT`, `OBJECT_STORAGE_ACCESS_KEY_ID`, and `OBJECT_STORAGE_SECRET_ACCESS_KEY`; optionally add `OBJECT_STORAGE_REGION` and `HF_TOKEN`. The scheduled workflow uses the free GitHub-hosted runner allowance and processes one queued scene per run. It is not a permanent always-on server: GitHub scheduling is best-effort, jobs have a maximum runtime, and provider outages or a job timeout can leave a task failed rather than safely resumable. It does not bypass LTX provider limits or guarantee free GPU capacity.
