@@ -36,6 +36,24 @@ test("video worker stores the generated MP4 and commits its durable key", async 
   assert.equal(finishes[0][3].storage_key, saved.key);
 });
 
+test("video worker renews its task lease during long provider execution", async () => {
+  const checkpoints = [];
+  const result = await processClaimedVideoTask(baseTask, {
+    heartbeatIntervalMs: 1000,
+    provider: { generate: async ({ onProgress }) => {
+      await new Promise(resolve => setTimeout(resolve, 1100));
+      await onProgress({ stage: "generating" });
+      return { buffer: Buffer.from("mp4"), contentType: "video/mp4" };
+    } },
+    storage: { put: async (key, buffer) => ({ key, size: buffer.length, content_type: "video/mp4" }) },
+    checkpoint: async (_id, _token, value) => { checkpoints.push(value); return { accepted: true }; },
+    finish: async () => ({ status: "completed" })
+  });
+  assert.equal(result.status, "completed");
+  assert.ok(checkpoints.filter(item => item.stage === "submitting").length >= 2,
+    "lease should be renewed while provider generation is pending");
+});
+
 test("video worker loads a stored reference image and passes it to LTX", async () => {
   const expected = Buffer.from("reference-image-bytes");
   let received;
