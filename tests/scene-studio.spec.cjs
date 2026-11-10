@@ -99,3 +99,25 @@ test("vendored FFmpeg wrapper modules load from the Studio origin", async ({ pag
     expect(status, path + " should be served locally").toBe(200);
   }
 });
+
+
+test("agent manifest import accepts files larger than 1 MB", async ({ page }) => {
+  await page.goto("/");
+  const manifest = JSON.stringify({
+    schema: "joyverse-scene-manifest",
+    version: 1,
+    scenes: [{ title: "Large file scene", prompt: "A friendly bear waves." }]
+  });
+  const padding = " ".repeat(1024 * 1024 + 128);
+  const buffer = Buffer.from(manifest + padding);
+  expect(buffer.byteLength).toBeGreaterThan(1024 * 1024);
+  expect(buffer.byteLength).toBeLessThan(30 * 1024 * 1024);
+
+  await page.locator("#manifest-file").setInputFiles({
+    name: "joyverse-scenes-large.json",
+    mimeType: "application/json",
+    buffer
+  });
+  await expect(page.locator("#scene-list")).toContainText("Large file scene");
+  await expect(page.locator("#scene-list")).toContainText("بانتظار الدور");
+});
