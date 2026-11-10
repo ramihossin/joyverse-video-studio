@@ -33,13 +33,14 @@
 
         <div class="section-heading image-heading">
           <span class="step">02</span>
-          <div><h2>الصورة المرجعية <span class="optional">اختياري</span></h2><p>يمكنك إرفاق مرجع بصري للمشهد.</p></div>
+          <div><h2>الصور المرجعية <span class="optional">اختياري</span></h2><p>يمكنك اختيار حتى 6 صور معاً، مثل صور الشخصيات والبيئة.</p></div>
         </div>
         <label class="upload" for="image">
-          <span class="upload-icon">＋</span><strong id="upload-title">اختر صورة مرجعية</strong>
-          <small id="upload-help">PNG أو JPG أو WEBP</small><img id="preview" alt="معاينة الصورة المرجعية" hidden>
+          <span class="upload-icon">＋</span><strong id="upload-title">اختر صوراً مرجعية متعددة</strong>
+          <small id="upload-help">PNG أو JPG أو WEBP — حتى 6 صور</small>
+          <div id="preview-list" class="reference-previews" hidden></div>
         </label>
-        <input id="image" name="image" type="file" accept="image/png,image/jpeg,image/webp">
+        <input id="image" name="image" type="file" accept="image/png,image/jpeg,image/webp" multiple>
 
         <div class="section-heading settings-heading">
           <span class="step">03</span>
@@ -64,7 +65,7 @@
         <p class="token-note">يُستخدم داخل هذه الجلسة فقط ولا يُحفظ في قائمة المشاهد. قد يساعد في ربط طلباتك بحسابك، لكنه لا يضمن تجاوز حصص ZeroGPU أو الحصول على GPU.</p>
         <label class="toggle-row"><input id="random-seed" type="checkbox" checked><span>Seed عشوائي لكل مشهد</span></label>
         <label class="toggle-row"><input id="enhance-prompt" type="checkbox" checked><span>تحسين الوصف تلقائياً</span></label>
-        <label class="consent"><input id="consent" type="checkbox"><span>أوافق على إرسال الوصف والصورة الاختيارية إلى مزود النموذج لتوليد الفيديو.</span></label>
+        <label class="consent"><input id="consent" type="checkbox"><span>أوافق على إرسال الوصف والصور المرجعية الاختيارية إلى مزود النموذج لتوليد الفيديو.</span></label>
         <button id="add-scene" type="submit"><span>＋ إضافة إلى قائمة المشاهد</span></button>
       </form>
     </section>
