@@ -74,7 +74,8 @@ export async function claimNextTask() {
        WHERE status = 'queued'
           OR (status = 'claimed' AND claimed_at < NOW() - INTERVAL '5 minutes')
        ORDER BY created_at
-       FOR UPDATE SKIP LOCKED LIMIT 1
+       LIMIT 1
+       FOR UPDATE SKIP LOCKED
     `);
     if (!rows.length) {
       await client.query("COMMIT");
