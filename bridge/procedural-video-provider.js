@@ -33,9 +33,6 @@ function buildFilter(palette, includeTitle) {
       "r='if(lt(pow(X-(W*(0.5+0.28*sin(T*1.7))),2)+pow(Y-(H*(0.48+0.18*cos(T*1.3))),2),pow(min(W,H)*0.16,2))," + red + ",12+18*Y/H)':" +
       "g='if(lt(pow(X-(W*(0.5+0.28*sin(T*1.7))),2)+pow(Y-(H*(0.48+0.18*cos(T*1.3))),2),pow(min(W,H)*0.16,2))," + green + ",18+18*Y/H)':" +
       "b='if(lt(pow(X-(W*(0.5+0.28*sin(T*1.7))),2)+pow(Y-(H*(0.48+0.18*cos(T*1.3))),2),pow(min(W,H)*0.16,2))," + blue + ",55+35*Y/H)'",
-    "drawbox=x='W*0.08+W*0.04*sin(T)':y='H*0.18':w='W*0.018':h='H*0.018':color=white@0.8:t=fill",
-    "drawbox=x='W*0.82-W*0.04*sin(T*1.3)':y='H*0.28':w='W*0.014':h='H*0.014':color=0xffff88@0.9:t=fill",
-    "drawbox=x='W*0.16':y='H*0.76+H*0.015*sin(T*2)':w='W*0.022':h='H*0.022':color=0xffaadd@0.85:t=fill",
     "format=yuv420p"
   ];
   if (includeTitle) {
@@ -110,8 +107,7 @@ export function createProceduralVideoProvider({
           filter = "scale=" + WIDTH + ":" + HEIGHT +
             ":force_original_aspect_ratio=increase,crop=" + WIDTH + ":" + HEIGHT +
             ",zoompan=z='min(zoom+0.0012,1.10)':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=1:s=" +
-            WIDTH + "x" + HEIGHT + ":fps=" + FPS +
-            ",drawbox=x='W*0.06':y='H*0.08':w='W*0.88':h='4':color=white@0.55:t=fill";
+            WIDTH + "x" + HEIGHT + ":fps=" + FPS;
         } else {
           const palette = paletteFor(prompt);
           args.push("-f", "lavfi", "-i",
