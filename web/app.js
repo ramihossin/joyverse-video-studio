@@ -95,7 +95,7 @@ function dimensionsFor(aspect) {
   return { width: 832, height: 1472 };
 }
 function statusLabel(status) {
-  return ({ waiting: "محلي — بانتظار الإرسال", queued: "محفوظ على الخادم — بانتظار العامل",
+  return ({ waiting: "بانتظار الدور — لم يُرسل بعد", queued: "محفوظ على الخادم — بانتظار العامل",
     running: "العامل يولّد المشهد", done: "مكتمل ومحفوظ سحابياً", failed: "تعذّر" })[status] || status;
 }
 function renderQueue() {
@@ -351,7 +351,7 @@ $("manifest-file").addEventListener("change", async event => {
 $("export-manifest").addEventListener("click", () => {
   const blob = new Blob([serializeManifest(queue)], { type: "application/json" });
   const url = URL.createObjectURL(blob);
-  const link = document.createElement("a"); link.href = url; link.download = "joyverse-scenes.json"; link.click();
+  const link = document.createElement("a"); link.href = url; link.download = "joyverse-scene-manifest.json"; link.click();
   URL.revokeObjectURL(url);
 });
 bridgeInput.addEventListener("change", () => localStorage.setItem("joyverse-bridge-url", bridgeInput.value.trim()));
