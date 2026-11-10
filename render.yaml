@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: joyverse-mcp-bridge
+    runtime: node
+    plan: free
+    region: frankfurt
+    repo: https://github.com/ramihossin/joyverse-video-studio
+    branch: main
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: joyverse-video-studio-db
+          property: connectionString
+
+databases:
+  - name: joyverse-video-studio-db
+    databaseName: joyverse_video_studio_db
+    user: joyverse_video_studio_db_user
+    plan: free
+    region: frankfurt
+    postgresMajorVersion: "18"
