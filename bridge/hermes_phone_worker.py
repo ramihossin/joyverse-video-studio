@@ -155,7 +155,7 @@ def main():
                     final = current
                     break
                 # Heartbeat prevents another worker from reclaiming a live task.
-                save_checkpoint(task_id, worker_token, stage="generating",
+                save_checkpoint(task_id, worker_token, claim_token, stage="generating",
                                 provider="local-hermes", provider_job_id=local_id)
                 time.sleep(3)
 
@@ -163,7 +163,7 @@ def main():
                 # Do not mark a still-running generation as failed merely because
                 # this polling window elapsed. Keep its provider task ID checkpointed;
                 # the queue lease will expire if this worker process later stops.
-                save_checkpoint(task_id, worker_token, stage="generating",
+                save_checkpoint(task_id, worker_token, claim_token, stage="generating",
                                 provider="local-hermes", provider_job_id=local_id)
                 print(f"Task {task_id} is still running; durable checkpoint retained.")
                 continue
