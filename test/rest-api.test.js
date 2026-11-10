@@ -4,6 +4,7 @@ import { spawn } from "node:child_process";
 import net from "node:net";
 
 const TOKEN = "test-only-token-with-at-least-32-characters";
+const WORKER_TOKEN = "test-worker-token-with-at-least-32-characters";
 let child;
 let baseUrl;
 
@@ -14,7 +15,11 @@ before(async () => {
   await new Promise(resolve => probe.close(resolve));
   baseUrl = `http://127.0.0.1:${port}`;
   child = spawn(process.execPath, ["bridge/server.js"], {
-    env: { ...process.env, PORT: String(port), MCP_ACCESS_TOKEN: TOKEN, MACRODROID_WEBHOOK_URL: "" },
+    env: {
+      ...process.env, NODE_ENV: "test", JOYVERSE_TEST_MEMORY_STORE: "1",
+      PORT: String(port), MCP_ACCESS_TOKEN: TOKEN,
+      HERMES_WORKER_TOKEN: WORKER_TOKEN, MACRODROID_WEBHOOK_URL: ""
+    },
     stdio: "ignore"
   });
   let ready = false;
@@ -103,4 +108,43 @@ test("authenticated status reports real service metadata without exposing secret
   assert.equal(status.last_command, null);
   assert.equal(status.last_device_result, null);
   assert.equal(JSON.stringify(status).includes(TOKEN), false);
+});
+
+
+test("Hermes task survives dispatch, claim, completion, and status retrieval", async () => {
+  const headers = {
+    "content-type": "application/json",
+    authorization: `Bearer ${WORKER_TOKEN}`
+  };
+  const dispatch = await fetch(`${baseUrl}/api/hermes/dispatch`, {
+    method: "POST", headers,
+    body: JSON.stringify({
+      scene_id: "scene-test", prompt: "Return a test result.",
+      toolsets: ["web"], confirm_video_generation: false
+    })
+  });
+  assert.equal(dispatch.status, 202);
+  const accepted = await dispatch.json();
+  assert.equal(accepted.status, "queued");
+
+  const claim = await fetch(`${baseUrl}/api/hermes/next`, { headers });
+  assert.equal(claim.status, 200);
+  const task = await claim.json();
+  assert.equal(task.task_id, accepted.task_id);
+  assert.equal(task.scene_id, "scene-test");
+
+  const complete = await fetch(`${baseUrl}/api/hermes/result`, {
+    method: "POST", headers,
+    body: JSON.stringify({
+      task_id: accepted.task_id, status: "completed",
+      result: { message: "TEST_OK" }
+    })
+  });
+  assert.equal(complete.status, 200);
+
+  const status = await fetch(`${baseUrl}/api/hermes/tasks/${encodeURIComponent(accepted.task_id)}`, { headers });
+  assert.equal(status.status, 200);
+  const finalState = await status.json();
+  assert.equal(finalState.status, "completed");
+  assert.deepEqual(finalState.result, { message: "TEST_OK" });
 });

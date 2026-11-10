@@ -2,7 +2,7 @@ name: Bridge tests
 
 on:
   pull_request:
-    branches: [main]
+    branches: [main, feat/durable-server-task-queue]
   push:
     branches: [main]
 
