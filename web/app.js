@@ -272,7 +272,8 @@ async function assembleCompletedScenes() {
     const blob = await assembleVideos(completed, $("aspect").value, ({ stage, progress }) => {
       const percent = Math.round((Number(progress) || 0) * 100);
       const label = stage === "download" ? "تنزيل المقاطع" : stage === "load" ? "تحميل محرك الدمج" : "دمج وترميز الفيديو";
-      setStatus(label + " · " + percent + "%", true);
+      const progressText = stage === "download" || percent > 0 ? " · " + percent + "%" : "…";
+      setStatus(label + progressText, true);
     });
     if (assemblyUrl) URL.revokeObjectURL(assemblyUrl);
     assemblyUrl = URL.createObjectURL(blob);
