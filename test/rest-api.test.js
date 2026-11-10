@@ -324,3 +324,20 @@ test("video generation dispatch persists validated LTX settings for the worker",
   });
   assert.equal(complete.status, 200);
 });
+
+test("reference image upload requires worker authentication and rejects invalid image bytes", async () => {
+  const taskId = "hermes_123e4567-e89b-12d3-a456-426614174000";
+  const unauthorized = await fetch(`${baseUrl}/api/hermes/reference/${taskId}`, {
+    method: "POST", headers: { "content-type": "image/png" },
+    body: Buffer.from([137,80,78,71,13,10,26,10,0,0,0,0])
+  });
+  assert.equal(unauthorized.status, 401);
+
+  const invalid = await fetch(`${baseUrl}/api/hermes/reference/${taskId}`, {
+    method: "POST",
+    headers: { "content-type": "image/png", authorization: `Bearer ${WORKER_TOKEN}` },
+    body: Buffer.from("not-an-image")
+  });
+  assert.equal(invalid.status, 415);
+  assert.equal((await invalid.json()).error, "unsupported_image_format");
+});
