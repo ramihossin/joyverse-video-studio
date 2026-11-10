@@ -2,7 +2,7 @@ import { setTimeout as delay } from "node:timers/promises";
 import {
   initializeTaskStore, claimNextVideoTask, updateTaskCheckpoint, finishTask
 } from "./task-store.js";
-import { createLtxProvider } from "./ltx-provider.js";
+import { createProceduralVideoProvider } from "./procedural-video-provider.js";
 import { createObjectStorage } from "./object-storage.js";
 
 function safeSegment(value) {
@@ -32,15 +32,7 @@ export async function processClaimedVideoTask(task, {
     throw new Error("Claim token is missing or invalid.");
   }
 
-  // Gradio's event iterator is process-local. If a previous attempt died after
-  // submission, do not silently submit a second generation and consume more quota.
-  if (task.attempts > 1 && task.provider === "ltx-gradio" &&
-      ["submitting", "generating"].includes(task.stage) && !task.provider_job_id) {
-    await finish(task.task_id, claimToken, "failed", null,
-      "Previous LTX submission has no durable provider job ID. Automatic resubmission was blocked to avoid duplicate generation.");
-    return { status: "failed", reason: "provider_resume_unavailable" };
-  }
-
+  const providerName = provider.name || "custom-video-provider";
   let heartbeatTimer = null;
   let heartbeatChain = Promise.resolve();
   let heartbeatError = null;
@@ -48,7 +40,7 @@ export async function processClaimedVideoTask(task, {
   const renewLease = () => {
     heartbeatChain = heartbeatChain.then(async () => {
       const renewed = await checkpoint(task.task_id, claimToken, {
-        stage: currentStage, provider: "ltx-gradio"
+        stage: currentStage, provider: providerName
       });
       if (!renewed) throw new Error("Video worker lost ownership of the task lease.");
     }).catch(error => { heartbeatError = error; });
@@ -56,9 +48,9 @@ export async function processClaimedVideoTask(task, {
   };
   try {
     const started = await checkpoint(task.task_id, claimToken, {
-      stage: "submitting", provider: "ltx-gradio"
+      stage: "submitting", provider: providerName
     });
-    if (!started) throw new Error("Task claim expired before LTX submission.");
+    if (!started) throw new Error("Task claim expired before video generation started.");
     heartbeatTimer = setInterval(() => { void renewLease(); }, heartbeatIntervalMs);
     heartbeatTimer.unref?.();
 
@@ -87,7 +79,7 @@ export async function processClaimedVideoTask(task, {
     await heartbeatChain;
     if (heartbeatError) throw heartbeatError;
     const savedCheckpoint = await checkpoint(task.task_id, claimToken, {
-      stage: "completed", provider: "ltx-gradio", storage_key: saved.key
+      stage: "completed", provider: providerName, storage_key: saved.key
     });
     if (!savedCheckpoint) throw new Error("Task claim expired before the stored video could be committed.");
     const completed = await finish(task.task_id, claimToken, "completed", {
@@ -107,7 +99,7 @@ export async function processClaimedVideoTask(task, {
 }
 
 export function createVideoWorker({
-  provider = createLtxProvider(),
+  provider = createProceduralVideoProvider(),
   storage = createObjectStorage(),
   claim = claimNextVideoTask,
   processTask = processClaimedVideoTask,
@@ -127,18 +119,18 @@ export function createVideoWorker({
     },
     async run() {
       await initializeTaskStore();
-      logger.info?.("JoyVerse LTX worker started.");
+      logger.info?.("JoyVerse procedural FFmpeg video worker started.");
       while (!stopping) {
         try {
           const result = await this.runOnce();
           if (result.status === "idle") await delay(pollMs);
-          else logger.info?.("Video task processed:", result.status, result.storage_key || "");
+          else logger.info?.("Video task processed:", result.status, result.storage_key || result.error || "");
         } catch (error) {
           logger.error?.("Video worker error:", String(error?.message || error).slice(0, 300));
           await delay(pollMs);
         }
       }
-      logger.info?.("JoyVerse LTX worker stopped.");
+      logger.info?.("JoyVerse procedural FFmpeg video worker stopped.");
     }
   });
 }
