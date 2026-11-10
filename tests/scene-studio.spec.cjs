@@ -115,27 +115,42 @@ test("Studio dispatches a reference-backed server task, assembles it, and restor
   const taskId = "hermes_123e4567-e89b-12d3-a456-426614174000";
   const finalId = "123e4567-e89b-12d3-a456-426614174001";
 
-  await page.route("https://bridge.test/api/hermes/reference-upload", async route => {
-    expect(route.request().headers().authorization).toBe("Bearer studio-test-token-with-32-characters");
-    await route.fulfill({ status: 201, contentType: "application/json",
-      body: JSON.stringify({ reference_image_key: "references/pending/123e4567-e89b-12d3-a456-426614174002.png" }) });
-  });
-  await page.route("https://bridge.test/api/hermes/dispatch", async route => {
-    dispatchPayload = route.request().postDataJSON();
-    await route.fulfill({ status: 202, contentType: "application/json",
-      body: JSON.stringify({ accepted: true, task_id: taskId, status: "queued" }) });
-  });
-  await page.route("https://bridge.test/api/hermes/tasks/" + taskId, async route => {
-    await route.fulfill({ status: 200, contentType: "application/json",
-      body: JSON.stringify({ task_id: taskId, status: "completed", storage_key: "jobs/task/scene.mp4", result: { storage_key: "jobs/task/scene.mp4" } }) });
-  });
-  await page.route("https://bridge.test/api/hermes/assemble", async route => {
-    assemblyPayload = route.request().postDataJSON();
-    await route.fulfill({ status: 201, contentType: "application/json",
-      body: JSON.stringify({ status: "completed", final_id: finalId, scene_count: 1 }) });
-  });
-  await page.route("https://bridge.test/api/hermes/final/" + finalId, async route => {
-    await route.fulfill({ status: 200, contentType: "video/mp4", body: Buffer.from("fake-mp4-final") });
+  await page.route("https://bridge.test/**", async route => {
+    const request = route.request();
+    const origin = request.headers().origin || "*";
+    const cors = {
+      "Access-Control-Allow-Origin": origin,
+      "Access-Control-Allow-Headers": "Authorization, Content-Type",
+      "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+      "Vary": "Origin"
+    };
+    if (request.method() === "OPTIONS") {
+      return route.fulfill({ status: 204, headers: cors });
+    }
+    const path = new URL(request.url()).pathname;
+    if (path === "/api/hermes/reference-upload") {
+      expect(request.headers().authorization).toBe("Bearer studio-test-token-with-32-characters");
+      return route.fulfill({ status: 201, headers: cors, contentType: "application/json",
+        body: JSON.stringify({ reference_image_key: "references/pending/123e4567-e89b-12d3-a456-426614174002.png" }) });
+    }
+    if (path === "/api/hermes/dispatch") {
+      dispatchPayload = request.postDataJSON();
+      return route.fulfill({ status: 202, headers: cors, contentType: "application/json",
+        body: JSON.stringify({ accepted: true, task_id: taskId, status: "queued" }) });
+    }
+    if (path === "/api/hermes/tasks/" + taskId) {
+      return route.fulfill({ status: 200, headers: cors, contentType: "application/json",
+        body: JSON.stringify({ task_id: taskId, status: "completed", storage_key: "jobs/task/scene.mp4", result: { storage_key: "jobs/task/scene.mp4" } }) });
+    }
+    if (path === "/api/hermes/assemble") {
+      assemblyPayload = request.postDataJSON();
+      return route.fulfill({ status: 201, headers: cors, contentType: "application/json",
+        body: JSON.stringify({ status: "completed", final_id: finalId, scene_count: 1 }) });
+    }
+    if (path === "/api/hermes/final/" + finalId) {
+      return route.fulfill({ status: 200, headers: { ...cors, "Content-Type": "video/mp4" }, body: Buffer.from("fake-mp4-final") });
+    }
+    return route.fulfill({ status: 404, headers: cors, contentType: "application/json", body: JSON.stringify({ error: "not_found" }) });
   });
 
   await page.goto("/");
