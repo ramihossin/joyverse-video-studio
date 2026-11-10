@@ -3,9 +3,9 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { spawn as nodeSpawn } from "node:child_process";
 
-const WIDTH = 480;
-const HEIGHT = 854;
-const FPS = 24;
+const WIDTH = 360;
+const HEIGHT = 640;
+const FPS = 15;
 const MAX_OUTPUT_BYTES = 45 * 1024 * 1024;
 
 function detectImageExtension(buffer) {
@@ -30,9 +30,9 @@ function buildFilter(palette, includeTitle) {
   const sphere = [
     "format=rgb24",
     "geq=" +
-      "r='if(lt(pow(X-(W*(0.5+0.28*sin(T*1.7))),2)+pow(Y-(H*(0.48+0.18*cos(T*1.3))),2),pow(min(W,H)*0.16,2))," + red + ",12+18*Y/H)':" +
-      "g='if(lt(pow(X-(W*(0.5+0.28*sin(T*1.7))),2)+pow(Y-(H*(0.48+0.18*cos(T*1.3))),2),pow(min(W,H)*0.16,2))," + green + ",18+18*Y/H)':" +
-      "b='if(lt(pow(X-(W*(0.5+0.28*sin(T*1.7))),2)+pow(Y-(H*(0.48+0.18*cos(T*1.3))),2),pow(min(W,H)*0.16,2))," + blue + ",55+35*Y/H)'",
+      "r='if(lt((X-(W*(0.5+0.28*sin(T*1.7))))*(X-(W*(0.5+0.28*sin(T*1.7))) )+(Y-(H*(0.48+0.18*cos(T*1.3))))*(Y-(H*(0.48+0.18*cos(T*1.3)))) ,(min(W,H)*0.16)*(min(W,H)*0.16))," + red + ",12+18*Y/H)':" +
+      "g='if(lt((X-(W*(0.5+0.28*sin(T*1.7))))*(X-(W*(0.5+0.28*sin(T*1.7))) )+(Y-(H*(0.48+0.18*cos(T*1.3))))*(Y-(H*(0.48+0.18*cos(T*1.3)))) ,(min(W,H)*0.16)*(min(W,H)*0.16))," + green + ",18+18*Y/H)':" +
+      "b='if(lt((X-(W*(0.5+0.28*sin(T*1.7))))*(X-(W*(0.5+0.28*sin(T*1.7))) )+(Y-(H*(0.48+0.18*cos(T*1.3))))*(Y-(H*(0.48+0.18*cos(T*1.3)))) ,(min(W,H)*0.16)*(min(W,H)*0.16))," + blue + ",55+35*Y/H)'",
     "format=yuv420p"
   ];
   if (includeTitle) {
