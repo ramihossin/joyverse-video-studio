@@ -132,6 +132,12 @@ test("Hermes task survives dispatch, claim, completion, and status retrieval", a
   const task = await claim.json();
   assert.equal(task.task_id, accepted.task_id);
   assert.equal(task.scene_id, "scene-test");
+  assert.equal(task.stage, "queued");
+  assert.equal(task.provider, null);
+  assert.equal(task.provider_job_id, null);
+  assert.equal(task.output_url, null);
+  assert.equal(task.storage_key, null);
+  assert.equal(task.attempts, 1);
 
   const checkpoint = await fetch(`${baseUrl}/api/hermes/checkpoint`, {
     method: "POST", headers,
