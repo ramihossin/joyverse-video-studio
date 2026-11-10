@@ -83,10 +83,11 @@ export async function enqueueTask(task) {
   const db = getTaskPool();
   await db.query(
     `INSERT INTO joyverse_tasks
-      (task_id, scene_id, prompt, toolsets, confirm_video_generation, video_options, status, created_at)
-     VALUES ($1,$2,$3,$4::jsonb,$5,$6::jsonb,'queued',$7)`,
+      (task_id, scene_id, prompt, toolsets, confirm_video_generation, video_options, reference_image_key, status, created_at)
+     VALUES ($1,$2,$3,$4::jsonb,$5,$6::jsonb,$7,'queued',$8)`,
     [task.task_id, task.scene_id, task.prompt, JSON.stringify(task.toolsets),
-      task.confirm_video_generation === true, JSON.stringify(task.video_options || {}), task.created_at || new Date().toISOString()]
+      task.confirm_video_generation === true, JSON.stringify(task.video_options || {}),
+      task.reference_image_key || null, task.created_at || new Date().toISOString()]
   );
   return getTask(task.task_id);
 }
