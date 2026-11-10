@@ -20,12 +20,17 @@ jobs:
         with:
           node-version: "22"
       - name: Check JavaScript syntax
-        run: node --input-type=module --check < web/app.js
+        run: |
+          node --input-type=module --check < web/app.js
+          node --input-type=module --check < web/manifest.js
+          node --input-type=module --check < web/automation.js
       - name: Verify static site files
         run: |
           test -s web/index.html
           test -s web/styles.css
           test -s web/app.js
+          test -s web/manifest.js
+          test -s web/automation.js
       - name: Install Playwright
         run: |
           npm install --no-save @playwright/test
