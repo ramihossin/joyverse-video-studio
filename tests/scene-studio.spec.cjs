@@ -121,3 +121,32 @@ test("agent manifest import accepts files larger than 1 MB", async ({ page }) =>
   await expect(page.locator("#scene-list")).toContainText("Large file scene");
   await expect(page.locator("#scene-list")).toContainText("بانتظار الدور");
 });
+
+
+test("local video import adds phone clips to the completed queue and enables assembly", async ({ page }) => {
+  await page.goto("/");
+  await expect(page.locator("#import-videos")).toBeVisible();
+  await page.locator("#video-files").setInputFiles([
+    { name: "clip-one.mp4", mimeType: "video/mp4", buffer: Buffer.from("fake-mp4-one") },
+    { name: "clip-two.mp4", mimeType: "video/mp4", buffer: Buffer.from("fake-mp4-two") }
+  ]);
+
+  await expect(page.locator("#scene-list")).toContainText("clip-one");
+  await expect(page.locator("#scene-list")).toContainText("clip-two");
+  await expect(page.locator("#scene-list")).toContainText("فيديو محلي محفوظ على الهاتف");
+  await expect(page.locator("#assemble-scenes")).toBeEnabled();
+
+  const storedCount = await page.evaluate(async () => {
+    const db = await new Promise((resolve, reject) => {
+      const request = indexedDB.open("joyverse-video-storage", 1);
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    return await new Promise((resolve, reject) => {
+      const request = db.transaction("clips", "readonly").objectStore("clips").count();
+      request.onsuccess = () => { db.close(); resolve(request.result); };
+      request.onerror = () => { db.close(); reject(request.error); };
+    });
+  });
+  expect(storedCount).toBe(2);
+});

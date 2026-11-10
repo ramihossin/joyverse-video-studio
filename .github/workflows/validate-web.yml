@@ -24,6 +24,7 @@ jobs:
           node --input-type=module --check < web/app.js
           node --input-type=module --check < web/manifest.js
           node --input-type=module --check < web/automation.js
+          node --input-type=module --check < web/video-storage.js
           node --input-type=module --check < web/assembler.js
           node --input-type=module --check < web/ffmpeg-cache.js
           node --check web/sw.js
@@ -34,6 +35,7 @@ jobs:
           test -s web/app.js
           test -s web/manifest.js
           test -s web/automation.js
+          test -s web/video-storage.js
           test -s web/assembler.js
           test -s web/ffmpeg-cache.js
           test -s web/sw.js
