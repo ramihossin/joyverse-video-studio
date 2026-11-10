@@ -285,6 +285,16 @@ test("video generation dispatch persists validated LTX settings for the worker",
   assert.equal(invalid.status, 400);
   assert.equal((await invalid.json()).error, "invalid_video_options");
 
+  const invalidNull = await fetch(`${baseUrl}/api/hermes/dispatch`, {
+    method: "POST", headers,
+    body: JSON.stringify({
+      scene_id: "scene-null-video", prompt: "A colorful train.",
+      toolsets: ["video_gen"], confirm_video_generation: true, video_options: null
+    })
+  });
+  assert.equal(invalidNull.status, 400);
+  assert.equal((await invalidNull.json()).error, "invalid_video_options");
+
   const dispatch = await fetch(`${baseUrl}/api/hermes/dispatch`, {
     method: "POST", headers,
     body: JSON.stringify({
