@@ -5,6 +5,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { z } from "zod";
 import { initializeTaskStore, enqueueTask, getTask, claimNextTask, finishTask, getQueueCounts, updateTaskCheckpoint } from "./task-store.js";
+import { normalizeVideoOptions } from "./video-job.js";
 
 const app = express();
 app.disable("x-powered-by");
@@ -131,7 +132,7 @@ function createMcpServer() {
       }
       return { content: [{ type: "text", text: JSON.stringify({
         task_id: task.task_id, scene_id: task.scene_id, status: task.status,
-        result: task.result, error: task.error,
+        video_options: task.video_options || {}, result: task.result, error: task.error,
         stage: task.stage, provider: task.provider,
         provider_job_id: task.provider_job_id, output_url: task.output_url,
         storage_key: task.storage_key, heartbeat_at: task.heartbeat_at,
@@ -319,7 +320,7 @@ app.get("/api/hermes/status-chatgpt/:taskId", async (req, res) => {
   if (!task) return res.status(404).json({ error: "task_not_found" });
   res.set("Cache-Control", "no-store");
   return res.json({ task_id: task.task_id, scene_id: task.scene_id, status: task.status,
-    result: task.result, error: task.error, stage: task.stage,
+    video_options: task.video_options || {}, result: task.result, error: task.error, stage: task.stage,
     provider: task.provider, provider_job_id: task.provider_job_id,
     output_url: task.output_url, storage_key: task.storage_key,
     heartbeat_at: task.heartbeat_at, attempts: task.attempts,
@@ -330,7 +331,7 @@ app.get("/api/hermes/status-chatgpt/:taskId", async (req, res) => {
 app.post("/api/hermes/dispatch", async (req, res) => {
   if (!HERMES_WORKER_TOKEN) return res.status(503).json({ error: "hermes_worker_token_not_configured" });
   if (!hermesWorkerAuthorized(req)) return res.status(401).json({ error: "unauthorized" });
-  const { scene_id, prompt, toolsets = ["web"], confirm_video_generation = false } = req.body ?? {};
+  const { scene_id, prompt, toolsets = ["web"], confirm_video_generation = false, video_options } = req.body ?? {};
   if (typeof scene_id !== "string" || !scene_id.trim() || scene_id.length > 100) {
     return res.status(400).json({ error: "invalid_scene_id" });
   }
@@ -348,10 +349,17 @@ app.post("/api/hermes/dispatch", async (req, res) => {
   if (confirm_video_generation === true && !selected.includes("video_gen")) {
     return res.status(400).json({ error: "confirmation_without_video_gen" });
   }
+  let normalizedVideoOptions = {};
+  if (selected.includes("video_gen")) {
+    try { normalizedVideoOptions = normalizeVideoOptions(video_options || {}); }
+    catch (error) { return res.status(400).json({ error: "invalid_video_options", message: error.message }); }
+  } else if (video_options !== undefined) {
+    return res.status(400).json({ error: "video_options_require_video_gen" });
+  }
   const taskId = "hermes_" + randomUUID();
   await enqueueTask({
     task_id: taskId, scene_id, prompt, toolsets: selected,
-    confirm_video_generation, status: "queued",
+    confirm_video_generation, video_options: normalizedVideoOptions, status: "queued",
     created_at: new Date().toISOString(), claimed_at: null,
     result: null, error: null
   });
@@ -368,6 +376,7 @@ app.get("/api/hermes/next", async (req, res) => {
     task_id: task.task_id, scene_id: task.scene_id,
     prompt: task.prompt, toolsets: task.toolsets,
     confirm_video_generation: task.confirm_video_generation,
+    video_options: task.video_options || {},
     // Checkpoint metadata is essential for restart-safe provider polling.
     stage: task.stage, provider: task.provider,
     provider_job_id: task.provider_job_id,
