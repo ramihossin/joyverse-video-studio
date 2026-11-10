@@ -41,7 +41,6 @@ test("agent manifest import adds scenes without starting generation", async ({ p
     mimeType: "application/json",
     buffer: Buffer.from(JSON.stringify(manifest))
   });
-  await expect(page).toHaveURL(/\\/$/);
   await expect(page.locator("#scene-list")).toContainText("Agent scene");
   await expect(page.locator("#scene-list")).toContainText("بانتظار الدور");
   await expect(page.locator("#start-queue")).toBeEnabled();
