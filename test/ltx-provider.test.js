@@ -14,6 +14,7 @@ test("LTX provider submits normalized options and downloads the returned video",
   let submitted;
   const provider = createLtxProvider({
     space: "test/space",
+    fileHandler: buffer => ({ testFile: buffer.toString() }),
     clientConnect: async (space, options) => {
       assert.equal(space, "test/space");
       assert.deepEqual(options.events, ["data", "status"]);
@@ -44,7 +45,7 @@ test("LTX provider submits normalized options and downloads the returned video",
   });
   assert.equal(submitted.endpoint, "/run");
   assert.equal(submitted.args[0], "A colorful train moves through a garden.");
-  assert.equal(submitted.args[1].__type, "gradio_file");
+  assert.deepEqual(submitted.args[1], { testFile: "image" });
   assert.equal(submitted.args[2], 832);
   assert.equal(submitted.args[3], 1472);
   assert.equal(submitted.args[4], 4);
