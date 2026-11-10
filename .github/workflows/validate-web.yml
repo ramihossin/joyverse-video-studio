@@ -22,7 +22,6 @@ jobs:
       - name: Check JavaScript syntax
         run: |
           node --input-type=module --check < web/app.js
-          node --input-type=module --check < web/app.js
           node --input-type=module --check < web/manifest.js
           node --input-type=module --check < web/automation.js
           node --input-type=module --check < web/assembler.js
