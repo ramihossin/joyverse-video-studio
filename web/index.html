@@ -75,6 +75,9 @@
         <div><h2>قائمة الإنتاج</h2><p>تُرسل المشاهد بالتتابع؛ لا يبدأ التالي قبل انتهاء الحالي.</p></div>
       </div>
       <div class="queue-actions">
+        <button id="import-manifest" class="secondary" type="button">استيراد قائمة وكيل</button>
+        <button id="export-manifest" class="secondary" type="button">تصدير المشاهد JSON</button>
+        <input id="manifest-file" type="file" accept="application/json,.json" hidden>
         <button id="start-queue" type="button">▶ تشغيل قائمة المشاهد</button>
         <button id="stop-queue" class="secondary" type="button" disabled>إيقاف بعد المشهد الحالي</button>
         <button id="clear-queue" class="secondary" type="button">مسح المكتمل</button>
@@ -101,5 +104,6 @@
     </footer>
   </main>
   <script type="module" src="./app.js"></script>
+  <script type="module" src="./automation.js"></script>
 </body>
 </html>
