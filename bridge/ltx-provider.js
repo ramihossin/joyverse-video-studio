@@ -31,7 +31,7 @@ function validateProviderUrl(value) {
 }
 
 export function createLtxProvider({
-  clientConnect = Client.connect,
+  clientConnect = Client.connect.bind(Client),
   fileHandler = handle_file,
   fetchImpl = fetch,
   space = process.env.LTX_SPACE || SPACE,
