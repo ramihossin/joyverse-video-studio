@@ -81,7 +81,7 @@ export async function assembleVideos(scenes, aspect, onProgress = () => {}) {
     onProgress({ stage: "encode", progress: 0 });
     const exitCode = await ffmpeg.exec([
       "-f", "concat", "-safe", "0", "-i", "concat.txt",
-      "-vf", \`scale=\${width}:\${height}:force_original_aspect_ratio=decrease,pad=\${width}:\${height}:(ow-iw)/2:(oh-ih)/2,setsar=1,fps=24\`,
+      "-vf", "scale=" + width + ":" + height + ":force_original_aspect_ratio=decrease,pad=" + width + ":" + height + ":(ow-iw)/2:(oh-ih)/2,setsar=1,fps=24",
       "-an", "-c:v", "libx264", "-preset", "ultrafast", "-crf", "25",
       "-movflags", "+faststart", "joyverse-final.mp4"
     ]);
