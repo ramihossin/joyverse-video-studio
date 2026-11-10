@@ -1,4 +1,5 @@
 import pg from "pg";
+import { randomUUID } from "node:crypto";
 
 const { Pool } = pg;
 let pool;
@@ -44,7 +45,8 @@ export async function initializeTaskStore() {
       output_url TEXT,
       storage_key TEXT,
       heartbeat_at TIMESTAMPTZ,
-      attempts INTEGER NOT NULL DEFAULT 0
+      attempts INTEGER NOT NULL DEFAULT 0,
+      claim_token TEXT
     );
     ALTER TABLE joyverse_tasks ADD COLUMN IF NOT EXISTS stage TEXT NOT NULL DEFAULT 'queued';
     ALTER TABLE joyverse_tasks ADD COLUMN IF NOT EXISTS provider TEXT;
@@ -53,6 +55,7 @@ export async function initializeTaskStore() {
     ALTER TABLE joyverse_tasks ADD COLUMN IF NOT EXISTS storage_key TEXT;
     ALTER TABLE joyverse_tasks ADD COLUMN IF NOT EXISTS heartbeat_at TIMESTAMPTZ;
     ALTER TABLE joyverse_tasks ADD COLUMN IF NOT EXISTS attempts INTEGER NOT NULL DEFAULT 0;
+    ALTER TABLE joyverse_tasks ADD COLUMN IF NOT EXISTS claim_token TEXT;
     CREATE INDEX IF NOT EXISTS joyverse_tasks_queue_idx
       ON joyverse_tasks (created_at) WHERE status = 'queued';
     CREATE INDEX IF NOT EXISTS joyverse_tasks_claim_idx
@@ -68,7 +71,7 @@ export async function enqueueTask(task) {
     testTasks.set(task.task_id, {
       ...task, toolsets: [...task.toolsets], status: "queued",
       stage: "queued", provider: null, provider_job_id: null,
-      output_url: null, storage_key: null, heartbeat_at: null, attempts: 0,
+      output_url: null, storage_key: null, heartbeat_at: null, attempts: 0, claim_token: null,
       created_at: task.created_at || new Date().toISOString()
     });
     return getTask(task.task_id);
@@ -99,7 +102,8 @@ export async function getTask(taskId) {
 
 // Persist provider progress before long-running work so a restarted worker can
 // resume polling an existing provider job instead of submitting a duplicate.
-export async function updateTaskCheckpoint(taskId, checkpoint = {}) {
+export async function updateTaskCheckpoint(taskId, claimToken, checkpoint = {}) {
+  if (typeof claimToken !== "string" || claimToken.length < 32) return null;
   const allowedStages = new Set([
     "queued", "preparing", "submitting", "provider_queued",
     "generating", "downloading", "assembling", "uploading", "completed"
@@ -123,7 +127,7 @@ export async function updateTaskCheckpoint(taskId, checkpoint = {}) {
 
   if (testMemoryEnabled) {
     const task = testTasks.get(taskId);
-    if (!task || task.status !== "claimed") return null;
+    if (!task || task.status !== "claimed" || task.claim_token !== claimToken) return null;
     if (stage !== undefined) task.stage = stage;
     for (const [key, value] of Object.entries(fields)) {
       if (value !== undefined) task[key] = value;
@@ -145,11 +149,11 @@ export async function updateTaskCheckpoint(taskId, checkpoint = {}) {
            output_url = COALESCE($5, output_url),
            storage_key = COALESCE($6, storage_key),
            heartbeat_at = NOW()
-     WHERE task_id = $1 AND status = 'claimed'
+     WHERE task_id = $1 AND status = 'claimed' AND claim_token = $7
      RETURNING task_id, stage, provider, provider_job_id, output_url, storage_key
   `, [taskId, stage ?? null, fields.provider ?? null,
     fields.provider_job_id ?? null, fields.output_url ?? null,
-    fields.storage_key ?? null]);
+    fields.storage_key ?? null, claimToken]);
   return rows[0] || null;
 }
 
@@ -163,13 +167,15 @@ export async function claimNextTask() {
        now - new Date(item.claimed_at).getTime() > 5 * 60 * 1000));
     if (!task) return null;
     task.status = "claimed";
+    task.claim_token = randomUUID();
     task.claimed_at = new Date().toISOString();
     task.attempts = (task.attempts || 0) + 1;
     return {
       task_id: task.task_id, scene_id: task.scene_id, prompt: task.prompt,
       toolsets: task.toolsets, confirm_video_generation: task.confirm_video_generation,
       stage: task.stage, provider: task.provider, provider_job_id: task.provider_job_id,
-      output_url: task.output_url, storage_key: task.storage_key, attempts: task.attempts
+      output_url: task.output_url, storage_key: task.storage_key, attempts: task.attempts,
+      claim_token: task.claim_token
     };
   }
   const db = getTaskPool();
@@ -191,11 +197,11 @@ export async function claimNextTask() {
     const { rows: claimed } = await client.query(`
       UPDATE joyverse_tasks
          SET status='claimed', claimed_at=NOW(), heartbeat_at=NOW(),
-             attempts=attempts+1
+             attempts=attempts+1, claim_token=$2
        WHERE task_id=$1
        RETURNING task_id, scene_id, prompt, toolsets, confirm_video_generation,
-                 stage, provider, provider_job_id, output_url, storage_key, attempts
-    `, [rows[0].task_id]);
+                 stage, provider, provider_job_id, output_url, storage_key, attempts, claim_token
+    `, [rows[0].task_id, randomUUID()]);
     await client.query("COMMIT");
     return claimed[0] || null;
   } catch (error) {
@@ -206,10 +212,11 @@ export async function claimNextTask() {
   }
 }
 
-export async function finishTask(taskId, status, result, error) {
+export async function finishTask(taskId, claimToken, status, result, error) {
+  if (typeof claimToken !== "string" || claimToken.length < 32) return null;
   if (testMemoryEnabled) {
     const task = testTasks.get(taskId);
-    if (!task || task.status !== "claimed") return null;
+    if (!task || task.status !== "claimed" || task.claim_token !== claimToken) return null;
     task.status = status;
     task.stage = status;
     task.result = result ?? null;
@@ -223,10 +230,10 @@ export async function finishTask(taskId, status, result, error) {
     UPDATE joyverse_tasks
        SET status=$2, stage=$2, result=$3::jsonb, error=$4,
            finished_at=NOW(), heartbeat_at=NOW()
-     WHERE task_id=$1 AND status='claimed'
+     WHERE task_id=$1 AND status='claimed' AND claim_token=$5
      RETURNING task_id, status
   `, [taskId, status, result == null ? null : JSON.stringify(result),
-    status === "failed" ? String(error || "Task failed").slice(0, 1000) : null]);
+    status === "failed" ? String(error || "Task failed").slice(0, 1000) : null, claimToken]);
   return rows[0] || null;
 }
 
