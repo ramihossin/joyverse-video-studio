@@ -138,11 +138,14 @@ test("Hermes task survives dispatch, claim, completion, and status retrieval", a
   assert.equal(task.output_url, null);
   assert.equal(task.storage_key, null);
   assert.equal(task.attempts, 1);
+  assert.equal(typeof task.claim_token, "string");
+  assert.ok(task.claim_token.length >= 32);
+  const claimToken = task.claim_token;
 
   const checkpoint = await fetch(`${baseUrl}/api/hermes/checkpoint`, {
     method: "POST", headers,
     body: JSON.stringify({
-      task_id: accepted.task_id, stage: "generating",
+      task_id: accepted.task_id, claim_token: claimToken, stage: "generating",
       provider: "LTX-2.5", provider_job_id: "provider-job-test",
       output_url: "https://example.test/scene.mp4",
       storage_key: "joyverse/scenes/scene-test.mp4"
@@ -156,7 +159,7 @@ test("Hermes task survives dispatch, claim, completion, and status retrieval", a
   const complete = await fetch(`${baseUrl}/api/hermes/result`, {
     method: "POST", headers,
     body: JSON.stringify({
-      task_id: accepted.task_id, status: "completed",
+      task_id: accepted.task_id, claim_token: claimToken, status: "completed",
       result: { message: "TEST_OK" }
     })
   });
@@ -190,7 +193,7 @@ test("Hermes queue rejects checkpoints and results for unclaimed tasks", async (
 
   const checkpoint = await fetch(`${baseUrl}/api/hermes/checkpoint`, {
     method: "POST", headers,
-    body: JSON.stringify({ task_id: accepted.task_id, stage: "generating" })
+    body: JSON.stringify({ task_id: accepted.task_id, claim_token: "x".repeat(36), stage: "generating" })
   });
   assert.equal(checkpoint.status, 404);
   assert.equal((await checkpoint.json()).error, "task_not_found_or_not_claimed");
@@ -198,7 +201,7 @@ test("Hermes queue rejects checkpoints and results for unclaimed tasks", async (
   const result = await fetch(`${baseUrl}/api/hermes/result`, {
     method: "POST", headers,
     body: JSON.stringify({
-      task_id: accepted.task_id, status: "completed", result: { message: "must not complete" }
+      task_id: accepted.task_id, claim_token: "x".repeat(36), status: "completed", result: { message: "must not complete" }
     })
   });
   assert.equal(result.status, 404);
@@ -231,13 +234,13 @@ test("Hermes queue rejects a second checkpoint after task completion", async () 
 
   const complete = await fetch(`${baseUrl}/api/hermes/result`, {
     method: "POST", headers,
-    body: JSON.stringify({ task_id: accepted.task_id, status: "completed", result: { ok: true } })
+    body: JSON.stringify({ task_id: accepted.task_id, claim_token: task.claim_token, status: "completed", result: { ok: true } })
   });
   assert.equal(complete.status, 200);
 
   const lateCheckpoint = await fetch(`${baseUrl}/api/hermes/checkpoint`, {
     method: "POST", headers,
-    body: JSON.stringify({ task_id: accepted.task_id, stage: "uploading" })
+    body: JSON.stringify({ task_id: accepted.task_id, claim_token: task.claim_token, stage: "uploading" })
   });
   assert.equal(lateCheckpoint.status, 404);
   assert.equal((await lateCheckpoint.json()).error, "task_not_found_or_not_claimed");
