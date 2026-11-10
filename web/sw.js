@@ -1,8 +1,8 @@
-const CACHE_NAME = "joyverse-ffmpeg-0.12.10-local";
-const CORE_CDN = "https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.10/dist/umd/";
+const CACHE_NAME = "joyverse-ffmpeg-0.12.10-esm";
+const CORE_CDN = "https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.10/dist/esm/";
 const CORE_MIRRORS = [
-  "https://unpkg.com/@ffmpeg/core@0.12.10/dist/umd/",
-  "https://fastly.jsdelivr.net/npm/@ffmpeg/core@0.12.10/dist/umd/"
+  "https://unpkg.com/@ffmpeg/core@0.12.10/dist/esm/",
+  "https://fastly.jsdelivr.net/npm/@ffmpeg/core@0.12.10/dist/esm/"
 ];
 
 const localAssets = [
@@ -18,8 +18,9 @@ const localAssets = [
   return { key: url, urls: [url] };
 });
 
-// Preload only the small JS bootstrap. The large WASM binary is fetched on demand
-// during an explicit foreground assembly, avoiding long background downloads on mobile.
+// The module worker dynamically imports the core, so cache the ESM build rather
+// than the UMD build (which has no default ESM export).
+// Preload only the small JS bootstrap; the large WASM binary is fetched on demand.
 const coreAssets = ["ffmpeg-core.js"].map((file) => ({
   key: CORE_CDN + file,
   urls: [CORE_CDN, ...CORE_MIRRORS].map((base) => base + file)
@@ -53,8 +54,6 @@ async function getCachedAsset(entry) {
   const cached = await cache.match(entry.key);
   if (cached) return cached;
   const response = await fetchFirstAvailable(entry.urls);
-  // Cache storage is best-effort: mobile browsers may reject large WASM bodies
-  // even when the network response itself is usable.
   try {
     await cache.put(entry.key, response.clone());
   } catch (cacheError) {
