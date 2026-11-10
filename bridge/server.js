@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { z } from "zod";
-import { initializeTaskStore, enqueueTask, getTask, claimNextTask, finishTask, getQueueCounts, updateTaskCheckpoint } from "./task-store.js";
+import { initializeTaskStore, enqueueTask, getTask, claimNextTask, finishTask, getQueueCounts, updateTaskCheckpoint, setTaskReferenceImage } from "./task-store.js";
 import { normalizeVideoOptions } from "./video-job.js";
 import { createObjectStorage } from "./object-storage.js";
 import { assembleMp4 } from "./ffmpeg-assembler.js";
@@ -327,6 +327,54 @@ app.get("/api/hermes/status-chatgpt/:taskId", async (req, res) => {
     output_url: task.output_url, storage_key: task.storage_key,
     heartbeat_at: task.heartbeat_at, attempts: task.attempts,
     created_at: task.created_at, finished_at: task.finished_at ?? null });
+});
+
+// Upload one validated reference image and bind it to a queued, explicitly confirmed video task.
+app.post("/api/hermes/reference/:taskId", express.raw({
+  type: ["image/png", "image/jpeg", "image/webp", "application/octet-stream"],
+  limit: "10mb"
+}), async (req, res) => {
+  if (!HERMES_WORKER_TOKEN) return res.status(503).json({ error: "hermes_worker_token_not_configured" });
+  if (!hermesWorkerAuthorized(req)) return res.status(401).json({ error: "unauthorized" });
+  const taskId = req.params.taskId;
+  if (typeof taskId !== "string" || !/^hermes_[0-9a-f-]{36}$/i.test(taskId)) {
+    return res.status(400).json({ error: "invalid_task_id" });
+  }
+  if (!Buffer.isBuffer(req.body) || req.body.length < 12 || req.body.length > 10 * 1024 * 1024) {
+    return res.status(400).json({ error: "invalid_image_body", max_bytes: 10485760 });
+  }
+  const bytes = req.body;
+  let extension, contentType;
+  if (bytes.subarray(0, 8).equals(Buffer.from([137,80,78,71,13,10,26,10]))) {
+    extension = "png"; contentType = "image/png";
+  } else if (bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) {
+    extension = "jpg"; contentType = "image/jpeg";
+  } else if (bytes.toString("ascii", 0, 4) === "RIFF" &&
+             bytes.toString("ascii", 8, 12) === "WEBP") {
+    extension = "webp"; contentType = "image/webp";
+  } else {
+    return res.status(415).json({ error: "unsupported_image_format" });
+  }
+  const task = await getTask(taskId);
+  if (!task) return res.status(404).json({ error: "task_not_found" });
+  if (task.status !== "queued" || task.confirm_video_generation !== true ||
+      !Array.isArray(task.toolsets) || !task.toolsets.includes("video_gen")) {
+    return res.status(409).json({ error: "task_not_eligible_for_reference_image" });
+  }
+  const key = "references/" + taskId + "/" + randomUUID() + "." + extension;
+  try {
+    await createObjectStorage().put(key, bytes, contentType);
+    const linked = await setTaskReferenceImage(taskId, key);
+    if (!linked) return res.status(409).json({ error: "task_no_longer_queued" });
+    res.set("Cache-Control", "no-store");
+    return res.status(201).json({
+      task_id: taskId, reference_image_key: key,
+      content_type: contentType, bytes: bytes.length
+    });
+  } catch (error) {
+    console.error("Reference image upload failed:", String(error?.message || error).slice(0, 200));
+    return res.status(502).json({ error: "reference_image_storage_failed" });
+  }
 });
 
 // Hermes phone-worker queue. All endpoints use the existing bearer token.
