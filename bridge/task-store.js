@@ -2,6 +2,9 @@ import pg from "pg";
 
 const { Pool } = pg;
 let pool;
+const testMemoryEnabled = process.env.NODE_ENV === "test" &&
+  process.env.JOYVERSE_TEST_MEMORY_STORE === "1";
+const testTasks = new Map();
 
 export function getTaskPool() {
   if (!process.env.DATABASE_URL) {
@@ -20,6 +23,7 @@ export function getTaskPool() {
 }
 
 export async function initializeTaskStore() {
+  if (testMemoryEnabled) return;
   const db = getTaskPool();
   await db.query(`
     CREATE TABLE IF NOT EXISTS joyverse_tasks (
@@ -43,6 +47,14 @@ export async function initializeTaskStore() {
 }
 
 export async function enqueueTask(task) {
+  if (testMemoryEnabled) {
+    if (testTasks.has(task.task_id)) throw new Error("Task already exists.");
+    testTasks.set(task.task_id, {
+      ...task, toolsets: [...task.toolsets], status: "queued",
+      created_at: task.created_at || new Date().toISOString()
+    });
+    return getTask(task.task_id);
+  }
   const db = getTaskPool();
   await db.query(
     `INSERT INTO joyverse_tasks
@@ -55,6 +67,7 @@ export async function enqueueTask(task) {
 }
 
 export async function getTask(taskId) {
+  if (testMemoryEnabled) return testTasks.get(taskId) || null;
   const db = getTaskPool();
   const { rows } = await db.query(
     `SELECT task_id, scene_id, prompt, toolsets, confirm_video_generation,
@@ -65,6 +78,21 @@ export async function getTask(taskId) {
 }
 
 export async function claimNextTask() {
+  if (testMemoryEnabled) {
+    const now = Date.now();
+    const task = [...testTasks.values()].sort((a, b) =>
+      new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+    ).find(item => item.status === "queued" ||
+      (item.status === "claimed" && item.claimed_at &&
+       now - new Date(item.claimed_at).getTime() > 5 * 60 * 1000));
+    if (!task) return null;
+    task.status = "claimed";
+    task.claimed_at = new Date().toISOString();
+    return {
+      task_id: task.task_id, scene_id: task.scene_id, prompt: task.prompt,
+      toolsets: task.toolsets, confirm_video_generation: task.confirm_video_generation
+    };
+  }
   const db = getTaskPool();
   const client = await db.connect();
   try {
@@ -97,6 +125,15 @@ export async function claimNextTask() {
 }
 
 export async function finishTask(taskId, status, result, error) {
+  if (testMemoryEnabled) {
+    const task = testTasks.get(taskId);
+    if (!task || task.status !== "claimed") return null;
+    task.status = status;
+    task.result = result ?? null;
+    task.error = status === "failed" ? String(error || "Task failed").slice(0, 1000) : null;
+    task.finished_at = new Date().toISOString();
+    return { task_id: taskId, status };
+  }
   const db = getTaskPool();
   const { rows } = await db.query(`
     UPDATE joyverse_tasks
@@ -109,6 +146,13 @@ export async function finishTask(taskId, status, result, error) {
 }
 
 export async function getQueueCounts() {
+  if (testMemoryEnabled) {
+    const values = [...testTasks.values()];
+    return {
+      queued: values.filter(task => task.status === "queued").length,
+      active: values.filter(task => task.status === "claimed").length
+    };
+  }
   const db = getTaskPool();
   const { rows } = await db.query(`
     SELECT
