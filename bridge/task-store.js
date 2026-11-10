@@ -60,6 +60,14 @@ export async function initializeTaskStore() {
     ALTER TABLE joyverse_tasks ADD COLUMN IF NOT EXISTS heartbeat_at TIMESTAMPTZ;
     ALTER TABLE joyverse_tasks ADD COLUMN IF NOT EXISTS attempts INTEGER NOT NULL DEFAULT 0;
     ALTER TABLE joyverse_tasks ADD COLUMN IF NOT EXISTS claim_token TEXT;
+    CREATE TABLE IF NOT EXISTS joyverse_objects (
+      object_key TEXT PRIMARY KEY,
+      body BYTEA NOT NULL,
+      content_type TEXT NOT NULL,
+      byte_length BIGINT NOT NULL CHECK (byte_length > 0),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+    CREATE INDEX IF NOT EXISTS joyverse_objects_updated_idx ON joyverse_objects (updated_at);
     CREATE INDEX IF NOT EXISTS joyverse_tasks_queue_idx
       ON joyverse_tasks (created_at) WHERE status = 'queued';
     CREATE INDEX IF NOT EXISTS joyverse_tasks_claim_idx
