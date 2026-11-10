@@ -373,7 +373,9 @@ test("Studio API accepts its scoped token, enforces CORS, and dispatches a durab
   const accepted = await dispatch.json();
   const status = await fetch(`${baseUrl}/api/hermes/tasks/${accepted.task_id}`, { headers: studioHeaders });
   assert.equal(status.status, 200);
-  assert.equal((await status.json()).status, "queued");
+  const taskState = await status.json();
+  assert.equal(taskState.status, "queued");
+  assert.equal(taskState.reference_image_attached, true);
 });
 
 test("Studio reference upload rejects invalid image signatures without requiring worker token", async () => {
