@@ -7,55 +7,33 @@ on:
 
 permissions:
   contents: read
+  id-token: write
 
 concurrency:
   group: joyverse-background-video-worker
   cancel-in-progress: false
 
 jobs:
-  process-one-video:
+  wake-render-worker:
     runs-on: ubuntu-latest
-    timeout-minutes: 350
+    timeout-minutes: 5
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: npm
-      - name: Validate worker configuration
+      - name: Request short-lived GitHub Actions identity
         env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          OBJECT_STORAGE_BUCKET: ${{ secrets.OBJECT_STORAGE_BUCKET || secrets.R2_BUCKET }}
-          OBJECT_STORAGE_ENDPOINT: ${{ secrets.OBJECT_STORAGE_ENDPOINT || secrets.R2_ENDPOINT }}
-          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
-          OBJECT_STORAGE_ACCESS_KEY_ID: ${{ secrets.OBJECT_STORAGE_ACCESS_KEY_ID || secrets.R2_ACCESS_KEY_ID }}
-          OBJECT_STORAGE_SECRET_ACCESS_KEY: ${{ secrets.OBJECT_STORAGE_SECRET_ACCESS_KEY || secrets.R2_SECRET_ACCESS_KEY }}
+          ACTIONS_ID_TOKEN_REQUEST_URL: ${{ env.ACTIONS_ID_TOKEN_REQUEST_URL }}
+          ACTIONS_ID_TOKEN_REQUEST_TOKEN: ${{ env.ACTIONS_ID_TOKEN_REQUEST_TOKEN }}
+          BRIDGE_URL: https://joyverse-mcp-bridge.onrender.com
         run: |
           set -eu
-          : "${DATABASE_URL:?Missing repository Actions secret: DATABASE_URL}"
-          if [ -n "$OBJECT_STORAGE_BUCKET$OBJECT_STORAGE_ENDPOINT$R2_ACCOUNT_ID$OBJECT_STORAGE_ACCESS_KEY_ID$OBJECT_STORAGE_SECRET_ACCESS_KEY" ]; then
-            : "${OBJECT_STORAGE_BUCKET:?Missing object-storage bucket}"
-            : "${OBJECT_STORAGE_ACCESS_KEY_ID:?Missing object-storage access key}"
-            : "${OBJECT_STORAGE_SECRET_ACCESS_KEY:?Missing object-storage secret key}"
-            if [ -z "$OBJECT_STORAGE_ENDPOINT" ] && [ -z "$R2_ACCOUNT_ID" ]; then
-              echo "::error::Set OBJECT_STORAGE_ENDPOINT, R2_ENDPOINT, or R2_ACCOUNT_ID."
-              exit 1
-            fi
-          else
-            echo "Using PostgreSQL object storage fallback (50 MiB maximum per object)."
-          fi
-      - name: Install dependencies
-        run: npm ci
-      - name: Process one queued video task
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          OBJECT_STORAGE_BUCKET: ${{ secrets.OBJECT_STORAGE_BUCKET || secrets.R2_BUCKET }}
-          OBJECT_STORAGE_REGION: ${{ secrets.OBJECT_STORAGE_REGION || secrets.R2_REGION }}
-          OBJECT_STORAGE_ENDPOINT: ${{ secrets.OBJECT_STORAGE_ENDPOINT || secrets.R2_ENDPOINT }}
-          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
-          OBJECT_STORAGE_ACCESS_KEY_ID: ${{ secrets.OBJECT_STORAGE_ACCESS_KEY_ID || secrets.R2_ACCESS_KEY_ID }}
-          OBJECT_STORAGE_SECRET_ACCESS_KEY: ${{ secrets.OBJECT_STORAGE_SECRET_ACCESS_KEY || secrets.R2_SECRET_ACCESS_KEY }}
-          HF_TOKEN: ${{ secrets.HF_TOKEN }}
-        run: npm run worker:once
+          test -n "$ACTIONS_ID_TOKEN_REQUEST_URL"
+          test -n "$ACTIONS_ID_TOKEN_REQUEST_TOKEN"
+          response="$(curl --fail --silent --show-error \
+            -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=joyverse-video-worker")"
+          oidc_token="$(printf '%s' "$response" | python -c 'import json,sys; print(json.load(sys.stdin)["value"])')"
+          test -n "$oidc_token"
+          curl --fail --silent --show-error --max-time 90 \
+            -X POST "$BRIDGE_URL/api/hermes/worker/tick" \
+            -H "Authorization: Bearer $oidc_token" \
+            -H "Content-Type: application/json" \
+            -d '{}'
