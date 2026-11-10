@@ -96,7 +96,7 @@ export async function assembleVideos(scenes, aspect, onProgress = () => {}) {
   let totalBytes = 0;
   for (let index = 0; index < scenes.length; index += 1) {
     const scene = scenes[index];
-    if (!scene || (!scene.videoBlob && (typeof scene.videoUrl !== "string" || !/^https?:\\/\\//i.test(scene.videoUrl)))) {
+    if (!scene || (!scene.videoBlob && (typeof scene.videoUrl !== "string" || !/^https?:\/\//i.test(scene.videoUrl)))) {
       throw new Error("ملف فيديو غير صالح في المشهد " + (index + 1) + ".");
     }
     onProgress({ stage: "download", progress: index / scenes.length });
@@ -128,7 +128,7 @@ export async function assembleVideos(scenes, aspect, onProgress = () => {}) {
       await ffmpeg.writeFile(name, clips[index]);
       list.push("file '" + name + "'");
     }
-    await ffmpeg.writeFile("concat.txt", new TextEncoder().encode(list.join("\\n")));
+    await ffmpeg.writeFile("concat.txt", new TextEncoder().encode(list.join("\n")));
     const { width, height } = dimensionsFor(aspect);
     onProgress({ stage: "encode", progress: 0 });
     const exitCode = await ffmpeg.exec([
