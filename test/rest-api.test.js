@@ -217,6 +217,21 @@ test("Hermes queue rejects checkpoints and results for unclaimed tasks", async (
   const status = await fetch(`${baseUrl}/api/hermes/tasks/${encodeURIComponent(accepted.task_id)}`, { headers });
   assert.equal(status.status, 200);
   assert.equal((await status.json()).status, "queued");
+
+  // Clean up this intentionally unclaimed task so it cannot be picked up by
+  // the following test and interfere with its FIFO claim expectation.
+  const claim = await fetch(`${baseUrl}/api/hermes/next`, { headers });
+  assert.equal(claim.status, 200);
+  const claimed = await claim.json();
+  assert.equal(claimed.task_id, accepted.task_id);
+  const cleanup = await fetch(`${baseUrl}/api/hermes/result`, {
+    method: "POST", headers,
+    body: JSON.stringify({
+      task_id: accepted.task_id, claim_token: claimed.claim_token,
+      status: "completed", result: { message: "test cleanup" }
+    })
+  });
+  assert.equal(cleanup.status, 200);
 });
 
 test("Hermes queue rejects a second checkpoint after task completion", async () => {
