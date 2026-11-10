@@ -125,7 +125,6 @@ imageInput.addEventListener("change", () => {
   const file = imageInput.files?.[0];
   if (!file) return;
   if (previewUrl) URL.revokeObjectURL(previewUrl);
-  if (assemblyUrl) URL.revokeObjectURL(assemblyUrl);
   previewUrl = URL.createObjectURL(file);
   preview.src = previewUrl;
   preview.hidden = false;
@@ -305,6 +304,7 @@ $("clear-queue").addEventListener("click", () => {
 });
 window.addEventListener("beforeunload", () => {
   if (previewUrl) URL.revokeObjectURL(previewUrl);
+  if (assemblyUrl) URL.revokeObjectURL(assemblyUrl);
 });
 
 renderQueue();
