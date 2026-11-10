@@ -32,7 +32,6 @@ let stopRequested = false;
 let assemblyRunning = false;
 let previewUrl = null;
 let assemblyUrl = null;
-let resultUrl = null;
 const clipUrls = new Map();
 
 try {
@@ -269,7 +268,7 @@ async function runQueue() {
     const pending = queue.filter(scene => scene.status === "waiting");
     for (const scene of pending) {
       try { await dispatchScene(scene); }
-      catch (error) { scene.status = "failed"; scene.error = error.message; saveQueue(); renderQueue(); }
+      catch (error) { scene.status = "waiting"; scene.error = error.message; saveQueue(); renderQueue(); }
     }
     queueRunning = false; renderQueue();
     await pollTasks();
@@ -311,6 +310,7 @@ async function assembleCompletedScenes() {
   if (queueRunning || assemblyRunning) return;
   const completed = queue.filter(scene => scene.status === "done" && scene.serverTaskId);
   if (!completed.length) return setStatus("لا توجد مشاهد مكتملة محفوظة على الخادم.");
+  if (completed.length > 40) return setStatus("الدمج على الخادم يدعم 40 مشهداً كحد أقصى في المرة الواحدة.");
   assemblyRunning = true; renderQueue();
   try {
     setStatus("يرسل الاستوديو ترتيب المشاهد إلى FFmpeg على الخادم…", true);
@@ -384,6 +384,5 @@ restoreServerState();
 window.addEventListener("beforeunload", () => {
   if (previewUrl) URL.revokeObjectURL(previewUrl);
   if (assemblyUrl) URL.revokeObjectURL(assemblyUrl);
-  if (resultUrl) URL.revokeObjectURL(resultUrl);
   for (const url of clipUrls.values()) URL.revokeObjectURL(url);
 });
