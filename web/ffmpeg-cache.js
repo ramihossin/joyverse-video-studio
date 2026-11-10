@@ -1,3 +1,4 @@
+// Cache the same-origin MIT wrapper locally; retrieve the separately licensed FFmpeg core through fallback CDNs.
 export async function preloadFfmpegRuntime(onStatus = () => {}) {
   if (!("serviceWorker" in navigator) || !("caches" in window)) {
     onStatus({ state: "unsupported", message: "التخزين المسبق غير مدعوم في هذا المتصفح." });
