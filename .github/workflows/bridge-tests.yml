@@ -16,3 +16,5 @@ jobs:
           node-version: 20
       - run: npm install
       - run: npm test
+      - name: Validate Android worker Python syntax
+        run: python -m py_compile bridge/hermes_phone_worker.py
