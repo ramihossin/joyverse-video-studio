@@ -51,7 +51,13 @@ async function getCachedAsset(entry) {
   const cached = await cache.match(entry.key);
   if (cached) return cached;
   const response = await fetchFirstAvailable(entry.urls);
-  await cache.put(entry.key, response.clone());
+  // Cache storage is best-effort: mobile browsers may reject large WASM bodies
+  // even when the network response itself is usable.
+  try {
+    await cache.put(entry.key, response.clone());
+  } catch (cacheError) {
+    console.warn("[JoyVerse] FFmpeg asset downloaded but not cached:", entry.key, cacheError);
+  }
   return response;
 }
 
