@@ -478,10 +478,19 @@ app.post("/api/hermes/dispatch", async (req, res) => {
   } else if (video_options !== undefined) {
     return res.status(400).json({ error: "video_options_require_video_gen" });
   }
+  if (reference_image_key !== undefined &&
+      (typeof reference_image_key !== "string" ||
+       !/^references\/pending\/[0-9a-f-]{36}\.(png|jpg|webp)$/.test(reference_image_key))) {
+    return res.status(400).json({ error: "invalid_reference_image_key" });
+  }
+  if (reference_image_key && !selected.includes("video_gen")) {
+    return res.status(400).json({ error: "reference_image_requires_video_gen" });
+  }
   const taskId = "hermes_" + randomUUID();
   await enqueueTask({
     task_id: taskId, scene_id, prompt, toolsets: selected,
-    confirm_video_generation, video_options: normalizedVideoOptions, status: "queued",
+    confirm_video_generation, video_options: normalizedVideoOptions,
+    reference_image_key: reference_image_key || null, status: "queued",
     created_at: new Date().toISOString(), claimed_at: null,
     result: null, error: null
   });
