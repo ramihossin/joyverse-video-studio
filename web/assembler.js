@@ -2,54 +2,11 @@ const MAX_CLIPS = 8;
 const MAX_CLIP_BYTES = 100 * 1024 * 1024;
 const MAX_TOTAL_BYTES = 350 * 1024 * 1024;
 const CORE_CDN = "https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.10/dist/esm/";
-const CORE_MIRRORS = [
-  "https://unpkg.com/@ffmpeg/core@0.12.10/dist/esm/",
-  "https://fastly.jsdelivr.net/npm/@ffmpeg/core@0.12.10/dist/esm/"
-];
 
 function dimensionsFor(aspect) {
   if (aspect === "landscape") return { width: 1280, height: 720 };
   if (aspect === "square") return { width: 720, height: 720 };
   return { width: 720, height: 1280 };
-}
-
-async function fetchRuntimeAsset(url, fallbackUrls = []) {
-  const cacheName = "joyverse-ffmpeg-0.12.10-esm";
-  if ("caches" in window) {
-    const cache = await caches.open(cacheName);
-    const cached = await cache.match(url);
-    if (cached) return cached;
-  }
-
-  let lastError;
-  for (const candidate of [url, ...fallbackUrls]) {
-    try {
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), 45000);
-      let response;
-      try {
-        response = await fetch(candidate, { mode: "cors", credentials: "omit", signal: controller.signal });
-      } finally {
-        clearTimeout(timer);
-      }
-      if (!response.ok || response.type === "opaque") {
-        lastError = new Error("HTTP " + response.status + " from " + candidate);
-        continue;
-      }
-      if ("caches" in window) {
-        const cache = await caches.open(cacheName);
-        try {
-          await cache.put(url, response.clone());
-        } catch (cacheError) {
-          console.warn("[JoyVerse] FFmpeg asset downloaded but not cached:", url, cacheError);
-        }
-      }
-      return response;
-    } catch (error) {
-      lastError = error;
-    }
-  }
-  throw new Error("تعذّر تحميل ملف محرك FFmpeg من المصادر الاحتياطية: " + (lastError?.message || "unknown error"));
 }
 
 async function loadFFmpeg(onProgress) {
@@ -60,30 +17,21 @@ async function loadFFmpeg(onProgress) {
     if (Number.isFinite(progress)) onProgress(Math.max(0, Math.min(1, progress)));
   });
 
-  const [coreResponse, wasmResponse] = await Promise.all([
-    fetchRuntimeAsset(CORE_CDN + "ffmpeg-core.js", CORE_MIRRORS.map((base) => base + "ffmpeg-core.js")),
-    fetchRuntimeAsset(CORE_CDN + "ffmpeg-core.wasm", CORE_MIRRORS.map((base) => base + "ffmpeg-core.wasm"))
-  ]);
-  const coreBlob = URL.createObjectURL(
-    new Blob([await coreResponse.arrayBuffer()], { type: "text/javascript" })
-  );
-  const wasmBlob = URL.createObjectURL(
-    new Blob([await wasmResponse.arrayBuffer()], { type: "application/wasm" })
-  );
+  // Keep the ESM core on its real HTTPS origin. Turning it into a Blob URL
+  // breaks module-relative URL resolution inside the module worker.
+  const coreURL = CORE_CDN + "ffmpeg-core.js";
+  const wasmURL = CORE_CDN + "ffmpeg-core.wasm";
 
   try {
     await ffmpeg.load({
-      coreURL: coreBlob,
-      wasmURL: wasmBlob,
+      coreURL,
+      wasmURL,
       classWorkerURL: new URL("./vendor/ffmpeg/esm/worker.js", import.meta.url).href
     });
     return ffmpeg;
   } catch (error) {
     ffmpeg.terminate();
-    throw new Error("تعذّر تهيئة نسخة FFmpeg بصيغة ESM: " + (error?.message || String(error)));
-  } finally {
-    URL.revokeObjectURL(coreBlob);
-    URL.revokeObjectURL(wasmBlob);
+    throw new Error("تعذّر تهيئة محرك FFmpeg بصيغة ESM من مصدره الأصلي: " + (error?.message || String(error)));
   }
 }
 
@@ -133,7 +81,7 @@ export async function assembleVideos(scenes, aspect, onProgress = () => {}) {
     onProgress({ stage: "encode", progress: 0 });
     const exitCode = await ffmpeg.exec([
       "-f", "concat", "-safe", "0", "-i", "concat.txt",
-      "-vf", `scale=${width}:${height}:force_original_aspect_ratio=decrease,pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2,setsar=1,fps=24`,
+      "-vf", "scale=" + width + ":" + height + ":force_original_aspect_ratio=decrease,pad=" + width + ":" + height + ":(ow-iw)/2:(oh-ih)/2,setsar=1,fps=24",
       "-an", "-c:v", "libx264", "-preset", "ultrafast", "-crf", "25",
       "-movflags", "+faststart", "joyverse-final.mp4"
     ]);
