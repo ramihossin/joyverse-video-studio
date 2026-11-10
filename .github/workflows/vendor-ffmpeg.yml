@@ -47,5 +47,7 @@ jobs:
             echo "FFmpeg browser wrapper is already vendored."
           else
             git commit -m "Vendor MIT FFmpeg browser wrapper and remove GPL core binary"
+            git fetch origin fix/local-ffmpeg-runtime
+            git rebase origin/fix/local-ffmpeg-runtime
             git push origin HEAD:fix/local-ffmpeg-runtime
           fi
