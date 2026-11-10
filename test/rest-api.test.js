@@ -18,7 +18,7 @@ before(async () => {
     env: {
       ...process.env, NODE_ENV: "test", JOYVERSE_TEST_MEMORY_STORE: "1",
       PORT: String(port), MCP_ACCESS_TOKEN: TOKEN,
-      HERMES_WORKER_TOKEN: WORKER_TOKEN, MACRODROID_WEBHOOK_URL: ""
+      HERMES_WORKER_TOKEN: WORKER_TOKEN, JOYVERSE_STUDIO_TOKEN: "test-studio-token-with-at-least-32-characters", MACRODROID_WEBHOOK_URL: ""
     },
     stdio: "ignore"
   });
@@ -340,4 +340,50 @@ test("reference image upload requires worker authentication and rejects invalid 
   });
   assert.equal(invalid.status, 415);
   assert.equal((await invalid.json()).error, "unsupported_image_format");
+});
+
+test("Studio API accepts its scoped token, enforces CORS, and dispatches a durable video task", async () => {
+  const studioHeaders = {
+    "content-type": "application/json",
+    authorization: "Bearer test-studio-token-with-at-least-32-characters",
+    origin: "https://ramihossin.github.io"
+  };
+  const preflight = await fetch(`${baseUrl}/api/hermes/dispatch`, {
+    method: "OPTIONS", headers: { origin: "https://ramihossin.github.io", "access-control-request-method": "POST",
+      "access-control-request-headers": "authorization,content-type" }
+  });
+  assert.equal(preflight.status, 204);
+  assert.equal(preflight.headers.get("access-control-allow-origin"), "https://ramihossin.github.io");
+
+  const deniedOrigin = await fetch(`${baseUrl}/api/hermes/dispatch`, {
+    method: "OPTIONS", headers: { origin: "https://attacker.example", "access-control-request-method": "POST" }
+  });
+  assert.equal(deniedOrigin.status, 403);
+
+  const dispatch = await fetch(`${baseUrl}/api/hermes/dispatch`, {
+    method: "POST", headers: studioHeaders,
+    body: JSON.stringify({
+      scene_id: "studio-ui-scene", prompt: "A bright toy train.",
+      toolsets: ["video_gen"], confirm_video_generation: true,
+      video_options: { aspect: "portrait", duration: 5, seed: 42 },
+      reference_image_key: "references/pending/123e4567-e89b-12d3-a456-426614174000.png"
+    })
+  });
+  assert.equal(dispatch.status, 202);
+  const accepted = await dispatch.json();
+  const status = await fetch(`${baseUrl}/api/hermes/tasks/${accepted.task_id}`, { headers: studioHeaders });
+  assert.equal(status.status, 200);
+  assert.equal((await status.json()).status, "queued");
+});
+
+test("Studio reference upload rejects invalid image signatures without requiring worker token", async () => {
+  const response = await fetch(`${baseUrl}/api/hermes/reference-upload`, {
+    method: "POST",
+    headers: { "content-type": "image/png",
+      authorization: "Bearer test-studio-token-with-at-least-32-characters",
+      origin: "https://ramihossin.github.io" },
+    body: Buffer.from("not-an-image")
+  });
+  assert.equal(response.status, 415);
+  assert.equal((await response.json()).error, "unsupported_image_format");
 });
