@@ -785,12 +785,12 @@ const port = Number(process.env.PORT || 10000);
 initializeTaskStore().then(() => {
   app.listen(port, "0.0.0.0", () => {
     console.log("JoyVerse MacroDroid bridge listening on port " + port + " with durable PostgreSQL task storage");
-    // Run the LTX video worker inside this service. Previously it only ran
+    // Run the self-hosted FFmpeg video worker inside this service. Previously it only ran
     // when an external GitHub Actions OIDC tick arrived, leaving queued jobs
     // stranded whenever that scheduled workflow did not execute.
     backgroundVideoWorker ||= createVideoWorker();
     backgroundVideoWorkerBusy = true;
-    console.log("Starting persistent JoyVerse LTX video worker.");
+    console.log("Starting persistent JoyVerse procedural FFmpeg video worker.");
     void backgroundVideoWorker.run()
       .catch(error => console.error("Persistent video worker stopped:", String(error?.message || error).slice(0, 300)))
       .finally(() => { backgroundVideoWorkerBusy = false; });
