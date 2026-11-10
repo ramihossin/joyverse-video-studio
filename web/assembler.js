@@ -38,7 +38,13 @@ async function fetchRuntimeAsset(url, fallbackUrls = []) {
       }
       if ("caches" in window) {
         const cache = await caches.open(cacheName);
-        await cache.put(url, response.clone());
+        // Do not fail video assembly when the browser refuses to persist a large
+        // runtime response (common on mobile / low-storage devices).
+        try {
+          await cache.put(url, response.clone());
+        } catch (cacheError) {
+          console.warn("[JoyVerse] FFmpeg asset downloaded but not cached:", url, cacheError);
+        }
       }
       return response;
     } catch (error) {
