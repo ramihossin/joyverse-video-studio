@@ -15,11 +15,21 @@ export function createObjectStorage({
   commands: suppliedCommands,
   signer: suppliedSigner
 } = {}) {
-  const bucket = env.OBJECT_STORAGE_BUCKET;
-  if (!bucket) throw new Error("OBJECT_STORAGE_BUCKET is required.");
-  if (!suppliedClient && (!env.OBJECT_STORAGE_ENDPOINT ||
-      !env.OBJECT_STORAGE_ACCESS_KEY_ID || !env.OBJECT_STORAGE_SECRET_ACCESS_KEY)) {
+  const bucket = env.OBJECT_STORAGE_BUCKET || env.R2_BUCKET;
+  const endpoint = env.OBJECT_STORAGE_ENDPOINT || env.R2_ENDPOINT ||
+    (env.R2_ACCOUNT_ID ? `https://${env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com` : "");
+  const accessKeyId = env.OBJECT_STORAGE_ACCESS_KEY_ID || env.R2_ACCESS_KEY_ID;
+  const secretAccessKey = env.OBJECT_STORAGE_SECRET_ACCESS_KEY || env.R2_SECRET_ACCESS_KEY;
+  if (!bucket) throw new Error("OBJECT_STORAGE_BUCKET (or R2_BUCKET) is required.");
+  if (!suppliedClient && (!endpoint || !accessKeyId || !secretAccessKey)) {
     throw new Error("S3-compatible object storage credentials are required.");
+  }
+  if (endpoint) {
+    let parsed;
+    try { parsed = new URL(endpoint); } catch { throw new Error("Object storage endpoint must be a valid HTTPS URL."); }
+    if (parsed.protocol !== "https:" || parsed.username || parsed.password) {
+      throw new Error("Object storage endpoint must be HTTPS and must not contain credentials.");
+    }
   }
 
   let aws;
@@ -37,12 +47,12 @@ export function createObjectStorage({
     if (client) return client;
     const { s3 } = await getAws();
     client = new s3.S3Client({
-      region: env.OBJECT_STORAGE_REGION || "auto",
-      endpoint: env.OBJECT_STORAGE_ENDPOINT,
+      region: env.OBJECT_STORAGE_REGION || env.R2_REGION || "auto",
+      endpoint,
       forcePathStyle: env.OBJECT_STORAGE_FORCE_PATH_STYLE !== "false",
       credentials: {
-        accessKeyId: env.OBJECT_STORAGE_ACCESS_KEY_ID,
-        secretAccessKey: env.OBJECT_STORAGE_SECRET_ACCESS_KEY
+        accessKeyId,
+        secretAccessKey
       }
     });
     return client;
