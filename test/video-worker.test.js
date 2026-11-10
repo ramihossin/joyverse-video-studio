@@ -36,6 +36,27 @@ test("video worker stores the generated MP4 and commits its durable key", async 
   assert.equal(finishes[0][3].storage_key, saved.key);
 });
 
+test("video worker loads a stored reference image and passes it to LTX", async () => {
+  const expected = Buffer.from("reference-image-bytes");
+  let received;
+  const result = await processClaimedVideoTask({
+    ...baseTask, reference_image_key: "references/task-1/ref.png"
+  }, {
+    provider: { generate: async ({ referenceImage }) => {
+      received = referenceImage;
+      return { buffer: Buffer.from("mp4"), contentType: "video/mp4" };
+    } },
+    storage: {
+      get: async key => { assert.equal(key, "references/task-1/ref.png"); return expected; },
+      put: async (key, buffer, contentType) => ({ key, size: buffer.length, content_type: contentType })
+    },
+    checkpoint: async () => ({ accepted: true }),
+    finish: async () => ({ status: "completed" })
+  });
+  assert.equal(result.status, "completed");
+  assert.deepEqual(received, expected);
+});
+
 test("video worker blocks duplicate LTX submission after a lost provider checkpoint", async () => {
   let generated = false;
   let finished;
