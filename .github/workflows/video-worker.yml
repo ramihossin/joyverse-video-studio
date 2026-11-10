@@ -20,8 +20,6 @@ jobs:
     steps:
       - name: Request short-lived GitHub Actions identity
         env:
-          ACTIONS_ID_TOKEN_REQUEST_URL: ${{ env.ACTIONS_ID_TOKEN_REQUEST_URL }}
-          ACTIONS_ID_TOKEN_REQUEST_TOKEN: ${{ env.ACTIONS_ID_TOKEN_REQUEST_TOKEN }}
           BRIDGE_URL: https://joyverse-mcp-bridge.onrender.com
         run: |
           set -eu
