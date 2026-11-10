@@ -136,3 +136,18 @@ footer a { color: #a5b4fc; }
 .assembly-note { color: #9eabc4; font-size: 12px; line-height: 1.8; margin: 12px 0 0; }
 
 .engine-cache-status { color: #a5b4fc; font-size: 12px; line-height: 1.8; margin: 8px 0 0; }
+
+.studio-connection {
+  margin: 0 0 22px; padding: 16px; border: 1px solid #3a4968;
+  border-radius: 14px; background: #10182a;
+}
+.studio-connection h2 { margin: 0 0 12px; font-size: 15px; }
+#bridge-url, #studio-token {
+  width: 100%; margin: 0 0 12px; background: #0e1628; color: #f8fafc;
+  border: 1px solid #3a4968; border-radius: 12px; padding: 13px; font: inherit;
+}
+.token-note { color: #9eabc4; font-size: 11px; line-height: 1.7; }
+.scene-item .scene-action {
+  width: auto; padding: 7px 10px; border: 1px solid #52617c;
+  background: #253149; font-size: 11px;
+}
