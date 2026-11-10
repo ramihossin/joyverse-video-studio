@@ -5,6 +5,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { z } from "zod";
 import { initializeTaskStore, enqueueTask, getTask, claimNextTask, finishTask, getQueueCounts, updateTaskCheckpoint } from "./task-store.js";
+import { createObjectStorage } from "./object-storage.js";
 
 const app = express();
 app.disable("x-powered-by");
@@ -324,6 +325,67 @@ app.get("/api/hermes/status-chatgpt/:taskId", async (req, res) => {
     output_url: task.output_url, storage_key: task.storage_key,
     heartbeat_at: task.heartbeat_at, attempts: task.attempts,
     created_at: task.created_at, finished_at: task.finished_at ?? null });
+});
+
+// Private object storage endpoints for the background worker.
+// The bucket remains private; objects are never exposed through public URLs.
+const objectStorageConfigured = Boolean(
+  process.env.R2_BUCKET &&
+  (process.env.R2_ENDPOINT || process.env.R2_ACCOUNT_ID) &&
+  process.env.R2_ACCESS_KEY_ID && process.env.R2_SECRET_ACCESS_KEY
+);
+let objectStorage;
+function getObjectStorage() {
+  if (!objectStorageConfigured) return null;
+  if (!objectStorage) objectStorage = createObjectStorage();
+  return objectStorage;
+}
+function validStorageKey(key) {
+  return typeof key === "string" && key.startsWith("joyverse/") &&
+    key.length <= 512 && !key.split("/").some(part => !part || part === "." || part === "..");
+}
+app.put("/api/storage/*", (req, res, next) => {
+  if (!HERMES_WORKER_TOKEN) return res.status(503).json({ error: "hermes_worker_token_not_configured" });
+  if (!hermesWorkerAuthorized(req)) return res.status(401).json({ error: "unauthorized" });
+  if (!getObjectStorage()) return res.status(503).json({ error: "object_storage_not_configured" });
+  return express.raw({
+    type: ["video/mp4", "image/jpeg", "image/png", "image/webp"],
+    limit: "350mb"
+  })(req, res, next);
+}, async (req, res) => {
+  const key = req.params[0];
+  if (!validStorageKey(key)) return res.status(400).json({ error: "invalid_storage_key" });
+  const contentType = req.get("content-type")?.split(";")[0].trim().toLowerCase();
+  if (!Buffer.isBuffer(req.body)) return res.status(415).json({ error: "unsupported_content_type" });
+  try {
+    const saved = await getObjectStorage().put({
+      key, body: req.body, contentType,
+      metadata: { "uploaded-by": "joyverse-worker" }
+    });
+    res.set("Cache-Control", "no-store");
+    return res.status(201).json({ stored: true, ...saved });
+  } catch (error) {
+    return res.status(400).json({
+      error: "object_storage_upload_failed",
+      message: String(error?.message || error).slice(0, 160)
+    });
+  }
+});
+app.get("/api/storage/*", async (req, res) => {
+  if (!HERMES_WORKER_TOKEN) return res.status(503).json({ error: "hermes_worker_token_not_configured" });
+  if (!hermesWorkerAuthorized(req)) return res.status(401).json({ error: "unauthorized" });
+  if (!getObjectStorage()) return res.status(503).json({ error: "object_storage_not_configured" });
+  const key = req.params[0];
+  if (!validStorageKey(key)) return res.status(400).json({ error: "invalid_storage_key" });
+  try {
+    const object = await getObjectStorage().get({ key });
+    res.set("Cache-Control", "private, no-store");
+    res.set("Content-Type", object.contentType);
+    res.set("Content-Length", String(object.bytes));
+    return res.status(200).send(object.body);
+  } catch (error) {
+    return res.status(404).json({ error: "object_not_found" });
+  }
 });
 
 // Hermes phone-worker queue. All endpoints use the existing bearer token.
