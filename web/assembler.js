@@ -98,13 +98,18 @@ export async function assembleVideos(scenes, aspect, onProgress = () => {}) {
   let totalBytes = 0;
   for (let index = 0; index < scenes.length; index += 1) {
     const scene = scenes[index];
-    if (!scene || typeof scene.videoUrl !== "string" || !/^https?:\/\//i.test(scene.videoUrl)) {
-      throw new Error("رابط فيديو غير صالح في المشهد " + (index + 1) + ".");
+    if (!scene || (!scene.videoBlob && (typeof scene.videoUrl !== "string" || !/^https?:\/\//i.test(scene.videoUrl)))) {
+      throw new Error("ملف فيديو غير صالح في المشهد " + (index + 1) + ".");
     }
     onProgress({ stage: "download", progress: index / scenes.length });
-    const response = await fetch(scene.videoUrl, { mode: "cors", credentials: "omit" });
-    if (!response.ok) throw new Error("تعذّر تنزيل المشهد " + (index + 1) + " من مزود الفيديو.");
-    const data = new Uint8Array(await response.arrayBuffer());
+    let data;
+    if (scene.videoBlob instanceof Blob) {
+      data = new Uint8Array(await scene.videoBlob.arrayBuffer());
+    } else {
+      const response = await fetch(scene.videoUrl, { mode: "cors", credentials: "omit" });
+      if (!response.ok) throw new Error("تعذّر تنزيل المشهد " + (index + 1) + " من مزود الفيديو.");
+      data = new Uint8Array(await response.arrayBuffer());
+    }
     if (!data.length || data.length > MAX_CLIP_BYTES) {
       throw new Error("حجم ملف المشهد " + (index + 1) + " غير مناسب للدمج المحلي.");
     }
