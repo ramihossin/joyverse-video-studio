@@ -36,7 +36,15 @@ let resultUrl = null;
 const clipUrls = new Map();
 
 try {
-  queue = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+  const saved = localStorage.getItem(STORAGE_KEY);
+  if (saved) queue = JSON.parse(saved);
+  else {
+    const legacy = JSON.parse(localStorage.getItem("joyverse-scene-queue-v1") || "[]");
+    queue = Array.isArray(legacy) ? legacy.map(scene => ({
+      ...scene, status: scene.status === "running" ? "waiting" : scene.status,
+      serverTaskId: null, referenceBlobId: null, referenceImageKey: null
+    })) : [];
+  }
   if (!Array.isArray(queue)) queue = [];
 } catch { queue = []; }
 
@@ -107,6 +115,12 @@ function renderQueue() {
       (scene.error ? " · " + scene.error : "");
     copy.append(title, detail);
     item.append(copy);
+    if (scene.status === "done" && scene.videoUrl && !scene.serverTaskId) {
+      const legacyLink = document.createElement("a");
+      legacyLink.href = scene.videoUrl; legacyLink.target = "_blank"; legacyLink.rel = "noopener noreferrer";
+      legacyLink.textContent = "فتح الفيديو السابق";
+      item.append(legacyLink);
+    }
     if (scene.status === "done" && scene.serverTaskId) {
       const getClip = document.createElement("button");
       getClip.type = "button";
