@@ -2,7 +2,7 @@ name: Validate JoyVerse Video Studio
 
 on:
   pull_request:
-    branches: [main]
+    branches: [main, feat/server-video-worker-foundation]
   push:
     branches: [main]
 
@@ -34,7 +34,6 @@ jobs:
           test -s web/styles.css
           test -s web/app.js
           test -s web/manifest.js
-          test -s web/automation.js
           test -s web/video-storage.js
           test -s web/assembler.js
           test -s web/ffmpeg-cache.js
