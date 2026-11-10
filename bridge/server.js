@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { z } from "zod";
+import { initializeTaskStore, enqueueTask, getTask, claimNextTask, finishTask } from "./task-store.js";
 
 const app = express();
 app.disable("x-powered-by");
@@ -23,7 +24,7 @@ let lastCommand = null;
 const seenCommandIds = new Set();
 
 // Prototype queue: in-memory only; a Render restart clears queued tasks.
-const hermesTasks = new Map();
+// Durable task records are stored in PostgreSQL.
 const HERMES_TOOLSETS = new Set(["web", "browser", "video_gen"]);
 const HERMES_MAX_PROMPT = 12000;
 
@@ -112,7 +113,7 @@ function createMcpServer() {
         created_at: new Date().toISOString(), claimed_at: null,
         result: null, error: null
       };
-      hermesTasks.set(taskId, task);
+      await enqueueTask(task);
       return { content: [{ type: "text", text: JSON.stringify({
         accepted: true, task_id: taskId, scene_id, status: "queued",
         note: "Queued in Render memory. The Android worker must claim and execute it; acceptance is not completion. Tasks are lost if the service restarts."
@@ -125,7 +126,7 @@ function createMcpServer() {
     "Check the status and result of a task previously dispatched to the Android Hermes worker.",
     { task_id: z.string().min(1).max(100) },
     async ({ task_id }) => {
-      const task = hermesTasks.get(task_id);
+      const task = await getTask(task_id);
       if (!task) {
         return { isError: true, content: [{ type: "text", text: "Hermes task not found. It may have expired or Render may have restarted." }] };
       }
@@ -285,7 +286,7 @@ app.post("/api/command", async (req, res) => {
 });
 
 // ChatGPT-controlled relay endpoint, protected by a dedicated credential distinct from the phone worker token.
-app.post("/api/hermes/dispatch-chatgpt", (req, res) => {
+app.post("/api/hermes/dispatch-chatgpt", async (req, res) => {
   if (!CHATGPT_DISPATCH_TOKEN) return res.status(503).json({ error: "chatgpt_dispatch_not_configured" });
   if (!chatgptDispatchAuthorized(req)) return res.status(401).json({ error: "unauthorized" });
   const { scene_id, prompt, toolsets = ["web"] } = req.body ?? {};
@@ -298,7 +299,7 @@ app.post("/api/hermes/dispatch-chatgpt", (req, res) => {
     return res.status(400).json({ error: "invalid_toolsets" });
   const selected = [...new Set(toolsets)];
   const taskId = "hermes_" + randomUUID();
-  hermesTasks.set(taskId, {
+  await enqueueTask({
     task_id: taskId, scene_id, prompt, toolsets: selected,
     confirm_video_generation: false, status: "queued",
     created_at: new Date().toISOString(), claimed_at: null,
@@ -308,10 +309,10 @@ app.post("/api/hermes/dispatch-chatgpt", (req, res) => {
   return res.status(202).json({ accepted: true, task_id: taskId, scene_id, status: "queued" });
 });
 
-app.get("/api/hermes/status-chatgpt/:taskId", (req, res) => {
+app.get("/api/hermes/status-chatgpt/:taskId", async (req, res) => {
   if (!CHATGPT_DISPATCH_TOKEN) return res.status(503).json({ error: "chatgpt_dispatch_not_configured" });
   if (!chatgptDispatchAuthorized(req)) return res.status(401).json({ error: "unauthorized" });
-  const task = hermesTasks.get(req.params.taskId);
+  const task = await getTask(req.params.taskId);
   if (!task) return res.status(404).json({ error: "task_not_found" });
   res.set("Cache-Control", "no-store");
   return res.json({ task_id: task.task_id, scene_id: task.scene_id, status: task.status,
@@ -320,7 +321,7 @@ app.get("/api/hermes/status-chatgpt/:taskId", (req, res) => {
 });
 
 // Hermes phone-worker queue. All endpoints use the existing bearer token.
-app.post("/api/hermes/dispatch", (req, res) => {
+app.post("/api/hermes/dispatch", async (req, res) => {
   if (!HERMES_WORKER_TOKEN) return res.status(503).json({ error: "hermes_worker_token_not_configured" });
   if (!hermesWorkerAuthorized(req)) return res.status(401).json({ error: "unauthorized" });
   const { scene_id, prompt, toolsets = ["web"], confirm_video_generation = false } = req.body ?? {};
@@ -342,7 +343,7 @@ app.post("/api/hermes/dispatch", (req, res) => {
     return res.status(400).json({ error: "confirmation_without_video_gen" });
   }
   const taskId = "hermes_" + randomUUID();
-  hermesTasks.set(taskId, {
+  await enqueueTask({
     task_id: taskId, scene_id, prompt, toolsets: selected,
     confirm_video_generation, status: "queued",
     created_at: new Date().toISOString(), claimed_at: null,
@@ -351,17 +352,11 @@ app.post("/api/hermes/dispatch", (req, res) => {
   return res.status(202).json({ accepted: true, task_id: taskId, scene_id, status: "queued" });
 });
 
-app.get("/api/hermes/next", (req, res) => {
+app.get("/api/hermes/next", async (req, res) => {
   if (!HERMES_WORKER_TOKEN) return res.status(503).json({ error: "hermes_worker_token_not_configured" });
   if (!hermesWorkerAuthorized(req)) return res.status(401).json({ error: "unauthorized" });
-  const now = Date.now();
-  const task = [...hermesTasks.values()].find(t =>
-    t.status === "queued" ||
-    (t.status === "claimed" && t.claimed_at && now - Date.parse(t.claimed_at) > 300000)
-  );
+  const task = await claimNextTask();
   if (!task) return res.status(204).end();
-  task.status = "claimed";
-  task.claimed_at = new Date().toISOString();
   res.set("Cache-Control", "no-store");
   return res.json({
     task_id: task.task_id, scene_id: task.scene_id,
@@ -370,25 +365,22 @@ app.get("/api/hermes/next", (req, res) => {
   });
 });
 
-app.post("/api/hermes/result", (req, res) => {
+app.post("/api/hermes/result", async (req, res) => {
   if (!HERMES_WORKER_TOKEN) return res.status(503).json({ error: "hermes_worker_token_not_configured" });
   if (!hermesWorkerAuthorized(req)) return res.status(401).json({ error: "unauthorized" });
   const { task_id, status, result, error } = req.body ?? {};
-  const task = typeof task_id === "string" ? hermesTasks.get(task_id) : null;
-  if (!task) return res.status(404).json({ error: "task_not_found" });
+  if (typeof task_id !== "string") return res.status(404).json({ error: "task_not_found" });
   if (!["completed", "failed"].includes(status)) return res.status(400).json({ error: "invalid_status" });
-  task.status = status;
-  task.result = status === "completed" && result && typeof result === "object"
-    ? JSON.stringify(result).slice(0, 14000) : null;
-  task.error = status === "failed" ? String(error || "Hermes task failed").slice(0, 1000) : null;
-  task.finished_at = new Date().toISOString();
-  return res.json({ accepted: true, task_id, status: task.status });
+  const updated = await finishTask(task_id, status,
+    status === "completed" && result && typeof result === "object" ? result : null, error);
+  if (!updated) return res.status(404).json({ error: "task_not_found_or_not_claimed" });
+  return res.json({ accepted: true, task_id, status: updated.status });
 });
 
-app.get("/api/hermes/tasks/:taskId", (req, res) => {
+app.get("/api/hermes/tasks/:taskId", async (req, res) => {
   if (!HERMES_WORKER_TOKEN) return res.status(503).json({ error: "hermes_worker_token_not_configured" });
   if (!hermesWorkerAuthorized(req)) return res.status(401).json({ error: "unauthorized" });
-  const task = hermesTasks.get(req.params.taskId);
+  const task = await getTask(req.params.taskId);
   if (!task) return res.status(404).json({ error: "task_not_found" });
   res.set("Cache-Control", "no-store");
   return res.json({
@@ -420,10 +412,8 @@ app.get("/api/status", (req, res) => {
     },
     last_command: lastCommand,
     last_device_result: lastDeviceResult,
-    hermes_queue: { queued: [...hermesTasks.values()].filter(t => t.status === "queued").length,
-      active: [...hermesTasks.values()].filter(t => t.status === "claimed").length,
-      persistence: "in-memory; reset on service restart" },
-    persistence: "in-memory; reset on service restart"
+    hermes_queue: { persistence: "PostgreSQL durable storage" },
+    persistence: "PostgreSQL required; service refuses startup without DATABASE_URL"
   });
 });
 
@@ -481,6 +471,11 @@ app.all("/mcp", (_req, res) => res.status(405).json({ error: "Use POST for Strea
 app.all("/mcp/:token", (_req, res) => res.status(405).json({ error: "Use POST for Streamable HTTP MCP." }));
 
 const port = Number(process.env.PORT || 10000);
-app.listen(port, "0.0.0.0", () => {
-  console.log("JoyVerse MacroDroid bridge listening on port " + port);
+initializeTaskStore().then(() => {
+  app.listen(port, "0.0.0.0", () => {
+    console.log("JoyVerse MacroDroid bridge listening on port " + port + " with durable PostgreSQL task storage");
+  });
+}).catch(error => {
+  console.error("Durable task store initialization failed:", error);
+  process.exit(1);
 });
