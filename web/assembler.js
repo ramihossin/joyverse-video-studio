@@ -1,10 +1,10 @@
 const MAX_CLIPS = 8;
 const MAX_CLIP_BYTES = 100 * 1024 * 1024;
 const MAX_TOTAL_BYTES = 350 * 1024 * 1024;
-const CORE_CDN = "https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.10/dist/umd/";
+const CORE_CDN = "https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.10/dist/esm/";
 const CORE_MIRRORS = [
-  "https://unpkg.com/@ffmpeg/core@0.12.10/dist/umd/",
-  "https://fastly.jsdelivr.net/npm/@ffmpeg/core@0.12.10/dist/umd/"
+  "https://unpkg.com/@ffmpeg/core@0.12.10/dist/esm/",
+  "https://fastly.jsdelivr.net/npm/@ffmpeg/core@0.12.10/dist/esm/"
 ];
 
 function dimensionsFor(aspect) {
@@ -14,7 +14,7 @@ function dimensionsFor(aspect) {
 }
 
 async function fetchRuntimeAsset(url, fallbackUrls = []) {
-  const cacheName = "joyverse-ffmpeg-0.12.10-local";
+  const cacheName = "joyverse-ffmpeg-0.12.10-esm";
   if ("caches" in window) {
     const cache = await caches.open(cacheName);
     const cached = await cache.match(url);
@@ -38,8 +38,6 @@ async function fetchRuntimeAsset(url, fallbackUrls = []) {
       }
       if ("caches" in window) {
         const cache = await caches.open(cacheName);
-        // Do not fail assembly when the browser refuses to persist a large runtime
-        // response (common on mobile / low-storage devices).
         try {
           await cache.put(url, response.clone());
         } catch (cacheError) {
@@ -82,7 +80,7 @@ async function loadFFmpeg(onProgress) {
     return ffmpeg;
   } catch (error) {
     ffmpeg.terminate();
-    throw error;
+    throw new Error("تعذّر تهيئة نسخة FFmpeg بصيغة ESM: " + (error?.message || String(error)));
   } finally {
     URL.revokeObjectURL(coreBlob);
     URL.revokeObjectURL(wasmBlob);
