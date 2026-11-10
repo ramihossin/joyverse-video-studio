@@ -77,3 +77,25 @@ test("local assembly becomes available for two completed clips without starting 
   await expect(page.locator("#assemble-scenes")).toBeEnabled();
   await expect(page.locator("#start-queue")).toBeDisabled();
 });
+
+
+test("vendored FFmpeg wrapper modules load from the Studio origin", async ({ page }) => {
+  await page.goto("/");
+  const moduleType = await page.evaluate(async () => {
+    const { FFmpeg } = await import("/vendor/ffmpeg/esm/index.js");
+    return typeof FFmpeg;
+  });
+  expect(moduleType).toBe("function");
+
+  for (const path of [
+    "/vendor/ffmpeg/esm/classes.js",
+    "/vendor/ffmpeg/esm/const.js",
+    "/vendor/ffmpeg/esm/errors.js",
+    "/vendor/ffmpeg/esm/types.js",
+    "/vendor/ffmpeg/esm/utils.js",
+    "/vendor/ffmpeg/esm/worker.js"
+  ]) {
+    const status = await page.evaluate(async (assetPath) => (await fetch(assetPath)).status, path);
+    expect(status, path + " should be served locally").toBe(200);
+  }
+});

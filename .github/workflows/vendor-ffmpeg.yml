@@ -1,0 +1,53 @@
+name: Vendor FFmpeg browser wrapper for GitHub Pages
+
+on:
+  push:
+    branches: [fix/local-ffmpeg-runtime]
+    paths:
+      - ".github/workflows/vendor-ffmpeg.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: vendor-ffmpeg-runtime
+  cancel-in-progress: false
+
+jobs:
+  vendor:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Check out branch
+        uses: actions/checkout@v4
+        with:
+          ref: fix/local-ffmpeg-runtime
+          persist-credentials: true
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Download pinned MIT browser wrapper
+        run: |
+          npm install --no-save --ignore-scripts @ffmpeg/ffmpeg@0.12.10
+          rm -rf web/vendor/ffmpeg/esm web/vendor/ffmpeg/core
+          mkdir -p web/vendor/ffmpeg/esm
+          cp -R node_modules/@ffmpeg/ffmpeg/dist/esm/. web/vendor/ffmpeg/esm/
+          curl -fsSL https://raw.githubusercontent.com/ffmpegwasm/ffmpeg.wasm/v0.12.10/LICENSE -o web/vendor/ffmpeg/FFMPEG-LICENSE.txt
+          node -e 'const fs=require("fs"); const p=JSON.parse(fs.readFileSync("node_modules/@ffmpeg/ffmpeg/package.json","utf8")); fs.writeFileSync("web/vendor/ffmpeg/THIRD-PARTY-NOTICES.txt", "@ffmpeg/ffmpeg "+p.version+" — license: "+p.license+" — "+p.repository.url+"\\nFFmpeg core remains fetched from upstream CDN mirrors and is not redistributed in this repository.\\n");'
+          test -s web/vendor/ffmpeg/esm/index.js
+          test -s web/vendor/ffmpeg/esm/worker.js
+          test -s web/vendor/ffmpeg/FFMPEG-LICENSE.txt
+      - name: Commit vendored browser wrapper
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A web/vendor/ffmpeg
+          if git diff --cached --quiet; then
+            echo "FFmpeg browser wrapper is already vendored."
+          else
+            git commit -m "Vendor MIT FFmpeg browser wrapper and remove GPL core binary"
+            git fetch origin fix/local-ffmpeg-runtime
+            git rebase origin/fix/local-ffmpeg-runtime
+            git push origin HEAD:fix/local-ffmpeg-runtime
+          fi
