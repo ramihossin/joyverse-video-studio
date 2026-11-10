@@ -107,3 +107,60 @@ test("vendored FFmpeg wrapper modules remain available", async ({ page }) => {
     expect(await page.evaluate(async assetPath => (await fetch(assetPath)).status, path)).toBe(200);
   }
 });
+
+
+test("Studio dispatches a reference-backed server task, assembles it, and restores after reload", async ({ page }) => {
+  let dispatchPayload = null;
+  let assemblyPayload = null;
+  const taskId = "hermes_123e4567-e89b-12d3-a456-426614174000";
+  const finalId = "123e4567-e89b-12d3-a456-426614174001";
+
+  await page.route("https://bridge.test/api/hermes/reference-upload", async route => {
+    expect(route.request().headers().authorization).toBe("Bearer studio-test-token-with-32-characters");
+    await route.fulfill({ status: 201, contentType: "application/json",
+      body: JSON.stringify({ reference_image_key: "references/pending/123e4567-e89b-12d3-a456-426614174002.png" }) });
+  });
+  await page.route("https://bridge.test/api/hermes/dispatch", async route => {
+    dispatchPayload = route.request().postDataJSON();
+    await route.fulfill({ status: 202, contentType: "application/json",
+      body: JSON.stringify({ accepted: true, task_id: taskId, status: "queued" }) });
+  });
+  await page.route("https://bridge.test/api/hermes/tasks/" + taskId, async route => {
+    await route.fulfill({ status: 200, contentType: "application/json",
+      body: JSON.stringify({ task_id: taskId, status: "completed", storage_key: "jobs/task/scene.mp4", result: { storage_key: "jobs/task/scene.mp4" } }) });
+  });
+  await page.route("https://bridge.test/api/hermes/assemble", async route => {
+    assemblyPayload = route.request().postDataJSON();
+    await route.fulfill({ status: 201, contentType: "application/json",
+      body: JSON.stringify({ status: "completed", final_id: finalId, scene_count: 1 }) });
+  });
+  await page.route("https://bridge.test/api/hermes/final/" + finalId, async route => {
+    await route.fulfill({ status: 200, contentType: "video/mp4", body: Buffer.from("fake-mp4-final") });
+  });
+
+  await page.goto("/");
+  await page.locator("#bridge-url").fill("https://bridge.test");
+  await page.locator("#studio-token").fill("studio-test-token-with-32-characters");
+  await page.locator("#scene-title").fill("Cloud scene");
+  await page.locator("#prompt").fill("A friendly dragon waves.");
+  await page.locator("#consent").check();
+  await page.locator("#image").setInputFiles({
+    name: "reference.png", mimeType: "image/png",
+    buffer: Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p7sAAAAASUVORK5CYII=", "base64")
+  });
+  await page.locator("#studio-form button[type=submit]").click();
+  await expect(page.locator("#scene-list")).toContainText("Cloud scene");
+  await page.locator("#start-queue").click();
+  await expect(page.locator("#scene-list")).toContainText("مكتمل ومحفوظ سحابياً");
+  expect(dispatchPayload).not.toBeNull();
+  expect(dispatchPayload.reference_image_key).toMatch(/^references\/pending\//);
+  expect(dispatchPayload.toolsets).toEqual(["video_gen"]);
+  await expect(page.locator("#assemble-scenes")).toBeEnabled();
+  await page.locator("#assemble-scenes").click();
+  await expect(page.locator("#assembly-box")).toBeVisible();
+  expect(assemblyPayload.task_ids).toEqual([taskId]);
+
+  await page.reload();
+  await expect(page.locator("#assembly-box")).toBeVisible();
+  await expect(page.locator("#scene-list")).toContainText("مكتمل ومحفوظ سحابياً");
+});
