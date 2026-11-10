@@ -75,9 +75,12 @@
         <div><h2>قائمة الإنتاج</h2><p>تُرسل المشاهد بالتتابع؛ لا يبدأ التالي قبل انتهاء الحالي.</p></div>
       </div>
       <div class="queue-actions">
-        <button id="import-manifest" class="secondary" type="button">استيراد قائمة وكيل</button>
+        <button id="import-manifest" class="secondary" type="button">استيراد قائمة وكيل (JSON)</button>
+        <button id="import-videos" class="secondary" type="button">استيراد مقاطع الفيديو من الهاتف</button>
         <button id="export-manifest" class="secondary" type="button">تصدير المشاهد JSON</button>
         <input id="manifest-file" type="file" accept="application/json,.json" hidden>
+        <input id="video-files" type="file" accept="video/mp4,video/*,.mp4" multiple hidden>
+        <p class="queue-summary">استيراد JSON لإضافة أوصاف المشاهد، أو استيراد MP4 لإضافة المقاطع الجاهزة للدمج. الحد: 8 مقاطع، 100 ميغابايت للمقطع، و350 ميغابايت إجمالاً.</p>
         <button id="start-queue" type="button">▶ تشغيل قائمة المشاهد</button>
         <button id="stop-queue" class="secondary" type="button" disabled>إيقاف بعد المشهد الحالي</button>
         <button id="clear-queue" class="secondary" type="button">مسح المكتمل</button>
