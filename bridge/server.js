@@ -54,12 +54,13 @@ const VIDEO_WORKER_REPOSITORY = process.env.GITHUB_OIDC_REPOSITORY || "ramihossi
 const VIDEO_WORKER_WORKFLOW = ".github/workflows/video-worker.yml";
 const VIDEO_WORKER_BRANCH = process.env.GITHUB_OIDC_BRANCH || "main";
 const VIDEO_WORKER_AUDIENCE = "joyverse-video-worker";
-const backgroundVideoWorker = createVideoWorker();
+let backgroundVideoWorker = null;
 let backgroundVideoWorkerBusy = false;
 
 function startBackgroundVideoTask() {
   if (backgroundVideoWorkerBusy) return false;
   backgroundVideoWorkerBusy = true;
+  backgroundVideoWorker ||= createVideoWorker();
   void backgroundVideoWorker.runOnce()
     .catch(error => console.error("Background video worker failed:", String(error?.message || error).slice(0, 300)))
     .finally(() => { backgroundVideoWorkerBusy = false; });
