@@ -351,7 +351,7 @@ app.post("/api/hermes/dispatch", async (req, res) => {
   }
   let normalizedVideoOptions = {};
   if (selected.includes("video_gen")) {
-    try { normalizedVideoOptions = normalizeVideoOptions(video_options || {}); }
+    try { normalizedVideoOptions = normalizeVideoOptions(video_options === undefined ? {} : video_options); }
     catch (error) { return res.status(400).json({ error: "invalid_video_options", message: error.message }); }
   } else if (video_options !== undefined) {
     return res.status(400).json({ error: "video_options_require_video_gen" });
