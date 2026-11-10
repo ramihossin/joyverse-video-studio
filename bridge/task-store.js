@@ -45,6 +45,7 @@ export async function initializeTaskStore() {
       provider_job_id TEXT,
       output_url TEXT,
       storage_key TEXT,
+      reference_image_key TEXT,
       heartbeat_at TIMESTAMPTZ,
       attempts INTEGER NOT NULL DEFAULT 0,
       claim_token TEXT
@@ -55,6 +56,7 @@ export async function initializeTaskStore() {
     ALTER TABLE joyverse_tasks ADD COLUMN IF NOT EXISTS provider_job_id TEXT;
     ALTER TABLE joyverse_tasks ADD COLUMN IF NOT EXISTS output_url TEXT;
     ALTER TABLE joyverse_tasks ADD COLUMN IF NOT EXISTS storage_key TEXT;
+    ALTER TABLE joyverse_tasks ADD COLUMN IF NOT EXISTS reference_image_key TEXT;
     ALTER TABLE joyverse_tasks ADD COLUMN IF NOT EXISTS heartbeat_at TIMESTAMPTZ;
     ALTER TABLE joyverse_tasks ADD COLUMN IF NOT EXISTS attempts INTEGER NOT NULL DEFAULT 0;
     ALTER TABLE joyverse_tasks ADD COLUMN IF NOT EXISTS claim_token TEXT;
@@ -73,7 +75,7 @@ export async function enqueueTask(task) {
     testTasks.set(task.task_id, {
       ...task, toolsets: [...task.toolsets], video_options: { ...(task.video_options || {}) }, status: "queued",
       stage: "queued", provider: null, provider_job_id: null,
-      output_url: null, storage_key: null, heartbeat_at: null, attempts: 0, claim_token: null,
+      output_url: null, storage_key: null, reference_image_key: task.reference_image_key || null, heartbeat_at: null, attempts: 0, claim_token: null,
       created_at: task.created_at || new Date().toISOString()
     });
     return getTask(task.task_id);
@@ -89,13 +91,35 @@ export async function enqueueTask(task) {
   return getTask(task.task_id);
 }
 
+export async function setTaskReferenceImage(taskId, key) {
+  if (typeof taskId !== "string" || !taskId || typeof key !== "string" ||
+      !key.startsWith("references/") || key.length > 512) {
+    throw new Error("Invalid reference image association.");
+  }
+  if (testMemoryEnabled) {
+    const task = testTasks.get(taskId);
+    if (!task || task.status !== "queued" || task.confirm_video_generation !== true ||
+        !Array.isArray(task.toolsets) || !task.toolsets.includes("video_gen")) return null;
+    task.reference_image_key = key;
+    return { task_id: taskId, reference_image_key: key };
+  }
+  const db = getTaskPool();
+  const { rows } = await db.query(
+    `UPDATE joyverse_tasks SET reference_image_key=$2
+      WHERE task_id=$1 AND status='queued'
+        AND confirm_video_generation=TRUE AND toolsets @> '["video_gen"]'::jsonb
+      RETURNING task_id, reference_image_key`, [taskId, key]
+  );
+  return rows[0] || null;
+}
+
 export async function getTask(taskId) {
   if (testMemoryEnabled) return testTasks.get(taskId) || null;
   const db = getTaskPool();
   const { rows } = await db.query(
     `SELECT task_id, scene_id, prompt, toolsets, confirm_video_generation, video_options,
             status, created_at, claimed_at, finished_at, result, error,
-            stage, provider, provider_job_id, output_url, storage_key,
+            stage, provider, provider_job_id, output_url, storage_key, reference_image_key,
             heartbeat_at, attempts
        FROM joyverse_tasks WHERE task_id = $1`, [taskId]
   );
@@ -176,7 +200,7 @@ export async function claimNextTask() {
       task_id: task.task_id, scene_id: task.scene_id, prompt: task.prompt,
       toolsets: task.toolsets, confirm_video_generation: task.confirm_video_generation,
       video_options: task.video_options || {}, stage: task.stage, provider: task.provider, provider_job_id: task.provider_job_id,
-      output_url: task.output_url, storage_key: task.storage_key, attempts: task.attempts,
+      output_url: task.output_url, storage_key: task.storage_key, reference_image_key: task.reference_image_key || null, attempts: task.attempts,
       claim_token: task.claim_token
     };
   }
@@ -202,7 +226,7 @@ export async function claimNextTask() {
              attempts=attempts+1, claim_token=$2
        WHERE task_id=$1
        RETURNING task_id, scene_id, prompt, toolsets, confirm_video_generation,
-                 video_options, stage, provider, provider_job_id, output_url, storage_key, attempts, claim_token
+                 video_options, stage, provider, provider_job_id, output_url, storage_key, reference_image_key, attempts, claim_token
     `, [rows[0].task_id, randomUUID()]);
     await client.query("COMMIT");
     return claimed[0] || null;
