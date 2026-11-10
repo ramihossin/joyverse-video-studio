@@ -138,7 +138,7 @@ def main():
                 save_checkpoint(task_id, worker_token, claim_token, stage="preparing", provider="local-hermes")
                 _, submitted = local_request(LOCAL_BASE + "/tasks", bridge_key, "POST", local_payload)
                 local_id = submitted["task_id"]
-                save_checkpoint(task_id, worker_token, stage="generating",
+                save_checkpoint(task_id, worker_token, claim_token, stage="generating",
                                 provider="local-hermes", provider_job_id=local_id)
 
             deadline = time.time() + TASK_WAIT_SECONDS
