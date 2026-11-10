@@ -61,7 +61,7 @@ export function createObjectStorage({
         throw new Error("Object body must be a non-empty buffer up to 100 MiB.");
       }
       if (typeof contentType !== "string" || contentType.length > 120 ||
-          /[\\r\\n]/.test(contentType)) throw new Error("Invalid content type.");
+          /[\r\n]/.test(contentType)) throw new Error("Invalid content type.");
       const commands = await getCommands();
       await (await getClient()).send(new commands.PutObjectCommand({
         Bucket: bucket, Key: key, Body: body, ContentType: contentType
@@ -86,7 +86,7 @@ export function createObjectStorage({
         throw new Error("Upload URL expiry must be from 60 to 3600 seconds.");
       }
       if (typeof contentType !== "string" || contentType.length > 120 ||
-          /[\\r\\n]/.test(contentType)) throw new Error("Invalid content type.");
+          /[\r\n]/.test(contentType)) throw new Error("Invalid content type.");
       const commands = await getCommands();
       const command = new commands.PutObjectCommand({
         Bucket: bucket, Key: key, ContentType: contentType
