@@ -1,0 +1,52 @@
+name: Vendor FFmpeg runtime for GitHub Pages
+
+on:
+  push:
+    branches: [fix/local-ffmpeg-runtime]
+    paths:
+      - ".github/workflows/vendor-ffmpeg.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: vendor-ffmpeg-runtime
+  cancel-in-progress: false
+
+jobs:
+  vendor:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Check out branch
+        uses: actions/checkout@v4
+        with:
+          ref: fix/local-ffmpeg-runtime
+          persist-credentials: true
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Download pinned FFmpeg packages
+        run: |
+          npm install --no-save --ignore-scripts @ffmpeg/ffmpeg@0.12.10 @ffmpeg/core@0.12.10
+          mkdir -p web/vendor/ffmpeg/esm web/vendor/ffmpeg/core
+          cp -R node_modules/@ffmpeg/ffmpeg/dist/esm/. web/vendor/ffmpeg/esm/
+          cp node_modules/@ffmpeg/core/dist/umd/ffmpeg-core.js web/vendor/ffmpeg/core/
+          cp node_modules/@ffmpeg/core/dist/umd/ffmpeg-core.wasm web/vendor/ffmpeg/core/
+          test -s web/vendor/ffmpeg/esm/index.js
+          test -s web/vendor/ffmpeg/esm/worker.js
+          test -s web/vendor/ffmpeg/core/ffmpeg-core.js
+          test -s web/vendor/ffmpeg/core/ffmpeg-core.wasm
+          du -h web/vendor/ffmpeg/core/*
+      - name: Commit vendored runtime
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add web/vendor/ffmpeg
+          if git diff --cached --quiet; then
+            echo "FFmpeg runtime is already vendored."
+          else
+            git commit -m "Vendor pinned FFmpeg runtime for offline-friendly assembly"
+            git push origin HEAD:fix/local-ffmpeg-runtime
+          fi
