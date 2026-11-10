@@ -21,7 +21,7 @@ Configure these values as private environment variables on the bridge host:
 - `HERMES_WORKER_TOKEN`: separate secret used only by the background worker and internal worker endpoints.
 - `JOYVERSE_STUDIO_TOKEN`: separate strong secret entered into the Studio UI; do not commit it.
 - `DATABASE_URL`: PostgreSQL connection string for durable tasks.
-- `S3_BUCKET`, `S3_REGION`, and the S3-compatible endpoint/credentials documented in `bridge/object-storage.js`.
+- `OBJECT_STORAGE_BUCKET`, `OBJECT_STORAGE_REGION` (optional), `OBJECT_STORAGE_ENDPOINT`, `OBJECT_STORAGE_ACCESS_KEY_ID`, and `OBJECT_STORAGE_SECRET_ACCESS_KEY`; `OBJECT_STORAGE_FORCE_PATH_STYLE` is optional.
 - `HF_TOKEN` (optional): Hugging Face token for the server-side LTX provider.
 - `STUDIO_ALLOWED_ORIGINS` (optional): comma-separated exact HTTPS origins. Defaults include the project GitHub Pages and Render static-site origins.
 
