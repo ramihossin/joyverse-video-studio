@@ -133,6 +133,20 @@ test("Hermes task survives dispatch, claim, completion, and status retrieval", a
   assert.equal(task.task_id, accepted.task_id);
   assert.equal(task.scene_id, "scene-test");
 
+  const checkpoint = await fetch(`${baseUrl}/api/hermes/checkpoint`, {
+    method: "POST", headers,
+    body: JSON.stringify({
+      task_id: accepted.task_id, stage: "generating",
+      provider: "LTX-2.5", provider_job_id: "provider-job-test",
+      output_url: "https://example.test/scene.mp4",
+      storage_key: "joyverse/scenes/scene-test.mp4"
+    })
+  });
+  assert.equal(checkpoint.status, 200);
+  const savedCheckpoint = await checkpoint.json();
+  assert.equal(savedCheckpoint.stage, "generating");
+  assert.equal(savedCheckpoint.provider_job_id, "provider-job-test");
+
   const complete = await fetch(`${baseUrl}/api/hermes/result`, {
     method: "POST", headers,
     body: JSON.stringify({
@@ -147,4 +161,8 @@ test("Hermes task survives dispatch, claim, completion, and status retrieval", a
   const finalState = await status.json();
   assert.equal(finalState.status, "completed");
   assert.deepEqual(finalState.result, { message: "TEST_OK" });
+  assert.equal(finalState.stage, "completed");
+  assert.equal(finalState.provider, "LTX-2.5");
+  assert.equal(finalState.provider_job_id, "provider-job-test");
+  assert.equal(finalState.storage_key, "joyverse/scenes/scene-test.mp4");
 });
