@@ -24,7 +24,7 @@ jobs:
         with:
           node-version: 20
           cache: npm
-      - name: Validate required worker secrets
+      - name: Validate worker configuration
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           OBJECT_STORAGE_BUCKET: ${{ secrets.OBJECT_STORAGE_BUCKET || secrets.R2_BUCKET }}
@@ -35,12 +35,16 @@ jobs:
         run: |
           set -eu
           : "${DATABASE_URL:?Missing repository Actions secret: DATABASE_URL}"
-          : "${OBJECT_STORAGE_BUCKET:?Missing OBJECT_STORAGE_BUCKET or R2_BUCKET}"
-          : "${OBJECT_STORAGE_ACCESS_KEY_ID:?Missing object-storage access key}"
-          : "${OBJECT_STORAGE_SECRET_ACCESS_KEY:?Missing object-storage secret key}"
-          if [ -z "$OBJECT_STORAGE_ENDPOINT" ] && [ -z "$R2_ACCOUNT_ID" ]; then
-            echo "::error::Set OBJECT_STORAGE_ENDPOINT, R2_ENDPOINT, or R2_ACCOUNT_ID."
-            exit 1
+          if [ -n "$OBJECT_STORAGE_BUCKET$OBJECT_STORAGE_ENDPOINT$R2_ACCOUNT_ID$OBJECT_STORAGE_ACCESS_KEY_ID$OBJECT_STORAGE_SECRET_ACCESS_KEY" ]; then
+            : "${OBJECT_STORAGE_BUCKET:?Missing object-storage bucket}"
+            : "${OBJECT_STORAGE_ACCESS_KEY_ID:?Missing object-storage access key}"
+            : "${OBJECT_STORAGE_SECRET_ACCESS_KEY:?Missing object-storage secret key}"
+            if [ -z "$OBJECT_STORAGE_ENDPOINT" ] && [ -z "$R2_ACCOUNT_ID" ]; then
+              echo "::error::Set OBJECT_STORAGE_ENDPOINT, R2_ENDPOINT, or R2_ACCOUNT_ID."
+              exit 1
+            fi
+          else
+            echo "Using PostgreSQL object storage fallback (50 MiB maximum per object)."
           fi
       - name: Install dependencies
         run: npm ci
