@@ -142,6 +142,13 @@ test("Hermes task survives dispatch, claim, completion, and status retrieval", a
   assert.ok(task.claim_token.length >= 32);
   const claimToken = task.claim_token;
 
+  const staleCheckpoint = await fetch(`${baseUrl}/api/hermes/checkpoint`, {
+    method: "POST", headers,
+    body: JSON.stringify({ task_id: accepted.task_id, claim_token: "z".repeat(36), stage: "uploading" })
+  });
+  assert.equal(staleCheckpoint.status, 404);
+  assert.equal((await staleCheckpoint.json()).error, "task_not_found_or_not_claimed");
+
   const checkpoint = await fetch(`${baseUrl}/api/hermes/checkpoint`, {
     method: "POST", headers,
     body: JSON.stringify({
