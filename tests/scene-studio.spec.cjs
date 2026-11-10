@@ -95,7 +95,7 @@ test("vendored FFmpeg wrapper modules load from the Studio origin", async ({ pag
     "/vendor/ffmpeg/esm/utils.js",
     "/vendor/ffmpeg/esm/worker.js"
   ]) {
-    const response = await page.request.get(path);
-    expect(response.status(), path + " should be served locally").toBe(200);
+    const status = await page.evaluate(async (assetPath) => (await fetch(assetPath)).status, path);
+    expect(status, path + " should be served locally").toBe(200);
   }
 });
