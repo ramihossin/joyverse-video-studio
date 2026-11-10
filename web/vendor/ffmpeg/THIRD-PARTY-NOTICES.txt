@@ -1,0 +1,1 @@
+@ffmpeg/ffmpeg 0.12.10 — license: MIT — git+https://github.com/ffmpegwasm/ffmpeg.wasm.git\n@ffmpeg/core 0.12.10 — license: GPL-2.0-or-later — git+https://github.com/ffmpegwasm/ffmpeg.wasm.git\n
