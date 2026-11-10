@@ -9,6 +9,7 @@ import { normalizeVideoOptions } from "./video-job.js";
 import { createObjectStorage } from "./object-storage.js";
 import { assembleMp4 } from "./ffmpeg-assembler.js";
 import { createVideoWorker } from "./video-worker.js";
+import { createProceduralVideoProvider } from "./procedural-video-provider.js";
 import { verifyGithubActionsToken } from "./github-oidc.js";
 
 const app = express();
@@ -60,6 +61,7 @@ const VIDEO_WORKER_BRANCH = process.env.GITHUB_OIDC_BRANCH || "main";
 const VIDEO_WORKER_AUDIENCE = "joyverse-video-worker";
 let backgroundVideoWorker = null;
 let backgroundVideoWorkerBusy = false;
+let videoEngineSmokeTest = null;
 
 function startBackgroundVideoTask() {
   if (backgroundVideoWorkerBusy) return false;
@@ -700,6 +702,23 @@ app.get("/api/hermes/video/:taskId", async (req, res) => {
   }
 });
 
+app.get("/api/engine-smoke-test.mp4", async (_req, res) => {
+  if (!videoEngineSmokeTest?.ready) return res.status(503).json({ error: "video_engine_smoke_test_not_ready" });
+  try {
+    const video = await createObjectStorage().get("diagnostics/procedural-engine-smoke-test.mp4");
+    res.set({
+      "Content-Type": "video/mp4",
+      "Content-Length": String(video.length),
+      "Content-Disposition": 'inline; filename="joyverse-engine-smoke-test.mp4"',
+      "Cache-Control": "public, max-age=300",
+      "X-Content-Type-Options": "nosniff"
+    });
+    return res.status(200).send(video);
+  } catch {
+    return res.status(503).json({ error: "video_engine_smoke_test_unavailable" });
+  }
+});
+
 app.get("/api/status", async (req, res) => {
   if (!bearerAuthorized(req)) return res.status(401).json({ error: "unauthorized" });
   const queueCounts = await getQueueCounts();
@@ -790,6 +809,19 @@ initializeTaskStore().then(() => {
     // stranded whenever that scheduled workflow did not execute.
     backgroundVideoWorker ||= createVideoWorker();
     backgroundVideoWorkerBusy = true;
+    void createProceduralVideoProvider().generate({
+      prompt: "A bright colorful bouncing ball for JoyVerse Kids",
+      videoOptions: { duration: 1 }
+    }).then(async output => {
+      const saved = await createObjectStorage().put(
+        "diagnostics/procedural-engine-smoke-test.mp4", output.buffer, "video/mp4"
+      );
+      videoEngineSmokeTest = { ready: true, bytes: saved.size, checked_at: new Date().toISOString() };
+      console.log("Procedural FFmpeg MP4 smoke test passed:", saved.size, "bytes");
+    }).catch(error => {
+      videoEngineSmokeTest = { ready: false, checked_at: new Date().toISOString() };
+      console.error("Procedural FFmpeg MP4 smoke test failed:", String(error?.message || error).slice(0, 500));
+    });
     console.log("Starting persistent JoyVerse procedural FFmpeg video worker.");
     void backgroundVideoWorker.run()
       .catch(error => console.error("Persistent video worker stopped:", String(error?.message || error).slice(0, 300)))
