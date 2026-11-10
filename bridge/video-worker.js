@@ -13,7 +13,8 @@ export async function processClaimedVideoTask(task, {
   provider,
   storage,
   checkpoint = updateTaskCheckpoint,
-  finish = finishTask
+  finish = finishTask,
+  heartbeatIntervalMs = 60000
 } = {}) {
   if (!task || task.confirm_video_generation !== true ||
       !Array.isArray(task.toolsets) || !task.toolsets.includes("video_gen")) {
@@ -22,6 +23,9 @@ export async function processClaimedVideoTask(task, {
   if (!provider || typeof provider.generate !== "function" ||
       !storage || typeof storage.put !== "function") {
     throw new Error("Video worker provider and durable object storage are required.");
+  }
+  if (!Number.isInteger(heartbeatIntervalMs) || heartbeatIntervalMs < 1000 || heartbeatIntervalMs >= 5 * 60 * 1000) {
+    throw new Error("heartbeatIntervalMs must be from 1000 to less than 300000.");
   }
   const claimToken = task.claim_token;
   if (typeof claimToken !== "string" || claimToken.length < 32) {
@@ -37,28 +41,51 @@ export async function processClaimedVideoTask(task, {
     return { status: "failed", reason: "provider_resume_unavailable" };
   }
 
+  let heartbeatTimer = null;
+  let heartbeatChain = Promise.resolve();
+  let heartbeatError = null;
+  let currentStage = "submitting";
+  const renewLease = () => {
+    heartbeatChain = heartbeatChain.then(async () => {
+      const renewed = await checkpoint(task.task_id, claimToken, {
+        stage: currentStage, provider: "ltx-gradio"
+      });
+      if (!renewed) throw new Error("Video worker lost ownership of the task lease.");
+    }).catch(error => { heartbeatError = error; });
+    return heartbeatChain;
+  };
   try {
     const started = await checkpoint(task.task_id, claimToken, {
       stage: "submitting", provider: "ltx-gradio"
     });
     if (!started) throw new Error("Task claim expired before LTX submission.");
+    heartbeatTimer = setInterval(() => { void renewLease(); }, heartbeatIntervalMs);
+    heartbeatTimer.unref?.();
+
     const referenceImage = task.reference_image_key ? await storage.get(task.reference_image_key) : null;
+    if (heartbeatError) throw heartbeatError;
     const output = await provider.generate({
       prompt: task.prompt,
       referenceImage,
       videoOptions: task.video_options || {},
-      onProgress: async progress => {
-        await checkpoint(task.task_id, claimToken, {
-          stage: "generating", provider: "ltx-gradio"
-        });
+      onProgress: async () => {
+        currentStage = "generating";
+        await renewLease();
+        if (heartbeatError) throw heartbeatError;
       }
     });
-    await checkpoint(task.task_id, claimToken, {
-      stage: "uploading", provider: "ltx-gradio"
-    });
+    if (heartbeatError) throw heartbeatError;
+    currentStage = "uploading";
+    await renewLease();
+    if (heartbeatError) throw heartbeatError;
     const key = "jobs/" + safeSegment(task.task_id) + "/" +
       safeSegment(task.scene_id) + ".mp4";
     const saved = await storage.put(key, output.buffer, output.contentType || "video/mp4");
+    if (heartbeatError) throw heartbeatError;
+    clearInterval(heartbeatTimer);
+    heartbeatTimer = null;
+    await heartbeatChain;
+    if (heartbeatError) throw heartbeatError;
     const savedCheckpoint = await checkpoint(task.task_id, claimToken, {
       stage: "completed", provider: "ltx-gradio", storage_key: saved.key
     });
@@ -71,9 +98,11 @@ export async function processClaimedVideoTask(task, {
     if (!completed) throw new Error("Task ownership was lost before completion acknowledgement.");
     return { status: "completed", storage_key: saved.key, bytes: saved.size };
   } catch (error) {
+    if (heartbeatTimer) clearInterval(heartbeatTimer);
+    await heartbeatChain;
     await finish(task.task_id, claimToken, "failed", null,
-      String(error?.message || error).slice(0, 1000));
-    return { status: "failed", error: String(error?.message || error).slice(0, 1000) };
+      String(heartbeatError?.message || error?.message || error).slice(0, 1000));
+    return { status: "failed", error: String(heartbeatError?.message || error?.message || error).slice(0, 1000) };
   }
 }
 
