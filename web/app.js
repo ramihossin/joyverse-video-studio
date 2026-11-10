@@ -236,7 +236,7 @@ async function refreshScene(scene) {
 }
 async function pollTasks() {
   if (queueRunning) return;
-  queueRunning = true; stopRequested = false; renderQueue();
+  queueRunning = true; renderQueue();
   try {
     while (!stopRequested) {
       const active = queue.filter(scene => scene.serverTaskId && ["queued","running"].includes(scene.status));
@@ -267,11 +267,13 @@ async function runQueue() {
     queueRunning = true; renderQueue();
     const pending = queue.filter(scene => scene.status === "waiting");
     for (const scene of pending) {
+      if (stopRequested) break;
       try { await dispatchScene(scene); }
       catch (error) { scene.status = "waiting"; scene.error = error.message; saveQueue(); renderQueue(); }
     }
     queueRunning = false; renderQueue();
-    await pollTasks();
+    if (stopRequested) setStatus("توقفت عن إرسال مشاهد إضافية ومتابعة الحالة فقط؛ المهام التي أُرسلت تواصل عملها على الخادم.");
+    else await pollTasks();
   } catch (error) {
     queueRunning = false; renderQueue();
     setStatus("تعذّر الاتصال بخادم JoyVerse: " + error.message);
@@ -372,6 +374,7 @@ async function restoreServerState() {
       try { await showFinal(finalId); } catch (error) { console.warn("Final video restore failed", error.message); }
     }
     if (queue.some(scene => scene.serverTaskId && ["queued","running"].includes(scene.status))) {
+      stopRequested = false;
       pollTasks().catch(error => setStatus("تعذّرت مزامنة المهام: " + error.message));
     } else if (active.length) {
       setStatus("تم استرجاع حالات المشاهد من خادم JoyVerse.");
