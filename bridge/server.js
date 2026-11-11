@@ -9,7 +9,6 @@ import { normalizeVideoOptions } from "./video-job.js";
 import { createObjectStorage } from "./object-storage.js";
 import { assembleMp4 } from "./ffmpeg-assembler.js";
 import { createVideoWorker } from "./video-worker.js";
-import { createProceduralVideoProvider } from "./procedural-video-provider.js";
 import { verifyGithubActionsToken } from "./github-oidc.js";
 
 const app = express();
@@ -61,13 +60,25 @@ const VIDEO_WORKER_BRANCH = process.env.GITHUB_OIDC_BRANCH || "main";
 const VIDEO_WORKER_AUDIENCE = "joyverse-video-worker";
 let backgroundVideoWorker = null;
 let backgroundVideoWorkerBusy = false;
-let videoEngineSmokeTest = null;
+
+function getBackgroundVideoWorker() {
+  if (backgroundVideoWorker) return backgroundVideoWorker;
+  try {
+    backgroundVideoWorker = createVideoWorker();
+    return backgroundVideoWorker;
+  } catch (error) {
+    console.warn("Video worker is unavailable until durable object storage is configured:",
+      String(error?.message || error).slice(0, 240));
+    return null;
+  }
+}
 
 function startBackgroundVideoTask() {
   if (backgroundVideoWorkerBusy) return false;
+  const worker = getBackgroundVideoWorker();
+  if (!worker) return false;
   backgroundVideoWorkerBusy = true;
-  backgroundVideoWorker ||= createVideoWorker();
-  void backgroundVideoWorker.runOnce()
+  void worker.runOnce()
     .catch(error => console.error("Background video worker failed:", String(error?.message || error).slice(0, 300)))
     .finally(() => { backgroundVideoWorkerBusy = false; });
   return true;
@@ -702,23 +713,6 @@ app.get("/api/hermes/video/:taskId", async (req, res) => {
   }
 });
 
-app.get("/api/engine-smoke-test.mp4", async (_req, res) => {
-  if (!videoEngineSmokeTest?.ready) return res.status(503).json({ error: "video_engine_smoke_test_not_ready" });
-  try {
-    const video = await createObjectStorage().get("diagnostics/procedural-engine-smoke-test.mp4");
-    res.set({
-      "Content-Type": "video/mp4",
-      "Content-Length": String(video.length),
-      "Content-Disposition": 'inline; filename="joyverse-engine-smoke-test.mp4"',
-      "Cache-Control": "public, max-age=300",
-      "X-Content-Type-Options": "nosniff"
-    });
-    return res.status(200).send(video);
-  } catch {
-    return res.status(503).json({ error: "video_engine_smoke_test_unavailable" });
-  }
-});
-
 app.get("/api/status", async (req, res) => {
   if (!bearerAuthorized(req)) return res.status(401).json({ error: "unauthorized" });
   const queueCounts = await getQueueCounts();
@@ -804,28 +798,16 @@ const port = Number(process.env.PORT || 10000);
 initializeTaskStore().then(() => {
   app.listen(port, "0.0.0.0", () => {
     console.log("JoyVerse MacroDroid bridge listening on port " + port + " with durable PostgreSQL task storage");
-    // Run the self-hosted FFmpeg video worker inside this service. Previously it only ran
-    // when an external GitHub Actions OIDC tick arrived, leaving queued jobs
-    // stranded whenever that scheduled workflow did not execute.
-    backgroundVideoWorker ||= createVideoWorker();
-    backgroundVideoWorkerBusy = true;
-    void createProceduralVideoProvider().generate({
-      prompt: "A bright colorful bouncing ball for JoyVerse Kids",
-      videoOptions: { duration: 1 }
-    }).then(async output => {
-      const saved = await createObjectStorage().put(
-        "diagnostics/procedural-engine-smoke-test.mp4", output.buffer, "video/mp4"
-      );
-      videoEngineSmokeTest = { ready: true, bytes: saved.size, checked_at: new Date().toISOString() };
-      console.log("Procedural FFmpeg MP4 smoke test passed:", saved.size, "bytes");
-    }).catch(error => {
-      videoEngineSmokeTest = { ready: false, checked_at: new Date().toISOString() };
-      console.error("Procedural FFmpeg MP4 smoke test failed:", String(error?.message || error).slice(0, 500));
-    });
-    console.log("Starting persistent JoyVerse procedural FFmpeg video worker.");
-    void backgroundVideoWorker.run()
-      .catch(error => console.error("Persistent video worker stopped:", String(error?.message || error).slice(0, 300)))
-      .finally(() => { backgroundVideoWorkerBusy = false; });
+    // Run the LTX-2.5 Gradio worker inside this service so confirmed scenes
+    // are processed without relying on an external scheduled wake-up.
+    const worker = getBackgroundVideoWorker();
+    if (worker) {
+      backgroundVideoWorkerBusy = true;
+      console.log("Starting persistent JoyVerse LTX-2.5 Gradio video worker.");
+      void worker.run()
+        .catch(error => console.error("Persistent video worker stopped:", String(error?.message || error).slice(0, 300)))
+        .finally(() => { backgroundVideoWorkerBusy = false; });
+    }
   });
 }).catch(error => {
   console.error("Durable task store initialization failed:", error);

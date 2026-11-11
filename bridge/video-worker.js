@@ -2,7 +2,7 @@ import { setTimeout as delay } from "node:timers/promises";
 import {
   initializeTaskStore, claimNextVideoTask, updateTaskCheckpoint, finishTask
 } from "./task-store.js";
-import { createProceduralVideoProvider } from "./procedural-video-provider.js";
+import { createLtxGradioVideoProvider } from "./ltx-gradio-video-provider.js";
 import { createObjectStorage } from "./object-storage.js";
 
 function safeSegment(value) {
@@ -32,7 +32,14 @@ export async function processClaimedVideoTask(task, {
     throw new Error("Claim token is missing or invalid.");
   }
 
-  const providerName = provider.name || "custom-video-provider";
+  const providerName = provider.name || task.provider || "custom-video-provider";
+  if (task.attempts > 1 && task.provider === providerName &&
+      ["submitting", "generating", "downloading", "uploading"].includes(task.stage) &&
+      !task.storage_key) {
+    const reason = "The previous worker stopped after submitting to the provider. The provider job cannot be resumed safely, so the task was not submitted again.";
+    await finish(task.task_id, claimToken, "failed", null, reason);
+    return { status: "failed", reason: "provider_resume_unavailable", error: reason };
+  }
   let heartbeatTimer = null;
   let heartbeatChain = Promise.resolve();
   let heartbeatError = null;
@@ -99,7 +106,7 @@ export async function processClaimedVideoTask(task, {
 }
 
 export function createVideoWorker({
-  provider = createProceduralVideoProvider(),
+  provider = createLtxGradioVideoProvider(),
   storage = createObjectStorage(),
   claim = claimNextVideoTask,
   processTask = processClaimedVideoTask,
@@ -119,7 +126,7 @@ export function createVideoWorker({
     },
     async run() {
       await initializeTaskStore();
-      logger.info?.("JoyVerse procedural FFmpeg video worker started.");
+      logger.info?.("JoyVerse LTX-2.5 Gradio video worker started.");
       while (!stopping) {
         try {
           const result = await this.runOnce();
@@ -130,7 +137,7 @@ export function createVideoWorker({
           await delay(pollMs);
         }
       }
-      logger.info?.("JoyVerse procedural FFmpeg video worker stopped.");
+      logger.info?.("JoyVerse LTX-2.5 Gradio video worker stopped.");
     }
   });
 }
