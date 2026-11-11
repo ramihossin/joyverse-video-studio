@@ -20,6 +20,7 @@
     "pg": "^8.13.1",
     "@aws-sdk/client-s3": "^3.850.0",
     "@aws-sdk/s3-request-presigner": "^3.850.0",
-    "ffmpeg-static": "^5.2.0"
+    "ffmpeg-static": "^5.2.0",
+    "@gradio/client": "^2.7.2"
   }
 }
