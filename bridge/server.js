@@ -785,9 +785,8 @@ const port = Number(process.env.PORT || 10000);
 initializeTaskStore().then(() => {
   app.listen(port, "0.0.0.0", () => {
     console.log("JoyVerse MacroDroid bridge listening on port " + port + " with durable PostgreSQL task storage");
-    // Run the self-hosted FFmpeg video worker inside this service. Previously it only ran
-    // when an external GitHub Actions OIDC tick arrived, leaving queued jobs
-    // stranded whenever that scheduled workflow did not execute.
+    // Run the LTX-2.5 Gradio worker inside this service so confirmed scenes
+    // are processed without relying on an external scheduled wake-up.
     backgroundVideoWorker ||= createVideoWorker();
     backgroundVideoWorkerBusy = true;
     console.log("Starting persistent JoyVerse LTX-2.5 Gradio video worker.");
