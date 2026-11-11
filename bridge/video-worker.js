@@ -32,7 +32,7 @@ export async function processClaimedVideoTask(task, {
     throw new Error("Claim token is missing or invalid.");
   }
 
-  const providerName = provider.name || "custom-video-provider";
+  const providerName = provider.name || task.provider || "custom-video-provider";
   if (task.attempts > 1 && task.provider === providerName &&
       ["submitting", "generating", "downloading", "uploading"].includes(task.stage) &&
       !task.storage_key) {
