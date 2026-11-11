@@ -8,7 +8,7 @@
     "test": "node --test",
     "worker": "node bridge/video-worker-main.js",
     "worker:once": "node bridge/video-worker-main.js --once",
-    "check:worker": "node --check bridge/video-worker-main.js && node --check bridge/video-worker.js"
+    "check:worker": "node --check bridge/video-worker-main.js && node --check bridge/video-worker.js && node --check bridge/ltx-gradio-video-provider.js"
   },
   "engines": {
     "node": ">=20"
