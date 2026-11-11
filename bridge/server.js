@@ -798,7 +798,7 @@ const port = Number(process.env.PORT || 10000);
 initializeTaskStore().then(async () => {
   // A fixed task ID makes this one-shot diagnostic idempotent across Render restarts.
   if (process.env.JOYVERSE_SINGLE_LTX_TEST === "1") {
-    const taskId = "joyverse-single-ltx-test-20261111";
+    const taskId = "joyverse-single-ltx-test-3s-20261111";
     const existing = await getTask(taskId);
     if (!existing) {
       await enqueueTask({
@@ -807,7 +807,7 @@ initializeTaskStore().then(async () => {
         prompt: "A single glossy rainbow-colored ball gently bounces twice on a clean pastel studio floor, tiny colorful sparkles appear around it, cheerful child-friendly 3D animation, smooth motion, bright soft lighting, centered composition, no text, no logos, no people.",
         toolsets: ["video_gen"],
         confirm_video_generation: true,
-        video_options: normalizeVideoOptions({ aspect: "portrait", duration: 5, seed: 42, randomize_seed: false, enhance_prompt: false }),
+        video_options: normalizeVideoOptions({ aspect: "square", duration: 3, seed: 42, randomize_seed: false, enhance_prompt: false }),
         status: "queued",
         created_at: new Date().toISOString(),
         claimed_at: null,
