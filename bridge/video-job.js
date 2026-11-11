@@ -1,7 +1,7 @@
 const DIMENSIONS = Object.freeze({
   portrait: Object.freeze({ width: 832, height: 1472 }),
   landscape: Object.freeze({ width: 1472, height: 832 }),
-  square: Object.freeze({ width: 1024, height: 1024 })
+  square: Object.freeze({ width: 512, height: 512 })
 });
 
 export function normalizeVideoOptions(input = {}) {
