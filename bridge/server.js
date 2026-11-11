@@ -61,11 +61,24 @@ const VIDEO_WORKER_AUDIENCE = "joyverse-video-worker";
 let backgroundVideoWorker = null;
 let backgroundVideoWorkerBusy = false;
 
+function getBackgroundVideoWorker() {
+  if (backgroundVideoWorker) return backgroundVideoWorker;
+  try {
+    backgroundVideoWorker = createVideoWorker();
+    return backgroundVideoWorker;
+  } catch (error) {
+    console.warn("Video worker is unavailable until durable object storage is configured:",
+      String(error?.message || error).slice(0, 240));
+    return null;
+  }
+}
+
 function startBackgroundVideoTask() {
   if (backgroundVideoWorkerBusy) return false;
+  const worker = getBackgroundVideoWorker();
+  if (!worker) return false;
   backgroundVideoWorkerBusy = true;
-  backgroundVideoWorker ||= createVideoWorker();
-  void backgroundVideoWorker.runOnce()
+  void worker.runOnce()
     .catch(error => console.error("Background video worker failed:", String(error?.message || error).slice(0, 300)))
     .finally(() => { backgroundVideoWorkerBusy = false; });
   return true;
@@ -787,12 +800,14 @@ initializeTaskStore().then(() => {
     console.log("JoyVerse MacroDroid bridge listening on port " + port + " with durable PostgreSQL task storage");
     // Run the LTX-2.5 Gradio worker inside this service so confirmed scenes
     // are processed without relying on an external scheduled wake-up.
-    backgroundVideoWorker ||= createVideoWorker();
-    backgroundVideoWorkerBusy = true;
-    console.log("Starting persistent JoyVerse LTX-2.5 Gradio video worker.");
-    void backgroundVideoWorker.run()
-      .catch(error => console.error("Persistent video worker stopped:", String(error?.message || error).slice(0, 300)))
-      .finally(() => { backgroundVideoWorkerBusy = false; });
+    const worker = getBackgroundVideoWorker();
+    if (worker) {
+      backgroundVideoWorkerBusy = true;
+      console.log("Starting persistent JoyVerse LTX-2.5 Gradio video worker.");
+      void worker.run()
+        .catch(error => console.error("Persistent video worker stopped:", String(error?.message || error).slice(0, 300)))
+        .finally(() => { backgroundVideoWorkerBusy = false; });
+    }
   });
 }).catch(error => {
   console.error("Durable task store initialization failed:", error);
