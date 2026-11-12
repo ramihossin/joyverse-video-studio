@@ -4,6 +4,13 @@ const DIMENSIONS = Object.freeze({
   square: Object.freeze({ width: 512, height: 512 })
 });
 
+export function assertVideoOptionsForProvider(options, providerName) {
+  if (providerName === "agnes" && options.duration < 4) {
+    throw new Error("Agnes Video 2.5 Flash supports durations from 4 to 12 seconds; choose at least 4 seconds.");
+  }
+  return options;
+}
+
 export function normalizeVideoOptions(input = {}) {
   if (!input || typeof input !== "object" || Array.isArray(input)) {
     throw new Error("video_options must be an object.");
