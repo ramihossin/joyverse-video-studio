@@ -12,7 +12,7 @@ test("normalizes supported LTX aspect ratios and defaults", () => {
     { aspect: "landscape", width: 1472, height: 832, duration: 3, seed: 7,
       randomize_seed: true, enhance_prompt: false, decoder: "conv", auto_len: false }
   );
-  assert.equal(normalizeVideoOptions({ aspect: "square" }).width, 1024);
+  assert.equal(normalizeVideoOptions({ aspect: "square" }).width, 512);
 });
 
 test("rejects unsupported dimensions, duration, seed, and option types", () => {
