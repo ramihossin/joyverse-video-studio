@@ -41,6 +41,27 @@ test("Agnes submits a text video, polls by video_id and downloads verified MP4",
   assert.equal(calls[0].options.headers.Authorization, "Bearer test-secret");
 });
 
+test("Agnes retries only explicit queue-full 503 responses with bounded backoff", async () => {
+  let submissions = 0;
+  const delays = [];
+  const provider = createAgnesVideoProvider({
+    apiKey: "test-secret", pollIntervalMs: 1000, sleep: async ms => { delays.push(ms); },
+    fetchImpl: async (url, options = {}) => {
+      if (String(url).endsWith("/v1/videos")) {
+        submissions++;
+        if (submissions < 3) return response(503, { message: "video queue is full, please retry later" });
+        return response(200, { video_id: "video_retry_ok" });
+      }
+      if (String(url).includes("/agnesapi?")) return response(200, { status: "completed", url: "https://platform-outputs.agnes-ai.space/videos/retry.mp4" });
+      return response(200, mp4);
+    }
+  });
+  const result = await provider.generate({ prompt: "A simple test", videoOptions: { duration: 5 } });
+  assert.equal(result.contentType, "video/mp4");
+  assert.equal(submissions, 3);
+  assert.deepEqual(delays, [30000, 60000, 1000]);
+});
+
 test("Agnes supports a reference frame as a data URL", async () => {
   const calls = [];
   const provider = createAgnesVideoProvider({
