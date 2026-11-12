@@ -26,6 +26,7 @@ test("rejects unsupported dimensions, duration, seed, and option types", () => {
 test("validates provider-specific minimum duration without restricting LTX", () => {
   const threeSeconds = normalizeVideoOptions({ duration: 3 });
   assert.equal(assertVideoOptionsForProvider(threeSeconds, "ltx").duration, 3);
+  assert.throws(() => assertVideoOptionsForProvider(normalizeVideoOptions({ duration: 6 }), "ltx"), /1 to 5 seconds/);
   assert.throws(() => assertVideoOptionsForProvider(threeSeconds, "agnes"), /at least 4 seconds/);
   assert.equal(assertVideoOptionsForProvider(normalizeVideoOptions({ duration: 4 }), "agnes").duration, 4);
 });
