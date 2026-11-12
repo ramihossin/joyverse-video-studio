@@ -17,7 +17,7 @@
         <h1>JoyVerse Scene Studio</h1>
         <p class="sub">أداة مستقلة لإدارة مشاهدك وتوليدها واحداً تلو الآخر.</p>
       </div>
-      <span class="free-tag">LTX‑2.5 · Server worker</span>
+      <span class="free-tag">Server video worker</span>
     </header>
 
     <section class="panel">
@@ -51,10 +51,10 @@
 
         <div class="section-heading settings-heading">
           <span class="step">03</span>
-          <div><h2>إعدادات التوليد</h2><p>تُرسل المهام إلى الخادم؛ العامل الخلفي يتولى LTX والتخزين حتى عند إغلاق المتصفح.</p></div>
+          <div><h2>إعدادات التوليد</h2><p>تُرسل المهام إلى المحرك المحدد في إعدادات الخادم، ثم تُحفظ النتائج سحابياً.</p></div>
         </div>
         <div class="settings">
-          <label>المحرك<input type="text" value="LTX‑2.5 · Free public Space" readonly></label>
+          <label>المحرك<input type="text" value="المحرك المحدد في إعدادات الخادم" readonly></label>
           <label>نسبة العرض
             <select id="aspect">
               <option value="portrait" selected>عمودي 9:16 — المشروع الحالي</option>
@@ -63,7 +63,7 @@
             </select>
           </label>
           <label>المدة
-            <select id="duration"><option value="5" selected>5 ثوانٍ</option><option value="4">4 ثوانٍ</option><option value="3">3 ثوانٍ</option><option value="2">ثانيتان</option><option value="1">ثانية واحدة</option></select>
+            <select id="duration"><option value="12">12 ثانية</option><option value="11">11 ثانية</option><option value="10">10 ثوانٍ</option><option value="9">9 ثوانٍ</option><option value="8">8 ثوانٍ</option><option value="7">7 ثوانٍ</option><option value="6">6 ثوانٍ</option><option value="5" selected>5 ثوانٍ</option><option value="4">4 ثوانٍ</option><option value="3">3 ثوانٍ</option><option value="2">ثانيتان</option><option value="1">ثانية واحدة</option></select>
           </label>
           <label>Seed<input id="seed" type="number" min="0" max="2147483647" value="42"></label>
         </div>
@@ -118,10 +118,10 @@
     </section>
 
     <footer>
-      <p>المحرك: LTX‑2.5 عبر مساحة Gradio عامة؛ لا نستخدم رصيد LoreMotion أو TinyFish.</p>
-      <p>الطابور العام والحصة والتوفر يتحكم بها مزود النموذج. قد تتأخر الطلبات أو تفشل عند ازدحام GPU.</p>
+      <p>المحرك يحدده إعداد الخادم؛ لا يحدث تحويل تلقائي إلى مزود مدفوع بديل.</p>
+      <p>تختلف مدد الفيديو المتاحة حسب المحرك المختار، ويمنع الخادم إرسال مدة غير مدعومة.</p>
       <p>بعد إرسال المهام إلى الخادم، يواصل العامل الخلفي العمل دون إبقاء صفحة الاستوديو مفتوحة. يجب أن تكون قاعدة البيانات والتخزين والعامل مهيأة على الخادم.</p>
-      <p><a href="https://huggingface.co/spaces/Lightricks/LTX-2.5" target="_blank" rel="noopener noreferrer">صفحة محرك LTX‑2.5</a></p>
+      
     </footer>
   </main>
   <script type="module" src="./app.js"></script>
