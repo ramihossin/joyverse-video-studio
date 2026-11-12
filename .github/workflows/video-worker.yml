@@ -4,6 +4,8 @@ on:
   schedule:
     - cron: "*/5 * * * *"
   workflow_dispatch:
+  issues:
+    types: [opened]
 
 permissions:
   contents: read
@@ -15,23 +17,32 @@ concurrency:
 
 jobs:
   wake-render-worker:
+    # Prevent public issue spam from consuming the provider's free generation quota.
+    if: github.event_name != 'issues' || (github.event.issue.user.login == github.repository_owner && startsWith(github.event.issue.title, '[video]'))
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
       - name: Request short-lived GitHub Actions identity
         env:
           BRIDGE_URL: https://joyverse-mcp-bridge.onrender.com
+          EVENT_NAME: ${{ github.event_name }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          ISSUE_BODY: ${{ github.event.issue.body }}
         run: |
           set -eu
-          test -n "$ACTIONS_ID_TOKEN_REQUEST_URL"
-          test -n "$ACTIONS_ID_TOKEN_REQUEST_TOKEN"
           response="$(curl --fail --silent --show-error \
             -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
             "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=joyverse-video-worker")"
           oidc_token="$(printf '%s' "$response" | python -c 'import json,sys; print(json.load(sys.stdin)["value"])')"
           test -n "$oidc_token"
-          curl --fail --silent --show-error --max-time 90 \
-            -X POST "$BRIDGE_URL/api/hermes/worker/tick" \
-            -H "Authorization: Bearer $oidc_token" \
-            -H "Content-Type: application/json" \
-            -d '{}'
+          if [ "$EVENT_NAME" = "issues" ]; then
+            test -n "$ISSUE_NUMBER"
+            payload="$(python -c 'import json,os; print(json.dumps({"scene_id":"issue-"+os.environ["ISSUE_NUMBER"],"prompt":os.environ.get("ISSUE_BODY","").strip()}))')"
+            curl --fail --silent --show-error --max-time 90 \
+              -X POST "$BRIDGE_URL/api/hermes/worker/dispatch" \
+              -H "Authorization: Bearer $oidc_token" -H "Content-Type: application/json" -d "$payload"
+          else
+            curl --fail --silent --show-error --max-time 90 \
+              -X POST "$BRIDGE_URL/api/hermes/worker/tick" \
+              -H "Authorization: Bearer $oidc_token" -H "Content-Type: application/json" -d '{}'
+          fi

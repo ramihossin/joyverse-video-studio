@@ -526,6 +526,39 @@ app.post("/api/hermes/dispatch", async (req, res) => {
   return res.status(202).json({ accepted: true, task_id: taskId, scene_id, status: "queued" });
 });
 
+// Owner-only issue inbox: GitHub Actions exchanges OIDC for a confirmed task.
+app.post("/api/hermes/worker/dispatch", async (req, res) => {
+  const authorization = req.get("authorization") || "";
+  const token = authorization.startsWith("Bearer ") ? authorization.slice(7) : "";
+  try {
+    await verifyGithubActionsToken(token, {
+      repository: VIDEO_WORKER_REPOSITORY, workflowFile: VIDEO_WORKER_WORKFLOW,
+      branch: VIDEO_WORKER_BRANCH, audience: VIDEO_WORKER_AUDIENCE
+    });
+  } catch {
+    return res.status(401).json({ error: "invalid_github_actions_identity" });
+  }
+  const { scene_id, prompt, video_options } = req.body ?? {};
+  if (typeof scene_id !== "string" || !scene_id.trim() || scene_id.length > 100)
+    return res.status(400).json({ error: "invalid_scene_id" });
+  if (typeof prompt !== "string" || !prompt.trim() || prompt.length > HERMES_MAX_PROMPT)
+    return res.status(400).json({ error: "invalid_prompt" });
+  let normalizedVideoOptions;
+  try { normalizedVideoOptions = normalizeVideoOptions(video_options ?? {}); }
+  catch (error) { return res.status(400).json({ error: "invalid_video_options", message: String(error?.message || error).slice(0, 160) }); }
+  const taskId = "hermes_" + randomUUID();
+  await enqueueTask({
+    task_id: taskId, scene_id, prompt, toolsets: ["video_gen"],
+    confirm_video_generation: true, video_options: normalizedVideoOptions,
+    status: "queued", created_at: new Date().toISOString(), claimed_at: null,
+    result: null, error: null
+  });
+  const workerStarted = startBackgroundVideoTask();
+  res.set("Cache-Control", "no-store");
+  return res.status(202).json({ accepted: true, task_id: taskId, scene_id,
+    status: "queued", worker_started: workerStarted });
+});
+
 // GitHub Actions uses short-lived OIDC identity tokens; no database or storage secret is copied into GitHub.
 app.post("/api/hermes/worker/tick", async (req, res) => {
   const authorization = req.get("authorization") || "";
