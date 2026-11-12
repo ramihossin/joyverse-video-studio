@@ -721,6 +721,37 @@ app.get("/api/hermes/final/:finalId", async (req, res) => {
   }
 });
 
+// Short-lived public download for the single free LTX smoke-test artifact.
+app.get("/temporary-download/joyverse-ltx-square-smoke-20261112", async (_req, res) => {
+  if (Date.now() >= Date.parse("2026-11-12T03:00:00Z")) {
+    return res.status(410).json({ error: "temporary_download_expired" });
+  }
+  const taskId = "hermes_6639ed58-c408-4b66-9e60-350ce6432639";
+  const key = "jobs/hermes_6639ed58-c408-4b66-9e60-350ce6432639/issue-31.mp4";
+  const task = await getTask(taskId);
+  if (!task || task.status !== "completed" ||
+      (task.storage_key || task.result?.storage_key) !== key) {
+    return res.status(404).json({ error: "smoke_test_video_not_available" });
+  }
+  try {
+    const video = await createObjectStorage().get(key);
+    if (video.length < 12 || video.subarray(4, 8).toString("ascii") !== "ftyp") {
+      return res.status(502).json({ error: "stored_output_is_not_a_valid_mp4" });
+    }
+    res.set({
+      "Content-Type": "video/mp4",
+      "Content-Length": String(video.length),
+      "Content-Disposition": 'attachment; filename="joyverse-ltx-square-smoke-test.mp4"',
+      "Cache-Control": "private, no-store, max-age=0",
+      "X-Content-Type-Options": "nosniff"
+    });
+    return res.status(200).send(video);
+  } catch (error) {
+    console.error("Temporary smoke-test video retrieval failed:", String(error?.message || error).slice(0, 200));
+    return res.status(502).json({ error: "video_storage_unavailable" });
+  }
+});
+
 // Temporary public download for the single user-approved diagnostic video.
 // This narrow exception expires automatically and does not alter other download routes.
 app.get("/temporary-download/joyverse-single-ltx-test-3s-20261111", async (_req, res) => {
