@@ -914,19 +914,19 @@ initializeTaskStore().then(async () => {
         result: null,
         error: null
       });
-      console.log("Queued the authorized one-time LTX-2.5 diagnostic generation.");
+      console.log("Queued the authorized one-time diagnostic generation.");
     } else {
-      console.log("One-time LTX-2.5 diagnostic task already exists; not submitting again.");
+      console.log("One-time diagnostic task already exists; not submitting again.");
     }
   }
   app.listen(port, "0.0.0.0", () => {
     console.log("JoyVerse MacroDroid bridge listening on port " + port + " with durable PostgreSQL task storage");
-    // Run the LTX-2.5 Gradio worker inside this service so confirmed scenes
+    // Run the configured video provider inside this service so confirmed scenes
     // are processed without relying on an external scheduled wake-up.
     const worker = getBackgroundVideoWorker();
     if (worker) {
       backgroundVideoWorkerBusy = true;
-      console.log("Starting persistent JoyVerse LTX-2.5 Gradio video worker.");
+      console.log("Starting persistent JoyVerse " + (worker.name || "configured video") + " worker.");
       void worker.run()
         .catch(error => console.error("Persistent video worker stopped:", String(error?.message || error).slice(0, 300)))
         .finally(() => { backgroundVideoWorkerBusy = false; });
