@@ -480,6 +480,17 @@ app.post("/api/hermes/reference/:taskId", express.raw({
   }
 });
 
+// Safe connection diagnostic: confirms the studio token without exposing secrets.
+app.get("/api/studio/verify", (req, res) => {
+  if (!JOYVERSE_STUDIO_TOKEN) return res.status(503).json({ error: "studio_token_not_configured" });
+  if (!studioAuthorized(req)) return res.status(401).json({ error: "invalid_studio_token" });
+  res.set("Cache-Control", "no-store");
+  return res.json({ connected: true, provider: SELECTED_VIDEO_PROVIDER,
+    provider_key_configured: SELECTED_VIDEO_PROVIDER === "agnes"
+      ? Boolean(process.env.AGNES_API_KEY)
+      : SELECTED_VIDEO_PROVIDER === "ltx" ? Boolean(process.env.HF_TOKEN) : false });
+});
+
 // Hermes phone-worker queue. All endpoints use the existing bearer token.
 app.post("/api/hermes/dispatch", async (req, res) => {
   if (!JOYVERSE_STUDIO_TOKEN && !HERMES_WORKER_TOKEN) return res.status(503).json({ error: "studio_api_not_configured" });
