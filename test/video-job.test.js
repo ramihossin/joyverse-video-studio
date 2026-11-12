@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { normalizeVideoOptions } from "../bridge/video-job.js";
+import { normalizeVideoOptions, assertVideoOptionsForProvider } from "../bridge/video-job.js";
 
 test("normalizes supported LTX aspect ratios and defaults", () => {
   assert.deepEqual(normalizeVideoOptions(), {
@@ -21,4 +21,11 @@ test("rejects unsupported dimensions, duration, seed, and option types", () => {
     { duration: 1.5 }, { seed: -1 }, { seed: 2147483648 },
     { randomize_seed: "yes" }, { enhance_prompt: 1 }, []
   ]) assert.throws(() => normalizeVideoOptions(options));
+});
+
+test("validates provider-specific minimum duration without restricting LTX", () => {
+  const threeSeconds = normalizeVideoOptions({ duration: 3 });
+  assert.equal(assertVideoOptionsForProvider(threeSeconds, "ltx").duration, 3);
+  assert.throws(() => assertVideoOptionsForProvider(threeSeconds, "agnes"), /at least 4 seconds/);
+  assert.equal(assertVideoOptionsForProvider(normalizeVideoOptions({ duration: 4 }), "agnes").duration, 4);
 });
