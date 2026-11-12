@@ -73,10 +73,10 @@ export function createAgnesVideoProvider({
         throw new Error("Reference image must be a non-empty Buffer.");
       }
       const requestedDuration = videoOptions.duration ?? 5;
-      if (!Number.isInteger(requestedDuration) || requestedDuration < 1 || requestedDuration > 5) {
-        throw new Error("Video duration must be an integer from 1 to 5 seconds.");
+      if (!Number.isInteger(requestedDuration) || requestedDuration < 4 || requestedDuration > 12) {
+        throw new Error("Agnes Video 2.5 Flash duration must be an integer from 4 to 12 seconds.");
       }
-      const seconds = Math.max(4, requestedDuration);
+      const seconds = requestedDuration;
       const body = {
         model,
         prompt: prompt.trim(),
