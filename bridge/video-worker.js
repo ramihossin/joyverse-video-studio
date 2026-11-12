@@ -3,6 +3,17 @@ import {
   initializeTaskStore, claimNextVideoTask, updateTaskCheckpoint, finishTask
 } from "./task-store.js";
 import { createLtxGradioVideoProvider } from "./ltx-gradio-video-provider.js";
+import { createAgnesVideoProvider } from "./agnes-video-provider.js";
+
+export function createDefaultVideoProvider(env = process.env) {
+  const selected = String(env.VIDEO_PROVIDER || (env.AGNES_API_KEY ? "agnes" : "ltx")).toLowerCase();
+  if (selected === "agnes") return createAgnesVideoProvider({
+    apiKey: env.AGNES_API_KEY,
+    model: env.AGNES_VIDEO_MODEL || "agnes-video-2.5-flash"
+  });
+  if (selected === "ltx") return createLtxGradioVideoProvider();
+  throw new Error("VIDEO_PROVIDER must be either agnes or ltx.");
+}
 import { createObjectStorage } from "./object-storage.js";
 
 function safeSegment(value) {
@@ -106,7 +117,7 @@ export async function processClaimedVideoTask(task, {
 }
 
 export function createVideoWorker({
-  provider = createLtxGradioVideoProvider(),
+  provider = createDefaultVideoProvider(),
   storage = createObjectStorage(),
   claim = claimNextVideoTask,
   processTask = processClaimedVideoTask,
@@ -126,7 +137,7 @@ export function createVideoWorker({
     },
     async run() {
       await initializeTaskStore();
-      logger.info?.("JoyVerse LTX-2.5 Gradio video worker started.");
+      logger.info?.("JoyVerse " + (provider.name || "video") + " video worker started.");
       while (!stopping) {
         try {
           const result = await this.runOnce();
@@ -137,7 +148,7 @@ export function createVideoWorker({
           await delay(pollMs);
         }
       }
-      logger.info?.("JoyVerse LTX-2.5 Gradio video worker stopped.");
+      logger.info?.("JoyVerse video worker stopped.");
     }
   });
 }
