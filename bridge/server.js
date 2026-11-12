@@ -5,7 +5,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { z } from "zod";
 import { initializeTaskStore, enqueueTask, getTask, claimNextTask, finishTask, getQueueCounts, updateTaskCheckpoint, setTaskReferenceImage } from "./task-store.js";
-import { normalizeVideoOptions } from "./video-job.js";
+import { normalizeVideoOptions, assertVideoOptionsForProvider } from "./video-job.js";
 import { createObjectStorage } from "./object-storage.js";
 import { assembleMp4 } from "./ffmpeg-assembler.js";
 import { createVideoWorker } from "./video-worker.js";
@@ -58,6 +58,7 @@ const VIDEO_WORKER_REPOSITORY = process.env.GITHUB_OIDC_REPOSITORY || "ramihossi
 const VIDEO_WORKER_WORKFLOW = ".github/workflows/video-worker.yml";
 const VIDEO_WORKER_BRANCH = process.env.GITHUB_OIDC_BRANCH || "main";
 const VIDEO_WORKER_AUDIENCE = "joyverse-video-worker";
+const SELECTED_VIDEO_PROVIDER = String(process.env.VIDEO_PROVIDER || (process.env.AGNES_API_KEY ? "agnes" : "ltx")).toLowerCase();
 let backgroundVideoWorker = null;
 let backgroundVideoWorkerBusy = false;
 
@@ -503,8 +504,10 @@ app.post("/api/hermes/dispatch", async (req, res) => {
   }
   let normalizedVideoOptions = {};
   if (selected.includes("video_gen")) {
-    try { normalizedVideoOptions = normalizeVideoOptions(video_options === undefined ? {} : video_options); }
-    catch (error) { return res.status(400).json({ error: "invalid_video_options", message: error.message }); }
+    try {
+      normalizedVideoOptions = normalizeVideoOptions(video_options === undefined ? {} : video_options);
+      assertVideoOptionsForProvider(normalizedVideoOptions, SELECTED_VIDEO_PROVIDER);
+    } catch (error) { return res.status(400).json({ error: "invalid_video_options", message: error.message }); }
   } else if (video_options !== undefined) {
     return res.status(400).json({ error: "video_options_require_video_gen" });
   }
@@ -545,8 +548,10 @@ app.post("/api/hermes/worker/dispatch", async (req, res) => {
   if (typeof prompt !== "string" || !prompt.trim() || prompt.length > HERMES_MAX_PROMPT)
     return res.status(400).json({ error: "invalid_prompt" });
   let normalizedVideoOptions;
-  try { normalizedVideoOptions = normalizeVideoOptions(video_options ?? {}); }
-  catch (error) { return res.status(400).json({ error: "invalid_video_options", message: String(error?.message || error).slice(0, 160) }); }
+  try {
+    normalizedVideoOptions = normalizeVideoOptions(video_options ?? {});
+    assertVideoOptionsForProvider(normalizedVideoOptions, SELECTED_VIDEO_PROVIDER);
+  } catch (error) { return res.status(400).json({ error: "invalid_video_options", message: String(error?.message || error).slice(0, 200) }); }
   const taskId = "hermes_" + randomUUID();
   await enqueueTask({
     task_id: taskId, scene_id, prompt, toolsets: ["video_gen"],
