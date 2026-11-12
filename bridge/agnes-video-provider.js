@@ -124,7 +124,7 @@ export function createAgnesVideoProvider({
             String(status.error || "provider reported failure").slice(0, 500));
         }
         if (state === "completed" || state === "succeeded" || state === "success") {
-          const outputUrl = safeOutputUrl(status.url || status.video_url);
+          const outputUrl = safeOutputUrl(status.metadata?.url || status.url || status.video_url);
           await onProgress?.({ stage: "downloading", progress: 0.9 });
           const download = await fetchImpl(outputUrl.href, {
             signal: AbortSignal.timeout(requestTimeoutMs)
