@@ -30,12 +30,13 @@ test("Agnes submits a text video, polls by video_id and downloads verified MP4",
       return response(200, mp4);
     }
   });
-  const result = await provider.generate({ prompt: "A rainbow over a garden", videoOptions: { aspect: "square", duration: 5 } });
+  const result = await provider.generate({ prompt: "A rainbow over a garden", videoOptions: { aspect: "square", duration: 12 } });
   assert.equal(result.contentType, "video/mp4");
   assert.deepEqual(result.buffer, mp4);
   const submitted = JSON.parse(calls[0].options.body);
   assert.equal(submitted.model, "agnes-video-2.5-flash");
   assert.equal(submitted.aspect_ratio, "1:1");
+  assert.equal(submitted.seconds, "12");
   assert.ok(calls[1].url.includes("video_id=video_123"));
   assert.equal(calls[0].options.headers.Authorization, "Bearer test-secret");
 });
@@ -53,11 +54,11 @@ test("Agnes supports a reference frame as a data URL", async () => {
   });
   await assert.rejects(provider.generate({
     prompt: "Animate the frame", referenceImage: Buffer.from("image"),
-    videoOptions: { aspect: "portrait", duration: 3 }
+    videoOptions: { aspect: "portrait", duration: 4 }
   }), /test stop/);
   const submitted = JSON.parse(calls[0].options.body);
   assert.equal(submitted.mode, "img2video");
-  assert.equal(submitted.seconds, 4);
+  assert.equal(submitted.seconds, "4");
   assert.match(submitted.first_frame, /^data:image\/png;base64,/);
 });
 
