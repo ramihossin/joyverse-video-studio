@@ -687,6 +687,36 @@ app.get("/api/hermes/final/:finalId", async (req, res) => {
   }
 });
 
+// Temporary public download for the single user-approved diagnostic video.
+// This narrow exception expires automatically and does not alter other download routes.
+app.get("/temporary-download/joyverse-single-ltx-test-3s-20261111", async (_req, res) => {
+  if (Date.now() >= Date.parse("2026-11-12T03:00:00Z")) {
+    return res.status(410).json({ error: "temporary_download_expired" });
+  }
+  const task = await getTask("joyverse-single-ltx-test-3s-20261111");
+  if (!task || task.status !== "completed" ||
+      (task.storage_key || task.result?.storage_key) !==
+        "jobs/joyverse-single-ltx-test-3s-20261111/colorful-bouncing-ball-test.mp4") {
+    return res.status(404).json({ error: "diagnostic_video_not_available" });
+  }
+  try {
+    const video = await createObjectStorage().get(
+      "jobs/joyverse-single-ltx-test-3s-20261111/colorful-bouncing-ball-test.mp4"
+    );
+    res.set({
+      "Content-Type": "video/mp4",
+      "Content-Length": String(video.length),
+      "Content-Disposition": 'attachment; filename="joyverse-colorful-bouncing-ball-test.mp4"',
+      "Cache-Control": "private, no-store, max-age=0",
+      "X-Content-Type-Options": "nosniff"
+    });
+    return res.status(200).send(video);
+  } catch (error) {
+    console.error("Temporary diagnostic video retrieval failed:", String(error?.message || error).slice(0, 200));
+    return res.status(502).json({ error: "video_storage_unavailable" });
+  }
+});
+
 app.get("/api/hermes/video/:taskId", async (req, res) => {
   if (!JOYVERSE_STUDIO_TOKEN && !HERMES_WORKER_TOKEN) return res.status(503).json({ error: "studio_api_not_configured" });
   if (!studioOrWorkerAuthorized(req)) return res.status(401).json({ error: "unauthorized" });
