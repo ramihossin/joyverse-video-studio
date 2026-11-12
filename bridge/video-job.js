@@ -11,8 +11,8 @@ export function normalizeVideoOptions(input = {}) {
   const aspect = input.aspect ?? "portrait";
   if (!Object.hasOwn(DIMENSIONS, aspect)) throw new Error("Unsupported video aspect.");
   const duration = input.duration ?? 5;
-  if (!Number.isInteger(duration) || duration < 1 || duration > 5) {
-    throw new Error("Video duration must be an integer from 1 to 5 seconds.");
+  if (!Number.isInteger(duration) || duration < 1 || duration > 12) {
+    throw new Error("Video duration must be an integer from 1 to 12 seconds.");
   }
   const seed = input.seed ?? 42;
   if (!Number.isInteger(seed) || seed < 0 || seed > 2147483647) {
