@@ -17,7 +17,7 @@ test("normalizes supported LTX aspect ratios and defaults", () => {
 
 test("rejects unsupported dimensions, duration, seed, and option types", () => {
   for (const options of [
-    { aspect: "ultrawide" }, { duration: 0 }, { duration: 6 },
+    { aspect: "ultrawide" }, { duration: 0 },
     { duration: 1.5 }, { seed: -1 }, { seed: 2147483648 },
     { randomize_seed: "yes" }, { enhance_prompt: 1 }, []
   ]) assert.throws(() => normalizeVideoOptions(options));
@@ -27,6 +27,6 @@ test("validates provider-specific minimum duration without restricting LTX", () 
   const threeSeconds = normalizeVideoOptions({ duration: 3 });
   assert.equal(assertVideoOptionsForProvider(threeSeconds, "ltx").duration, 3);
   assert.throws(() => assertVideoOptionsForProvider(normalizeVideoOptions({ duration: 6 }), "ltx"), /1 to 5 seconds/);
-  assert.throws(() => assertVideoOptionsForProvider(threeSeconds, "agnes"), /at least 4 seconds/);
+  assert.throws(() => assertVideoOptionsForProvider(threeSeconds, "agnes"), /4 to 12 seconds/);
   assert.equal(assertVideoOptionsForProvider(normalizeVideoOptions({ duration: 4 }), "agnes").duration, 4);
 });
