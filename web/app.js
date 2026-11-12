@@ -228,6 +228,7 @@ async function refreshScene(scene) {
   const response = await apiRequest("/api/hermes/tasks/" + encodeURIComponent(scene.serverTaskId));
   const task = await response.json();
   scene.serverStatus = task.status;
+  scene.provider = task.provider || scene.provider || null;
   scene.status = task.status === "queued" ? "queued" : task.status === "claimed" ? "running" :
     task.status === "completed" ? "done" : task.status === "failed" ? "failed" : scene.status;
   scene.error = task.error || null;
@@ -297,7 +298,7 @@ async function downloadScene(scene) {
   scene.localVideoId = id; scene.videoUrl = url; saveQueue();
   resultVideo.src = url; downloadLink.href = url;
   $("result-title").textContent = scene.title;
-  $("result-meta").textContent = "LTX‑2.5 · محفوظ على خادم JoyVerse";
+  $("result-meta").textContent = (scene.provider || "محرك الفيديو المحدد") + " · محفوظ على خادم JoyVerse";
   resultBox.hidden = false;
   setStatus("تم استرجاع " + scene.title + " بنجاح.");
 }
