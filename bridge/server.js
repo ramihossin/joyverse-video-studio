@@ -74,7 +74,8 @@ function getBackgroundVideoWorker() {
 }
 
 function startBackgroundVideoTask() {
-  if (backgroundVideoWorkerBusy) return false;
+  // The persistent worker is already polling the durable queue; do not spawn a duplicate.
+  if (backgroundVideoWorkerBusy) return true;
   const worker = getBackgroundVideoWorker();
   if (!worker) return false;
   backgroundVideoWorkerBusy = true;
