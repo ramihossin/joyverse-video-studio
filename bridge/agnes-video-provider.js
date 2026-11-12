@@ -81,8 +81,9 @@ export function createAgnesVideoProvider({
         model,
         prompt: prompt.trim(),
         mode: referenceImage ? "img2video" : "text",
-        seconds,
+        seconds: String(seconds),
         size: "720P",
+        n: 1,
         aspect_ratio: aspectRatioFor(videoOptions)
       };
       if (Number.isInteger(videoOptions.seed) && videoOptions.seed >= 0) body.seed = videoOptions.seed;
