@@ -25,7 +25,7 @@ test("Agnes submits a text video, polls by video_id and downloads verified MP4",
       if (String(url).endsWith("/v1/videos")) return response(200, { video_id: "video_123" });
       if (String(url).includes("/agnesapi?")) return response(200, {
         status: "completed", progress: 100,
-        url: "https://platform-outputs.agnes-ai.space/videos/test.mp4"
+        metadata: { url: "https://platform-outputs.agnes-ai.space/videos/test.mp4" }
       });
       return response(200, mp4);
     }
