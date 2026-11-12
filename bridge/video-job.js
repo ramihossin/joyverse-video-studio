@@ -5,8 +5,14 @@ const DIMENSIONS = Object.freeze({
 });
 
 export function assertVideoOptionsForProvider(options, providerName) {
-  if (providerName === "agnes" && options.duration < 4) {
-    throw new Error("Agnes Video 2.5 Flash supports durations from 4 to 12 seconds; choose at least 4 seconds.");
+  if (providerName === "agnes" && (options.duration < 4 || options.duration > 12)) {
+    throw new Error("Agnes Video 2.5 Flash supports durations from 4 to 12 seconds.");
+  }
+  if (providerName === "ltx" && (options.duration < 1 || options.duration > 5)) {
+    throw new Error("LTX supports durations from 1 to 5 seconds.");
+  }
+  if (!["agnes", "ltx"].includes(providerName)) {
+    throw new Error("Unsupported video provider.");
   }
   return options;
 }
