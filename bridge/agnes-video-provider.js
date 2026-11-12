@@ -90,9 +90,22 @@ export function createAgnesVideoProvider({
       if (referenceImage) body.first_frame = "data:image/png;base64," + referenceImage.toString("base64");
 
       await onProgress?.({ stage: "connecting", progress: 0.02 });
-      const created = await request(API_BASE + "/v1/videos", {
-        method: "POST", headers, body: JSON.stringify(body)
-      }, "Agnes video submission");
+      let created;
+      for (let submissionAttempt = 0; ; submissionAttempt++) {
+        try {
+          created = await request(API_BASE + "/v1/videos", {
+            method: "POST", headers, body: JSON.stringify(body)
+          }, "Agnes video submission");
+          break;
+        } catch (error) {
+          const isQueueFull = /HTTP 503:.*queue is full/i.test(String(error?.message || error));
+          if (!isQueueFull || submissionAttempt >= 2) throw error;
+          const retryDelayMs = 30000 * (2 ** submissionAttempt);
+          await onProgress?.({ stage: "waiting_for_provider", progress: 0.01,
+            message: "Agnes queue is full; safely retrying submission after " + Math.round(retryDelayMs / 1000) + " seconds." });
+          await sleep(retryDelayMs);
+        }
+      }
       const videoId = created.video_id || created.id;
       if (typeof videoId !== "string" || !videoId.trim()) {
         throw new Error("Agnes did not return a video_id.");
