@@ -37,7 +37,7 @@ jobs:
           test -n "$oidc_token"
           if [ "$EVENT_NAME" = "issues" ]; then
             test -n "$ISSUE_NUMBER"
-            payload="$(python -c 'import json,os,re; body=os.environ.get("ISSUE_BODY","").strip(); match=re.search(r"<!--\\s*joyverse-video-options\\s+(\\{.*?\\})\\s*-->",body,re.S); opts=json.loads(match.group(1)) if match else {}; body=(body[:match.start()]+body[match.end():]).strip() if match else body; print(json.dumps({"scene_id":"issue-"+os.environ["ISSUE_NUMBER"],"prompt":body,"video_options":opts}))')"
+            payload="$(python -c 'import json,os,re; body=os.environ.get("ISSUE_BODY","").strip(); match=re.search(r"<!--\s*joyverse-video-options\s+(\{.*?\})\s*-->",body,re.S); opts=json.loads(match.group(1)) if match else {}; body=(body[:match.start()]+body[match.end():]).strip() if match else body; print(json.dumps({"scene_id":"issue-"+os.environ["ISSUE_NUMBER"],"prompt":body,"video_options":opts}))')"
             curl --fail --silent --show-error --max-time 90 \
               -X POST "$BRIDGE_URL/api/hermes/worker/dispatch" \
               -H "Authorization: Bearer $oidc_token" -H "Content-Type: application/json" -d "$payload"
