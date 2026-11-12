@@ -32,6 +32,7 @@
         <label class="field-title" for="studio-token">رمز ربط الاستوديو</label>
         <input id="studio-token" type="password" autocomplete="off" spellcheck="false" placeholder="أدخل JOYVERSE_STUDIO_TOKEN">
         <p class="token-note">هذا رمز مخصص للواجهة، وليس رمز العامل الخلفي. لا تضعه في ملفات المشروع أو ترسله في المحادثات. يُحفظ في جلسة المتصفح فقط.</p>
+        <button id="test-connection" type="button">اختبار الاتصال بالجسر</button>
       </section>
       <form id="studio-form">
         <label class="field-title" for="prompt">عنوان المشهد</label>
@@ -67,7 +68,7 @@
           </label>
           <label>Seed<input id="seed" type="number" min="0" max="2147483647" value="42"></label>
         </div>
-        <p class="token-note">يجب ضبط HF_TOKEN سراً في إعدادات خادم Render حتى يتمكن العامل من الاتصال بمحرك LTX.</p>
+        <p class="token-note">رمز ربط الاستوديو منفصل عن مفتاح Agnes API. يتصل الجسر بالمحرك المحدد في إعدادات الخادم؛ لا تضع مفتاح Agnes في خانة رمز الاستوديو.</p>
         <label class="toggle-row"><input id="random-seed" type="checkbox" checked><span>Seed عشوائي لكل مشهد</span></label>
         <label class="toggle-row"><input id="enhance-prompt" type="checkbox" checked><span>تحسين الوصف تلقائياً</span></label>
         <label class="consent"><input id="consent" type="checkbox"><span>أوافق على إرسال الوصف والصورة الاختيارية إلى مزود النموذج لتوليد الفيديو.</span></label>
