@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#10182b">
+<title>JoyVerse Studio Next</title>
+<style>
+:root{color-scheme:dark;--bg:#0b1020;--panel:#151e33;--line:#293752;--muted:#9aabc7;--accent:#7c9cff;--good:#39c98a;--bad:#ff7474}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 80% 0,#1b2a4b,transparent 38%),var(--bg);color:#f4f7ff;font:16px system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:980px;margin:auto;padding:22px 16px 60px}.top{display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap}
+h1{font-size:clamp(25px,5vw,38px);margin:8px 0}.sub,.muted{color:var(--muted)}.pill{border:1px solid var(--line);border-radius:999px;padding:7px 12px;color:#b8c9ff;font-size:13px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:20px}.panel{background:#121b2eec;border:1px solid var(--line);border-radius:18px;padding:17px;min-width:0}
+h2{font-size:18px;margin:0 0 14px}label{display:block;font-size:13px;color:#bdc9df;margin:12px 0 6px}
+input,textarea,select{width:100%;border:1px solid #344563;background:#0c1426;color:#f5f7ff;border-radius:11px;padding:12px;font:inherit;outline:none}
+textarea{min-height:120px;resize:vertical}input:focus,textarea:focus{border-color:var(--accent)}
+button{border:0;border-radius:11px;padding:12px 16px;font:inherit;font-weight:700;cursor:pointer;background:var(--accent);color:#081126}
+button.secondary{background:#263650;color:#eaf0ff}button.danger{background:#512c3a;color:#ffd9df}button:disabled{opacity:.45;cursor:not-allowed}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.status{margin-top:12px;padding:12px;border:1px solid var(--line);border-radius:12px;color:#dce6ff;white-space:pre-wrap;overflow-wrap:anywhere}.status.good{border-color:#286b52;color:#aaf1ce}.status.bad{border-color:#75404a;color:#ffc0c0}
+.scene{border:1px solid var(--line);border-radius:13px;padding:13px;margin-top:10px;background:#0e1729}.scenehead{display:flex;justify-content:space-between;gap:8px;align-items:center}.scene p{color:#c0cce0;font-size:14px;white-space:pre-wrap;overflow-wrap:anywhere}.tag{font-size:12px;color:#c2d0ec}.empty{color:var(--muted);text-align:center;padding:24px}
+@media(max-width:700px){.grid{grid-template-columns:1fr}main{padding:16px 12px 40px}.panel{padding:14px}}
+</style></head>
+<body><main>
+<div class="top"><div><div class="pill">مشروع مستقل الواجهة · الإصدار التجريبي</div><h1>JoyVerse Studio Next</h1><div class="sub">إدارة المشاهد وإرسالها ومتابعة النتائج من الهاتف</div></div><span class="pill">Agnes Video · عبر الجسر</span></div>
+<div class="grid">
+<section class="panel"><h2>١. الاتصال</h2>
+<label for="bridge">عنوان الجسر</label><input id="bridge" type="url" value="https://joyverse-mcp-bridge.onrender.com" autocomplete="url">
+<label for="token">رمز الاستوديو</label><input id="token" type="password" placeholder="أدخل JOYVERSE_STUDIO_TOKEN" autocomplete="off">
+<div class="actions"><button id="verify">اختبار الاتصال</button><button class="secondary" id="forget">مسح الرمز</button></div>
+<div id="connection" class="status">لم يتم اختبار الاتصال بعد.</div>
+</section>
+<section class="panel"><h2>٢. إضافة مشهد</h2>
+<label for="sceneTitle">اسم المشهد</label><input id="sceneTitle" maxlength="100" placeholder="مثلاً: قوس قزح في الحديقة">
+<label for="prompt">وصف المشهد</label><textarea id="prompt" maxlength="6000" placeholder="اكتب وصف الفيديو بالتفصيل..."></textarea>
+<div class="actions"><button id="add">إضافة إلى قائمة المشاهد</button></div>
+<p class="muted">الإضافة لا ترسل أي طلب للمولد. الإرسال يبدأ فقط عند الضغط على زر بدء التوليد.</p>
+</section>
+</div>
+<section class="panel" style="margin-top:14px"><div class="top"><h2>٣. قائمة الإنتاج</h2><span class="pill" id="count">0 مشاهد</span></div>
+<div id="scenes"><div class="empty">لم تضف مشاهد بعد.</div></div>
+<div class="actions"><button id="start">بدء توليد المشاهد المحددة</button><button class="secondary" id="refresh">تحديث الحالات</button><button class="danger" id="clear">مسح القائمة</button></div>
+<div id="global" class="status">جاهز. اختبر الاتصال أولاً.</div>
+</section>
+</main>
+<script>
+(()=> {
+const $=id=>document.getElementById(id);
+const KEY="joyverse-next-scenes-v1", TOKEN="joyverse-next-token-v1", URLKEY="joyverse-next-bridge-v1";
+let scenes=[]; try{scenes=JSON.parse(localStorage.getItem(KEY)||"[]");if(!Array.isArray(scenes))scenes=[]}catch{scenes=[]}
+$("bridge").value=localStorage.getItem(URLKEY)||$("bridge").value;
+$("token").value=sessionStorage.getItem(TOKEN)||"";
+const save=()=>localStorage.setItem(KEY,JSON.stringify(scenes));
+const message=(id,msg,kind="")=>{$(id).textContent=msg;$(id).className="status "+kind};
+function config(){const base=$("bridge").value.trim().replace(/\/+$/,"");const token=$("token").value.trim();if(!/^https:\/\//i.test(base))throw Error("عنوان الجسر يجب أن يبدأ بـ https://");if(token.length<32)throw Error("رمز الاستوديو غير مكتمل.");localStorage.setItem(URLKEY,base);sessionStorage.setItem(TOKEN,token);return{base,token}}
+async function api(path,options={}){const c=config();const headers=new Headers(options.headers||{});headers.set("Authorization","Bearer "+c.token);if(options.json){headers.set("Content-Type","application/json");options.body=JSON.stringify(options.json);delete options.json}const r=await fetch(c.base+path,{...options,headers,cache:"no-store"});if(!r.ok){let detail="HTTP "+r.status;try{const j=await r.json();detail=j.message||j.error||detail}catch{}throw Error(detail)}return r}
+function render(){ $("count").textContent=scenes.length+" مشاهد";const root=$("scenes");root.replaceChildren();if(!scenes.length){root.innerHTML='<div class="empty">لم تضف مشاهد بعد.</div>';return}for(const s of scenes){const card=document.createElement("article");card.className="scene";const head=document.createElement("div");head.className="scenehead";const name=document.createElement("strong");name.textContent=s.title;const tag=document.createElement("span");tag.className="tag";tag.textContent=s.status==="done"?"مكتمل":s.status==="queued"?"في الانتظار":s.status==="running"?"قيد التنفيذ":s.status==="failed"?"فشل":"جاهز";head.append(name,tag);const p=document.createElement("p");p.textContent=s.prompt;card.append(head,p);if(s.error){const e=document.createElement("p");e.textContent="الخطأ: "+s.error;card.append(e)}const row=document.createElement("div");row.className="actions";if(s.taskId&&s.status==="done"){const dl=document.createElement("button");dl.textContent="استرجاع MP4";dl.onclick=()=>download(s);row.append(dl)}if(!s.taskId){const rm=document.createElement("button");rm.className="danger";rm.textContent="حذف";rm.onclick=()=>{scenes=scenes.filter(x=>x.id!==s.id);save();render()};row.append(rm)}card.append(row);root.append(card)}}
+$("add").onclick=()=>{const title=$("sceneTitle").value.trim(),prompt=$("prompt").value.trim();if(!title||!prompt)return message("global","أدخل اسم المشهد والوصف أولاً.","bad");scenes.push({id:crypto.randomUUID(),title,prompt,status:"waiting",taskId:null,error:null});save();render();$("sceneTitle").value="";$("prompt").value="";message("global","أُضيف المشهد محلياً. لم يُرسل للمولد.","good")};
+$("verify").onclick=async()=>{const b=$("verify");b.disabled=true;message("connection","يجري اختبار الاتصال...");try{const r=await api("/api/studio/verify");const j=await r.json();if(!j.connected)throw Error("الجسر لم يؤكد الاتصال.");if(j.provider!=="agnes")throw Error("المزود المضبوط حالياً ليس Agnes؛ المزود: "+j.provider);if(!j.provider_key_configured)throw Error("مفتاح Agnes غير مضبوط على الخادم.");message("connection","نجح اتصال الجسر، ومزود Agnes مضبوط. هذا الاختبار لا يثبت بعد قبول المفتاح لدى مزود Agnes.","good")}catch(e){message("connection","فشل الاختبار: "+e.message,"bad")}finally{b.disabled=false}};
+$("forget").onclick=()=>{$("token").value="";sessionStorage.removeItem(TOKEN);message("connection","تم مسح الرمز من جلسة المتصفح.")};
+async function poll(s){const r=await api("/api/hermes/tasks/"+encodeURIComponent(s.taskId));const t=await r.json();s.provider=t.provider||s.provider;s.error=t.error||null;s.status=t.status==="completed"?"done":t.status==="failed"?"failed":t.status==="claimed"?"running":"queued";save();render();return s.status}
+async function download(s){try{message("global","يجري استرجاع الفيديو...");const r=await api("/api/hermes/video/"+encodeURIComponent(s.taskId));const blob=await r.blob();const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download=(s.title||"joyverse-scene").replace(/[^\p{L}\p{N}-]+/gu,"-")+".mp4";a.click();setTimeout(()=>URL.revokeObjectURL(url),30000);message("global","تم استرجاع ملف الفيديو من الجسر.","good")}catch(e){message("global","تعذر الاسترجاع: "+e.message,"bad")}}
+$("refresh").onclick=async()=>{try{for(const s of scenes.filter(x=>x.taskId&&["queued","running"].includes(x.status)))await poll(s);message("global","تم تحديث حالات المهام.","good")}catch(e){message("global","تعذر تحديث الحالات: "+e.message,"bad")}};
+$("start").onclick=async()=>{const pending=scenes.filter(s=>s.status==="waiting"&&!s.taskId);if(!pending.length)return message("global","لا توجد مشاهد جاهزة للإرسال.");const b=$("start");b.disabled=true;try{for(const s of pending){message("global","إرسال المشهد: "+s.title);const r=await api("/api/hermes/dispatch",{method:"POST",json:{scene_id:s.id,prompt:s.prompt,toolsets:["video_gen"],confirm_video_generation:true,video_options:{duration:5,aspect:"16:9",seed:42,randomize_seed:true,enhance_prompt:true}}});const j=await r.json();s.taskId=j.task_id;s.status="queued";save();render()}message("global","قُبلت طلبات المشاهد في طابور الجسر. القبول لا يعني أن الفيديو اكتمل؛ استخدم تحديث الحالات.","good")}catch(e){message("global","توقف الإرسال: "+e.message,"bad")}finally{b.disabled=false}};
+$("clear").onclick=()=>{if(scenes.some(s=>s.taskId&&["queued","running"].includes(s.status)))return message("global","لا يمكن مسح القائمة أثناء وجود مهام قيد التنفيذ.");if(confirm("مسح جميع المشاهد من هذه الواجهة؟")){scenes=[];save();render();message("global","تم مسح القائمة.")}};
+render();
+})();
+</script></body></html>
