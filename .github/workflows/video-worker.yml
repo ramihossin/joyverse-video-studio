@@ -18,7 +18,7 @@ concurrency:
 jobs:
   wake-render-worker:
     # Prevent public issue spam from consuming the provider's free generation quota.
-    if: github.event_name != 'issues' || github.event.issue.user.login == 'ramihossin'
+    if: github.event_name != 'issues' || github.event.issue.user.login == github.repository_owner
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
