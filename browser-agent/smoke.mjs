@@ -6,13 +6,22 @@ await mkdir(out, { recursive: true });
 const browser = await chromium.launch({ headless: true });
 const context = await browser.newContext({ acceptDownloads: true });
 const page = await context.newPage({ viewport: { width: 1365, height: 900 } });
+const networkResponses = [];
 const evidence = {
   startedAt: new Date().toISOString(),
   browser: "Playwright + Chromium on GitHub-hosted Linux runner",
   target: "https://utilmesh.com/tools/free-ai-video-generator",
-  prompt: "A paper boat travels through a miniature forest stream, gentle camera movement, warm storybook style.",
+  prompt: "A small orange cat walks across a rainy neon street, slow tracking shot, cinematic reflections",
   steps: []
 };
+
+page.on("response", async response => {
+  const request = response.request();
+  if (request.method() !== "POST" && !/api|generate|video|task/i.test(response.url())) return;
+  let responseBody = "";
+  try { responseBody = (await response.text()).slice(0, 1600); } catch {}
+  networkResponses.push({ url: response.url(), method: request.method(), status: response.status(), contentType: response.headers()["content-type"] || "", body: responseBody });
+});
 
 try {
   await page.goto(evidence.target, { waitUntil: "domcontentloaded", timeout: 45000 });
@@ -73,6 +82,7 @@ try {
 
   if (!ready) {
     evidence.result = rejection || "No generated video became available within the 150-second observation window";
+    evidence.networkResponses = networkResponses;
     await page.screenshot({ path: `${out}/generation-status.png`, fullPage: true });
     await writeFile(`${out}/browser-evidence.json`, JSON.stringify(evidence, null, 2));
     console.log(JSON.stringify({ success: false, result: evidence.result, lastState }, null, 2));
@@ -95,11 +105,13 @@ try {
       evidence.downloadMethod = "Playwright request from generated video URL";
     }
     evidence.result = "Video became available and download was attempted";
+    evidence.networkResponses = networkResponses;
     await writeFile(`${out}/browser-evidence.json`, JSON.stringify(evidence, null, 2));
     console.log(JSON.stringify({ success: true, result: evidence.result, downloadedFile: evidence.downloadedFile, lastState }, null, 2));
   }
 } catch (error) {
   evidence.error = String(error?.stack || error);
+  evidence.networkResponses = networkResponses;
   await page.screenshot({ path: `${out}/generation-error.png`, fullPage: true }).catch(() => {});
   await writeFile(`${out}/browser-evidence.json`, JSON.stringify(evidence, null, 2));
   console.error(evidence.error);
