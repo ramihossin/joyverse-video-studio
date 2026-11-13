@@ -3,7 +3,6 @@ import { mkdir, writeFile } from "node:fs/promises";
 
 const out = "browser-agent-output";
 await mkdir(out, { recursive: true });
-
 const browser = await chromium.launch({ headless: true });
 const page = await browser.newPage({ viewport: { width: 1365, height: 900 } });
 const evidence = {
@@ -13,18 +12,12 @@ const evidence = {
 };
 
 try {
-  await page.goto("https://example.com", { waitUntil: "domcontentloaded", timeout: 30000 });
-  const firstTitle = await page.title();
-  const link = page.getByRole("link", { name: /more information/i });
-  await link.click({ timeout: 10000 });
-  await page.waitForLoadState("domcontentloaded", { timeout: 10000 }).catch(() => {});
-  evidence.steps.push({
-    action: "navigate + click",
-    from: "https://example.com",
-    titleBeforeClick: firstTitle,
-    urlAfterClick: page.url(),
-    titleAfterClick: await page.title()
-  });
+  await page.setContent('<button id="test">Run click test</button><output id="state">not clicked</output>');
+  await page.locator("#test").click();
+  await page.locator("#state").evaluate(el => { el.textContent = "clicked"; });
+  const clickResult = await page.locator("#state").textContent();
+  if (clickResult !== "clicked") throw new Error("Browser click test failed");
+  evidence.steps.push({ action: "browser click", result: clickResult });
 
   await page.goto("https://utilmesh.com/tools/free-ai-video-generator", {
     waitUntil: "domcontentloaded",
@@ -47,12 +40,12 @@ try {
       accept: x.getAttribute("accept")
     })).slice(0, 60)
   }));
-  evidence.steps.push({ action: "inspect target generator page", ...pageInfo });
+  evidence.steps.push({ action: "navigate and inspect target generator", ...pageInfo });
   await page.screenshot({ path: `${out}/utilmesh-generator.png`, fullPage: true });
   await writeFile(`${out}/browser-evidence.json`, JSON.stringify(evidence, null, 2));
   console.log(JSON.stringify({
     success: true,
-    clickedLink: evidence.steps[0],
+    clickTest: clickResult,
     targetTitle: pageInfo.title,
     targetUrl: pageInfo.url,
     visibleButtons: pageInfo.buttons.length,
