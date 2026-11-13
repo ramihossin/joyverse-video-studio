@@ -13,7 +13,7 @@ const evidence = {
   startedAt: new Date().toISOString(),
   browser: "Playwright + Chromium on GitHub-hosted Linux runner",
   target: "https://utilmesh.com/tools/free-ai-video-generator",
-  prompt: "A small orange cat walks across a rainy neon street, slow tracking shot, cinematic reflections",
+  prompt: "A red ball bounces once on a white floor.",
   steps: []
 };
 
