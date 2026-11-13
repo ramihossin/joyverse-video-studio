@@ -10,6 +10,7 @@ import { createObjectStorage } from "./object-storage.js";
 import { assembleMp4 } from "./ffmpeg-assembler.js";
 import { createVideoWorker } from "./video-worker.js";
 import { verifyGithubActionsToken } from "./github-oidc.js";
+import { initializeBingControlStore, installBingControlRoutes, dispatchConfiguredBingCommand, recordBingDeviceResult } from "./bing-control.js";
 
 const app = express();
 app.disable("x-powered-by");
@@ -58,6 +59,7 @@ const VIDEO_WORKER_REPOSITORY = process.env.GITHUB_OIDC_REPOSITORY || "ramihossi
 const VIDEO_WORKER_WORKFLOW = ".github/workflows/video-worker.yml";
 const VIDEO_WORKER_BRANCH = process.env.GITHUB_OIDC_BRANCH || "main";
 const VIDEO_WORKER_AUDIENCE = "joyverse-video-worker";
+const BING_COMMAND_JSON = process.env.BING_COMMAND_JSON || "";
 const SELECTED_VIDEO_PROVIDER = String(process.env.VIDEO_PROVIDER || (process.env.AGNES_API_KEY ? "agnes" : "ltx")).toLowerCase();
 let backgroundVideoWorker = null;
 let backgroundVideoWorkerBusy = false;
@@ -99,6 +101,8 @@ function isValidMacroDroidWebhook(value) {
     return false;
   }
 }
+
+installBingControlRoutes(app);
 
 function createMcpServer() {
   const server = new McpServer({ name: "joyverse-macrodroid-bridge", version: "1.0.0" });
@@ -872,6 +876,7 @@ app.post("/device-result/:token", (req, res) => {
     page: String(body.page ?? "").slice(0, 300),
     message: String(body.message ?? "").slice(0, 500)
   };
+  void recordBingDeviceResult(lastDeviceResult);
   res.status(202).json({ accepted: true });
 });
 
@@ -907,6 +912,7 @@ app.all("/mcp/:token", (_req, res) => res.status(405).json({ error: "Use POST fo
 
 const port = Number(process.env.PORT || 10000);
 initializeTaskStore().then(async () => {
+  await initializeBingControlStore();
   // A fixed task ID makes this one-shot diagnostic idempotent across Render restarts.
   if (process.env.JOYVERSE_SINGLE_LTX_TEST === "1") {
     const taskId = "joyverse-single-ltx-test-3s-20261111";
@@ -932,6 +938,12 @@ initializeTaskStore().then(async () => {
   }
   app.listen(port, "0.0.0.0", () => {
     console.log("JoyVerse MacroDroid bridge listening on port " + port + " with durable PostgreSQL task storage");
+    if (BING_COMMAND_JSON) {
+      void dispatchConfiguredBingCommand(BING_COMMAND_JSON, {
+        webhookUrl: MACRODROID_WEBHOOK_URL,
+        isValidWebhook: isValidMacroDroidWebhook
+      }).catch(error => console.error("Bing command dispatch failed:", String(error?.message || error).slice(0, 240)));
+    }
     // Run the configured video provider inside this service so confirmed scenes
     // are processed without relying on an external scheduled wake-up.
     const worker = getBackgroundVideoWorker();
