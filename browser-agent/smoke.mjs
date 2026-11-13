@@ -7,6 +7,8 @@ const browser = await chromium.launch({ headless: true });
 const context = await browser.newContext({ acceptDownloads: true });
 const page = await context.newPage({ viewport: { width: 1365, height: 900 } });
 const networkResponses = [];
+const networkFailures = [];
+const requestMetadata = [];
 const evidence = {
   startedAt: new Date().toISOString(),
   browser: "Playwright + Chromium on GitHub-hosted Linux runner",
@@ -15,17 +17,72 @@ const evidence = {
   steps: []
 };
 
+page.on("request", async request => {
+  if (request.method() !== "POST" && !/api|generate|video|task/i.test(request.url())) return;
+  let headers = {};
+  try { headers = await request.allHeaders(); } catch {}
+  const allowedHeaders = ["accept", "content-type", "origin", "referer", "sec-fetch-site", "sec-fetch-mode", "user-agent"];
+  requestMetadata.push({
+    url: request.url(),
+    method: request.method(),
+    resourceType: request.resourceType(),
+    headers: Object.fromEntries(allowedHeaders.filter(k => headers[k]).map(k => [k, headers[k]])),
+    body: request.postData() || ""
+  });
+});
+page.on("requestfailed", request => {
+  networkFailures.push({ url: request.url(), method: request.method(), error: request.failure()?.errorText || "unknown" });
+});
 page.on("response", async response => {
   const request = response.request();
   if (request.method() !== "POST" && !/api|generate|video|task/i.test(response.url())) return;
   let responseBody = "";
-  try { responseBody = (await response.text()).slice(0, 1600); } catch {}
-  networkResponses.push({ url: response.url(), method: request.method(), status: response.status(), contentType: response.headers()["content-type"] || "", requestBody: request.postData() || "", body: responseBody });
+  let headers = {};
+  try { responseBody = (await response.text()).slice(0, 2500); } catch {}
+  try { headers = await response.allHeaders(); } catch {}
+  networkResponses.push({
+    url: response.url(), method: request.method(), status: response.status(),
+    contentType: headers["content-type"] || "",
+    retryAfter: headers["retry-after"] || null,
+    server: headers["server"] || null,
+    cfRay: headers["cf-ray"] || null,
+    requestBody: request.postData() || "",
+    body: responseBody
+  });
 });
 
 try {
   await page.goto(evidence.target, { waitUntil: "domcontentloaded", timeout: 45000 });
   await page.waitForTimeout(2000);
+  evidence.browserRuntime = await page.evaluate(() => ({
+    userAgent: navigator.userAgent,
+    platform: navigator.platform,
+    online: navigator.onLine,
+    visibilityState: document.visibilityState,
+    loadedScriptUrls: [...document.scripts].map(s => s.src).filter(Boolean)
+  }));
+
+  // Inspect only the publicly loaded same-origin page bundles for the documented
+  // client request contract. This is diagnostic; it does not call private endpoints.
+  evidence.clientBundleFindings = await page.evaluate(async () => {
+    const urls = [...document.scripts].map(s => s.src).filter(src => {
+      try { return new URL(src).origin === location.origin && src.includes("/_next/static/chunks/"); }
+      catch { return false; }
+    });
+    const findings = [];
+    for (const url of urls) {
+      try {
+        const response = await fetch(url, { credentials: "same-origin" });
+        if (!response.ok) continue;
+        const source = await response.text();
+        for (const needle of ["/api/ai-media/video", "generation request was not accepted"]) {
+          const at = source.indexOf(needle);
+          if (at >= 0) findings.push({ url, needle, excerpt: source.slice(Math.max(0, at - 900), Math.min(source.length, at + 1600)) });
+        }
+      } catch {}
+    }
+    return findings.slice(0, 8);
+  });
 
   const consent = page.getByRole("button", { name: /got it/i });
   if (await consent.isVisible().catch(() => false)) {
@@ -83,6 +140,8 @@ try {
   if (!ready) {
     evidence.result = rejection || "No generated video became available within the 150-second observation window";
     evidence.networkResponses = networkResponses;
+    evidence.requestMetadata = requestMetadata;
+    evidence.networkFailures = networkFailures;
     await page.screenshot({ path: `${out}/generation-status.png`, fullPage: true });
     await writeFile(`${out}/browser-evidence.json`, JSON.stringify(evidence, null, 2));
     console.log(JSON.stringify({ success: false, result: evidence.result, lastState }, null, 2));
@@ -106,12 +165,16 @@ try {
     }
     evidence.result = "Video became available and download was attempted";
     evidence.networkResponses = networkResponses;
+    evidence.requestMetadata = requestMetadata;
+    evidence.networkFailures = networkFailures;
     await writeFile(`${out}/browser-evidence.json`, JSON.stringify(evidence, null, 2));
     console.log(JSON.stringify({ success: true, result: evidence.result, downloadedFile: evidence.downloadedFile, lastState }, null, 2));
   }
 } catch (error) {
   evidence.error = String(error?.stack || error);
   evidence.networkResponses = networkResponses;
+  evidence.requestMetadata = requestMetadata;
+  evidence.networkFailures = networkFailures;
   await page.screenshot({ path: `${out}/generation-error.png`, fullPage: true }).catch(() => {});
   await writeFile(`${out}/browser-evidence.json`, JSON.stringify(evidence, null, 2));
   console.error(evidence.error);
