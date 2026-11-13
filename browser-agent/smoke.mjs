@@ -31,8 +31,8 @@ try {
 
   await page.locator("textarea").first().fill(evidence.prompt);
   const selects = page.locator("select");
-  await selects.nth(0).selectOption({ label: /Landscape 16:9/i });
-  await selects.nth(1).selectOption({ label: /About 5 seconds/i });
+  await selects.nth(0).selectOption({ label: "Landscape 16:9" });
+  await selects.nth(1).selectOption({ label: "About 5 seconds" });
 
   const generate = page.getByRole("button", { name: /generate free video/i });
   await generate.click();
