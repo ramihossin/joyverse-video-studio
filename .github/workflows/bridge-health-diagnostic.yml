@@ -1,0 +1,38 @@
+name: JoyVerse bridge health diagnostic
+
+on:
+  push:
+    branches:
+      - bing-video-control-diagnostic
+    paths:
+      - .github/workflows/bridge-health-diagnostic.yml
+
+permissions:
+  contents: write
+
+jobs:
+  health:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Read public health endpoint
+        run: |
+          mkdir -p diagnostics
+          curl --fail --silent --show-error --max-time 30 https://joyverse-mcp-bridge.onrender.com/health -o diagnostics/bridge-health.json
+          cat diagnostics/bridge-health.json
+          {
+            echo '## JoyVerse bridge health'
+            echo
+            cat diagnostics/bridge-health.json
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Save diagnostic result on this branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add diagnostics/bridge-health.json
+          if git diff --cached --quiet; then
+            echo "No result change to save."
+            exit 0
+          fi
+          git commit -m "Record JoyVerse bridge health diagnostic"
+          git push
