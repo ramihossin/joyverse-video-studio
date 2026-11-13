@@ -1,70 +1,50 @@
 import { chromium } from "playwright";
-import { mkdir, writeFile, readFile } from "node:fs/promises";
-
+import { mkdir, writeFile } from "node:fs/promises";
 const out="browser-agent-output"; await mkdir(out,{recursive:true});
-const taskId="T1794596396843276";
-const base="https://ai.jxzhihi.com";
 const browser=await chromium.launch({headless:true});
 const context=await browser.newContext({acceptDownloads:true});
 const page=await context.newPage({viewport:{width:1365,height:900}});
-const checks=[], failures=[], errors=[];
+const responses=[],failures=[],errors=[],downloads=[];
+page.on("response",async r=>{if(!/api|generate|video|task|captcha|challenge/i.test(r.url()))return;let b="";try{b=(await r.text()).slice(0,1800)}catch{}responses.push({url:r.url(),method:r.request().method(),status:r.status(),body:b})});
 page.on("requestfailed",r=>failures.push({url:r.url(),error:r.failure()?.errorText||""}));
 page.on("pageerror",e=>errors.push(String(e?.stack||e)));
 page.on("console",m=>{if(m.type()==="error")errors.push(m.text())});
-const evidence={target:base+"/studio",taskId,mode:"monitor existing task only; no generation submit",startedAt:new Date().toISOString(),checks:[]};
+page.on("download",async d=>{const path=await d.path();downloads.push({suggestedFilename:d.suggestedFilename(),path, url:d.url()})});
+const inspect=()=>page.evaluate(()=>({url:location.href,title:document.title,text:(document.body?.innerText||"").slice(0,5500),controls:[...document.querySelectorAll("input,textarea,select,button,[role=button]")].map(e=>({tag:e.tagName.toLowerCase(),type:e.getAttribute("type"),id:e.id||null,name:e.getAttribute("name"),placeholder:e.getAttribute("placeholder"),aria:e.getAttribute("aria-label"),text:(e.innerText||e.textContent||"").trim().slice(0,120),value:"value"in e?e.value:null,disabled:"disabled"in e?e.disabled:null,options:e.tagName==="SELECT"?[...e.options].map(o=>({value:o.value,text:(o.textContent||"").trim()})):undefined}))})));
 try{
- await page.goto(base+"/studio",{waitUntil:"domcontentloaded",timeout:45000});
- await page.waitForTimeout(800);
- const deadline=Date.now()+360000;
- let latest=null, outputUrl=null;
- while(Date.now()<deadline){
-  const check=await page.evaluate(async id=>{
-   try{
-    const r=await fetch("/api/task/"+encodeURIComponent(id),{method:"GET",credentials:"same-origin",cache:"no-store"});
-    const body=await r.text();
-    let data=null;try{data=JSON.parse(body)}catch{}
-    return {httpStatus:r.status,ok:r.ok,body:body.slice(0,5000),data};
-   }catch(e){return {error:String(e)}}
-  },taskId);
-  latest=check;
-  const row={at:new Date().toISOString(),httpStatus:check.httpStatus,data:check.data,body:check.body?.slice(0,1000),error:check.error};
-  evidence.checks.push(row);
-  console.log(JSON.stringify(row));
-  const s=String(check.data?.status||"").toLowerCase();
-  const path=check.data?.output_path||check.data?.video_url||check.data?.url||null;
-  if(path && (s==="completed"||s==="done"||s==="success"||s==="succeeded")){outputUrl=path;break;}
-  if(["failed","error","cancelled","canceled"].includes(s))break;
-  await page.waitForTimeout(10000);
+ await page.goto("https://openmaker.si/free-text-to-video/",{waitUntil:"domcontentloaded",timeout:45000});
+ await page.waitForTimeout(2500);
+ const initial=await inspect();
+ await page.screenshot({path:`${out}/openmaker-before.png`,fullPage:true});
+ const prompt=page.locator("textarea").first();
+ if(await prompt.count()){
+   await prompt.fill("A cheerful turquoise dragon with small golden wings gently waves beside a colorful flower garden, bright friendly 3D cartoon animation, smooth camera movement, one continuous simple action.");
+   await page.waitForTimeout(500);
  }
- evidence.latest=latest;
- evidence.outputPath=outputUrl;
- evidence.pageErrors=errors;
- evidence.networkFailures=failures;
- if(outputUrl){
-  const url=new URL(outputUrl,base).href;
-  evidence.resolvedOutputUrl=url;
-  const response=await page.request.get(url,{timeout:90000});
-  evidence.downloadHTTP=response.status();
-  evidence.contentType=response.headers()["content-type"]||"";
-  if(response.ok()){
-   const bytes=Buffer.from(await response.body());
-   await writeFile(out+"/joyverse-marvis.mp4",bytes);
-   evidence.fileSize=bytes.length;
-   evidence.mp4Signature=bytes.subarray(4,8).toString();
-   evidence.validMp4Container=evidence.mp4Signature==="ftyp"&&bytes.length>20000;
-   evidence.result=evidence.validMp4Container?"Existing task completed; output downloaded and MP4 container verified":"Existing task returned an output file, but MP4 validation failed";
-  }else evidence.result="Task completed but output download failed";
- }else{
-  const status=String(latest?.data?.status||"unknown").toLowerCase();
-  evidence.result=["failed","error","cancelled","canceled"].includes(status)?"Existing task failed; no retry made":"Existing task did not reach completion during the monitoring window";
-  evidence.validMp4Container=false;
+ const ready=await inspect();
+ await writeFile(`${out}/openmaker-before.json`,JSON.stringify({initial,ready},null,2));
+ console.log("FORM_READY",JSON.stringify({initialControls:initial.controls,readyControls:ready.controls,text:ready.text.slice(0,2500)},null,2));
+ const button=page.getByRole("button",{name:/generate video/i}).first();
+ if(await button.count() && await button.isEnabled()){
+   await button.click();
+   const started=Date.now();
+   while(Date.now()-started<90000){
+     await page.waitForTimeout(3000);
+     const status=await inspect();
+     const video=await page.locator("video").evaluateAll(v=>v.map(x=>({src:x.currentSrc||x.src,readyState:x.readyState,duration:x.duration})));
+     if(video.some(v=>v.src && v.readyState>=2) || /download/i.test(status.text)){
+       await page.screenshot({path:`${out}/openmaker-after.png`,fullPage:true});
+       await writeFile(`${out}/openmaker-result.json`,JSON.stringify({status,video,responses,failures,errors,downloads},null,2));
+       break;
+     }
+     if(/verification|captcha|access denied|rate limit|sign in|log in/i.test(status.text)){
+       await page.screenshot({path:`${out}/openmaker-blocked.png`,fullPage:true});
+       await writeFile(`${out}/openmaker-blocked.json`,JSON.stringify({status,responses,failures,errors},null,2));
+       break;
+     }
+   }
  }
- await page.screenshot({path:out+"/marvis-task-monitor.png",fullPage:true});
- await writeFile(out+"/marvis-task-monitor-evidence.json",JSON.stringify(evidence,null,2));
- console.log(JSON.stringify({result:evidence.result,latest:evidence.latest,outputPath:evidence.outputPath,downloadHTTP:evidence.downloadHTTP,fileSize:evidence.fileSize,mp4Signature:evidence.mp4Signature,validMp4Container:evidence.validMp4Container},null,2));
- if(!evidence.validMp4Container)process.exitCode=2;
-}catch(error){
- evidence.error=String(error?.stack||error);evidence.pageErrors=errors;evidence.networkFailures=failures;
- await writeFile(out+"/marvis-task-monitor-evidence.json",JSON.stringify(evidence,null,2));
- console.error(evidence.error);process.exitCode=1;
-}finally{await browser.close()}
+ await page.screenshot({path:`${out}/openmaker-final.png`,fullPage:true});
+ await writeFile(`${out}/openmaker-final.json`,JSON.stringify({final:await inspect(),responses,failures,errors,downloads},null,2));
+}catch(e){await writeFile(`${out}/openmaker-error.txt`,String(e?.stack||e));console.error(e);process.exitCode=1}
+finally{await browser.close()}
