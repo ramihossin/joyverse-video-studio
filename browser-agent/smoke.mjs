@@ -11,7 +11,7 @@ const evidence = {
   startedAt: new Date().toISOString(),
   browser: "Playwright + Chromium on GitHub-hosted Linux runner",
   target: "https://utilmesh.com/tools/free-ai-video-generator",
-  prompt: "A tiny turquoise dragon flies slowly across a bright flower meadow.",
+  prompt: "A small orange cat walks across a rainy neon street, slow tracking shot, cinematic reflections",
   steps: []
 };
 
@@ -20,7 +20,7 @@ page.on("response", async response => {
   if (request.method() !== "POST" && !/api|generate|video|task/i.test(response.url())) return;
   let responseBody = "";
   try { responseBody = (await response.text()).slice(0, 1600); } catch {}
-  networkResponses.push({ url: response.url(), method: request.method(), status: response.status(), contentType: response.headers()["content-type"] || "", body: responseBody });
+  networkResponses.push({ url: response.url(), method: request.method(), status: response.status(), contentType: response.headers()["content-type"] || "", requestBody: request.postData() || "", body: responseBody });
 });
 
 try {
