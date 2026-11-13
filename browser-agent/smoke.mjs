@@ -13,7 +13,7 @@ const evidence = {
   startedAt: new Date().toISOString(),
   browser: "Playwright + Chromium on GitHub-hosted Linux runner",
   target: "https://utilmesh.com/tools/free-ai-video-generator",
-  prompt: "A paper boat travels through a miniature forest stream, gentle camera movement, warm storybook style",
+  prompt: "A small orange cat walks across a rainy neon street, slow tracking shot, cinematic reflections",
   steps: []
 };
 
@@ -98,7 +98,7 @@ try {
   await page.locator("textarea").first().fill(evidence.prompt);
   const selects = page.locator("select");
   await selects.nth(0).selectOption({ label: "Landscape 16:9" });
-  await selects.nth(1).selectOption({ label: "About 3 seconds" });
+  await selects.nth(1).selectOption({ label: "About 5 seconds" });
 
   const generate = page.getByRole("button", { name: /generate free video/i });
   await generate.click();
