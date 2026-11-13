@@ -3,15 +3,12 @@ on:
   push:
     branches:
       - browser-agent-proof-20261113
-    paths:
-      - ".github/workflows/browser-agent-proof.yml"
-      - "browser-agent/**"
 permissions:
   contents: read
   actions: read
 concurrency:
   group: browser-agent-proof
-  cancel-in-progress: true
+  cancel-in-progress: false
 jobs:
   browser:
     runs-on: ubuntu-latest
