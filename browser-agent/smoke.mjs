@@ -97,8 +97,17 @@ try {
 
   await page.locator("textarea").first().fill(evidence.prompt);
   const selects = page.locator("select");
-  await selects.nth(0).selectOption({ label: "Landscape 16:9" });
-  await selects.nth(1).selectOption({ label: "About 5 seconds" });
+  await selects.nth(0).selectOption("16:9");
+  await selects.nth(1).selectOption("5");
+  await page.waitForFunction(() => {
+    const s = [...document.querySelectorAll("select")];
+    return s.length >= 2 && s[0].value === "16:9" && s[1].value === "5";
+  }, { timeout: 10000 });
+  evidence.selectedValues = await selects.evaluateAll(s => s.map(x => x.value));
+  if (evidence.selectedValues[0] !== "16:9" || evidence.selectedValues[1] !== "5") {
+    throw new Error("UI selection state mismatch: " + JSON.stringify(evidence.selectedValues));
+  }
+  await page.waitForTimeout(800);
 
   const generate = page.getByRole("button", { name: /generate free video/i });
   await generate.click();
