@@ -94,6 +94,33 @@ export async function dispatchConfiguredBingCommand(raw, { webhookUrl, isValidWe
   }
 }
 
+export async function logBingCommandStatus(commandId) {
+  if (!UUID_RE.test(String(commandId || ""))) return;
+  const { rows } = await getTaskPool().query(
+    `SELECT command_id, command, status, device_status, page, message,
+            storage_key, byte_length, updated_at
+       FROM joyverse_bing_commands WHERE command_id=$1`,
+    [commandId]
+  );
+  if (!rows.length) {
+    console.log("Bing command status not found: " + commandId);
+    return;
+  }
+  const row = rows[0];
+  console.log("Bing command status: " + JSON.stringify({
+    command_id: row.command_id,
+    command: row.command,
+    status: row.status,
+    device_status: row.device_status,
+    page: row.page,
+    message: row.message,
+    video_uploaded: Boolean(row.storage_key),
+    byte_length: row.byte_length ? Number(row.byte_length) : null,
+    download_url: row.storage_key ? "/api/bing/download/" + row.command_id : null,
+    updated_at: row.updated_at
+  }));
+}
+
 export async function recordBingDeviceResult(result) {
   if (!result || !UUID_RE.test(String(result.commandId || ""))) return;
   const status = String(result.status || "unknown").slice(0, 40);
