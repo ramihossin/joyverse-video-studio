@@ -1,0 +1,39 @@
+name: Browser Agent Proof
+on:
+  push:
+    branches:
+      - browser-agent-proof-20261113
+    paths:
+      - ".github/workflows/browser-agent-proof.yml"
+      - "browser-agent/**"
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: browser-agent-proof
+  cancel-in-progress: true
+jobs:
+  browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Checkout isolated proof branch
+        uses: actions/checkout@v4
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Install Playwright
+        run: |
+          npm install --no-save --package-lock=false playwright
+          npx playwright install --with-deps chromium
+      - name: Run browser navigation and interaction test
+        run: node browser-agent/smoke.mjs
+      - name: Upload browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: browser-agent-proof
+          path: browser-agent-output/
+          if-no-files-found: warn
+          retention-days: 2
