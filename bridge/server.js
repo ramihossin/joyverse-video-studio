@@ -10,7 +10,7 @@ import { createObjectStorage } from "./object-storage.js";
 import { assembleMp4 } from "./ffmpeg-assembler.js";
 import { createVideoWorker } from "./video-worker.js";
 import { verifyGithubActionsToken } from "./github-oidc.js";
-import { initializeBingControlStore, installBingControlRoutes, dispatchConfiguredBingCommand, recordBingDeviceResult } from "./bing-control.js";
+import { initializeBingControlStore, installBingControlRoutes, dispatchConfiguredBingCommand, recordBingDeviceResult, logBingCommandStatus } from "./bing-control.js";
 
 const app = express();
 app.disable("x-powered-by");
@@ -60,6 +60,7 @@ const VIDEO_WORKER_WORKFLOW = ".github/workflows/video-worker.yml";
 const VIDEO_WORKER_BRANCH = process.env.GITHUB_OIDC_BRANCH || "main";
 const VIDEO_WORKER_AUDIENCE = "joyverse-video-worker";
 const BING_COMMAND_JSON = process.env.BING_COMMAND_JSON || "";
+const BING_STATUS_COMMAND_ID = process.env.BING_STATUS_COMMAND_ID || "";
 const SELECTED_VIDEO_PROVIDER = String(process.env.VIDEO_PROVIDER || (process.env.AGNES_API_KEY ? "agnes" : "ltx")).toLowerCase();
 let backgroundVideoWorker = null;
 let backgroundVideoWorkerBusy = false;
@@ -943,6 +944,10 @@ initializeTaskStore().then(async () => {
         webhookUrl: MACRODROID_WEBHOOK_URL,
         isValidWebhook: isValidMacroDroidWebhook
       }).catch(error => console.error("Bing command dispatch failed:", String(error?.message || error).slice(0, 240)));
+    }
+    if (BING_STATUS_COMMAND_ID) {
+      void logBingCommandStatus(BING_STATUS_COMMAND_ID)
+        .catch(error => console.error("Bing status diagnostic failed:", String(error?.message || error).slice(0, 180)));
     }
     // Run the configured video provider inside this service so confirmed scenes
     // are processed without relying on an external scheduled wake-up.
