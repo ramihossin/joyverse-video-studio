@@ -7,6 +7,10 @@ const browser = await chromium.launch({ headless: true });
 const context = await browser.newContext({ acceptDownloads: true });
 const page = await context.newPage({ viewport: { width: 1365, height: 900 } });
 const networkResponses = [];
+const pageErrors = [];
+const consoleErrors = [];
+page.on("pageerror", error => pageErrors.push(String(error?.stack || error)));
+page.on("console", message => { if (message.type() === "error") consoleErrors.push(message.text()); });
 const networkFailures = [];
 const requestMetadata = [];
 const evidence = {
@@ -151,6 +155,8 @@ try {
     evidence.networkResponses = networkResponses;
     evidence.requestMetadata = requestMetadata;
     evidence.networkFailures = networkFailures;
+    evidence.pageErrors = pageErrors;
+    evidence.consoleErrors = consoleErrors;
     await page.screenshot({ path: `${out}/generation-status.png`, fullPage: true });
     await writeFile(`${out}/browser-evidence.json`, JSON.stringify(evidence, null, 2));
     console.log(JSON.stringify({ success: false, result: evidence.result, lastState }, null, 2));
@@ -176,6 +182,8 @@ try {
     evidence.networkResponses = networkResponses;
     evidence.requestMetadata = requestMetadata;
     evidence.networkFailures = networkFailures;
+    evidence.pageErrors = pageErrors;
+    evidence.consoleErrors = consoleErrors;
     await writeFile(`${out}/browser-evidence.json`, JSON.stringify(evidence, null, 2));
     console.log(JSON.stringify({ success: true, result: evidence.result, downloadedFile: evidence.downloadedFile, lastState }, null, 2));
   }
