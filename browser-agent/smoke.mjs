@@ -10,7 +10,7 @@ const evidence = {
   startedAt: new Date().toISOString(),
   browser: "Playwright + Chromium on GitHub-hosted Linux runner",
   target: "https://utilmesh.com/tools/free-ai-video-generator",
-  prompt: "A friendly small turquoise dragon with golden wings floats through a bright flower meadow, waves happily at the camera, smooth gentle camera movement, polished colorful 3D family-friendly animation.",
+  prompt: "A paper boat travels through a miniature forest stream, gentle camera movement, warm storybook style.",
   steps: []
 };
 
@@ -32,15 +32,16 @@ try {
   await page.locator("textarea").first().fill(evidence.prompt);
   const selects = page.locator("select");
   await selects.nth(0).selectOption({ label: "Landscape 16:9" });
-  await selects.nth(1).selectOption({ label: "About 5 seconds" });
+  await selects.nth(1).selectOption({ label: "About 3 seconds" });
 
   const generate = page.getByRole("button", { name: /generate free video/i });
   await generate.click();
   evidence.steps.push({ action: "submit free video generation", result: "clicked Generate free video" });
   await writeFile(`${out}/generation-started.json`, JSON.stringify(evidence, null, 2));
 
-  const deadline = Date.now() + 240000;
+  const deadline = Date.now() + 150000;
   let ready = false;
+  let rejection = null;
   let lastState = {};
   while (Date.now() < deadline) {
     await page.waitForTimeout(4000);
@@ -60,6 +61,10 @@ try {
       };
     });
     evidence.lastObservedState = lastState;
+    if (/generation request was not accepted|try a different prompt/i.test(lastState.bodyText || "")) {
+      rejection = "The page displayed a generation rejection message";
+      break;
+    }
     if (lastState.videoSrc || (lastState.downloadText && lastState.downloadDisabled === false)) {
       ready = true;
       break;
@@ -67,7 +72,7 @@ try {
   }
 
   if (!ready) {
-    evidence.result = "No generated video became available within the 4-minute observation window";
+    evidence.result = rejection || "No generated video became available within the 150-second observation window";
     await page.screenshot({ path: `${out}/generation-status.png`, fullPage: true });
     await writeFile(`${out}/browser-evidence.json`, JSON.stringify(evidence, null, 2));
     console.log(JSON.stringify({ success: false, result: evidence.result, lastState }, null, 2));
