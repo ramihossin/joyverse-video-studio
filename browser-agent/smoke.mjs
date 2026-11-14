@@ -49,8 +49,18 @@ try{
  const hasTurnstile=await page.locator('iframe[src*="challenges.cloudflare.com"]').count()>0||await page.locator('input[id*="cf-chl-widget"]').count()>0;
  const state={stage:"inspection-only",before,ready,buttonCount,buttonEnabled,hasTurnstile,turnstileTokenPresent:Boolean(turnstileResponse)};
  console.log("LOREMOTION READY",JSON.stringify({title:ready.title,prompt:ready.prompt,buttonCount,buttonEnabled,hasTurnstile,turnstileTokenPresent:Boolean(turnstileResponse),text:ready.text.slice(0,1800)},null,2));
+ const adFrame=page.locator('iframe[title*="ad content" i], iframe[id*="rewarded"], iframe[data-is-safeframe="true"]').first();
+ const adPresent=await adFrame.count()>0;
+ if(adPresent){
+  state.adDetected=true;
+  state.adWaitSeconds=30;
+  await page.screenshot({path:path.join(out,"loremotion-ad-start.png"),fullPage:true});
+  await page.waitForTimeout(30000);
+ }
+ state.postAd=await inspect();
+ await page.screenshot({path:path.join(out,"loremotion-post-ad.png"),fullPage:true});
  if(buttonEnabled){
-  await generate.click();state.stage="submitted";
+  await generate.click({timeout:8000});state.stage="submitted";
   const start=Date.now();
   while(Date.now()-start<240000){
    await page.waitForTimeout(4000);const curr=await inspect();
