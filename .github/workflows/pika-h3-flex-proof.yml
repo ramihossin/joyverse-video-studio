@@ -1,0 +1,30 @@
+name: Pika H3 Flex Anonymous Proof
+on:
+  push:
+    branches:
+      - pika-h3-flex-proof-20261114
+permissions:
+  contents: read
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Checkout proof branch
+        uses: actions/checkout@v4
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Install Gradio client
+        run: npm install --no-save --package-lock=false @gradio/client@2.7.2
+      - name: Generate one anonymous Pika H3 Flex test and verify MP4
+        run: node browser-agent/pika-h3-flex-proof.mjs
+      - name: Upload MP4 and evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pika-h3-flex-free-proof
+          path: pika-proof-output/
+          if-no-files-found: warn
+          retention-days: 3
