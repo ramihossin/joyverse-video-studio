@@ -1,0 +1,22 @@
+name: Inspect Free Anonymous Video Spaces
+on:
+  push:
+    branches:
+      - free-anon-space-scan-20261114
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Install Gradio client
+        run: npm install --no-save --package-lock=false @gradio/client@2.7.2
+      - name: Inspect public API schemas without generating
+        run: node browser-agent/inspect-public-spaces.mjs
