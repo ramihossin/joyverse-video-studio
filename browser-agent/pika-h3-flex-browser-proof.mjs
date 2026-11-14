@@ -165,14 +165,22 @@ try {
   const startedAt = Date.now();
   let lastState = null;
 
-  while (Date.now() - startedAt < 300000) {
+  while (Date.now() - startedAt < 360000) {
     await page.waitForTimeout(4000);
     lastState = await snapshot();
     await saveVideo(lastState);
     if (savedFile || lastState.videos.some(video => video.src && video.readyState >= 2)) break;
 
     const text = lastState.text.toLowerCase();
-    if (/no gpu|queue is full|gpu.*available|failed to load|error while|generation failed|try again later|please sign in|log in to generate|verification required/.test(text)) {
+    if (Math.floor((Date.now() - startedAt) / 30000) !== Math.floor((Date.now() - startedAt - 4000) / 30000)) {
+      console.log("PIKA_GENERATION_PROGRESS", JSON.stringify({
+        elapsed_seconds: Math.round((Date.now() - startedAt) / 1000),
+        status_text: lastState.text.slice(-900)
+      }));
+    }
+    // "Waiting for a GPU to become available" is a normal shared-queue state, not a failure.
+    // Stop only on an explicit rejection, quota block, login gate, or verification challenge.
+    if (/no gpu (?:was )?available|gpu quota.*exhaust|queue is full|failed to load|error while|generation failed|try again later|please sign in|log in to generate|verification required/.test(text)) {
       break;
     }
   }
