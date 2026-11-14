@@ -5,16 +5,7 @@ import path from "node:path";
 const outDir = "ltx-proof-output";
 await mkdir(outDir, { recursive: true });
 
-const prompt = "A tiny cheerful turquoise dragon with small golden wings waves beside a bright flower garden. Polished friendly 3D cartoon animation, smooth gentle movement, warm daylight, colorful joyful setting, simple composition, no text.";
-
-function safeUrl(value) {
-  try {
-    const url = new URL(value);
-    return url.origin + url.pathname;
-  } catch {
-    return String(value || "").slice(0, 300);
-  }
-}
+const prompt = "Zeno, a small adorable turquoise dragon with a soft cream belly, large expressive amber eyes, two small golden horns, and delicate golden wings, stands in a colorful flower garden. Zeno gently waves one wing, blinks, and takes one happy little step forward. Polished high-quality 3D animated film look, consistent character design, smooth natural motion, warm daylight, saturated cheerful colors, soft depth of field, stable camera, no text, no logos, no extra characters.";
 
 async function main() {
   const spaceId = "Lightricks/LTX-2.5";
@@ -22,16 +13,13 @@ async function main() {
   console.log("Connecting to the official public LTX-2.5 Gradio Space…");
   const client = await Client.connect(spaceId, options);
 
-  // Public API signature verified against the current official Space:
-  // prompt, image, height, width, duration_s, seed, decoder,
-  // auto_len, randomize_seed, do_enhance.
-  console.log("Submitting one anonymous shared-queue test (2 seconds, 512x512).");
+  console.log("Submitting one anonymous shared-queue Zeno test (5 seconds, portrait 832x1472).");
   const result = await client.predict("/run", [
     prompt,
     null,
-    512,
-    512,
-    2.0,
+    1472,
+    832,
+    5.0,
     42,
     "conv",
     false,
@@ -43,8 +31,7 @@ async function main() {
   const rawUrl = typeof file === "string" ? file : file?.url || file?.path;
   if (!rawUrl) throw new Error("The Space returned no video file.");
 
-  const base = "https://lightricks-ltx-2-5.hf.space/";
-  const videoUrl = new URL(rawUrl, base);
+  const videoUrl = new URL(rawUrl, "https://lightricks-ltx-2-5.hf.space/");
   const host = videoUrl.hostname.toLowerCase();
   if (videoUrl.protocol !== "https:" ||
       !(host.endsWith(".hf.space") || host === "huggingface.co" || host.endsWith(".huggingface.co")) ||
@@ -61,14 +48,14 @@ async function main() {
     throw new Error("The downloaded file is not a valid MP4 (missing ftyp signature).");
   }
 
-  const videoPath = path.join(outDir, "joyverse-ltx-test.mp4");
+  const videoPath = path.join(outDir, "joyverse-zeno-portrait-5s.mp4");
   await writeFile(videoPath, buffer);
-
   const report = {
     status: "completed",
     provider: "Lightricks/LTX-2.5 public Gradio Space",
+    character: "Zeno",
     prompt,
-    settings: { duration_seconds: 2, width: 512, height: 512, seed: 42 },
+    settings: { duration_seconds: 5, width: 832, height: 1472, seed: 42 },
     file: { name: path.basename(videoPath), bytes: buffer.length, signature },
     result_summary: Array.isArray(result?.data) ? result.data.slice(1).map(v => String(v).slice(0, 120)) : []
   };
