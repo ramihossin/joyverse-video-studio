@@ -1,0 +1,32 @@
+name: Inspect Pika Public Browser UI
+on:
+  push:
+    branches:
+      - pika-h3-browser-ui-inspect-20261114
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Install Playwright and Chromium
+        run: |
+          npm install --no-save --package-lock=false playwright
+          npx playwright install --with-deps chromium
+      - name: Inspect public Pika page without submitting
+        run: node browser-agent/pika-ui-inspect.mjs
+      - name: Upload screenshot and page evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pika-public-ui-inspection
+          path: pika-ui-inspection/
+          if-no-files-found: warn
+          retention-days: 2
