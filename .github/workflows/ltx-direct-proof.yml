@@ -1,0 +1,30 @@
+name: LTX Direct Free Proof
+on:
+  push:
+    branches:
+      - ltx-direct-proof-20261114
+permissions:
+  contents: read
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout proof branch
+        uses: actions/checkout@v4
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Install Gradio client
+        run: npm install --no-save --package-lock=false @gradio/client@2.7.2
+      - name: Generate one short test through the public LTX Space
+        run: node browser-agent/ltx-public-proof.mjs
+      - name: Upload MP4 and evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ltx-direct-free-proof
+          path: ltx-proof-output/
+          if-no-files-found: warn
+          retention-days: 3
