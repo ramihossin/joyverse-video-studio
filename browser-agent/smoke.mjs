@@ -40,6 +40,8 @@ try{
  if(await promptBox.count())await promptBox.fill(prompt);
  await page.waitForTimeout(1000);
  const ready=await inspect();
+ const rejectConsent=page.getByRole("button",{name:/Reject non-essential/i}).first();
+ if(await rejectConsent.count()){await rejectConsent.click({timeout:8000}).catch(e=>errors.push("consent choice: "+String(e).slice(0,250)));await page.waitForTimeout(1200)}
  const generate=page.getByRole("button",{name:/^Generate/i}).first();
  const buttonCount=await generate.count();
  const buttonEnabled=buttonCount?await generate.isEnabled().catch(()=>false):false;
