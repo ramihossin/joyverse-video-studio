@@ -56,11 +56,27 @@ try{
   state.adWaitSeconds=30;
   await page.screenshot({path:path.join(out,"loremotion-ad-start.png"),fullPage:true});
   await page.waitForTimeout(30000);
+  // Dismiss the visible ad using its own Close/X control after the user's requested wait.
+  const closeCandidates=[
+   page.getByRole("button",{name:/close/i}).last(),
+   page.getByLabel(/close/i).last(),
+   page.getByText(/^Close$/i).last()
+  ];
+  for(const c of closeCandidates){
+   try{if(await c.count() && await c.isVisible()){await c.click({timeout:5000});state.adClosed=true;break}}catch(e){state.closeAttemptError=String(e).slice(0,250)}
+  }
+  if(!state.adClosed){
+   try{await page.mouse.click(1235,105);await page.waitForTimeout(700);state.adClosed=!(await page.locator('iframe[title*="ad content" i]').count())}catch(e){state.closeCoordinateError=String(e).slice(0,200)}
+  }
+  await page.waitForTimeout(1200);
  }
  state.postAd=await inspect();
  await page.screenshot({path:path.join(out,"loremotion-post-ad.png"),fullPage:true});
- if(buttonEnabled){
-  await generate.click({timeout:8000});state.stage="submitted";
+ const generateAfterAd=page.getByRole("button",{name:/^Generate/i}).first();
+ const canGenerate=await generateAfterAd.count() && await generateAfterAd.isEnabled().catch(()=>false);
+ state.generateEnabledAfterAd=Boolean(canGenerate);
+ if(canGenerate){
+  await generateAfterAd.click({timeout:12000});state.stage="submitted";
   const start=Date.now();
   while(Date.now()-start<240000){
    await page.waitForTimeout(4000);const curr=await inspect();
