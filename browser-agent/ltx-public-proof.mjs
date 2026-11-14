@@ -13,12 +13,12 @@ async function main() {
   console.log("Connecting to the official public LTX-2.5 Gradio Space…");
   const client = await Client.connect(spaceId, options);
 
-  console.log("Submitting one anonymous shared-queue Zeno test (5 seconds, portrait 832x1472).");
+  console.log("Submitting one anonymous shared-queue Zeno test (5 seconds, portrait 512x896).");
   const result = await client.predict("/run", [
     prompt,
     null,
-    1472,
-    832,
+    896,
+    512,
     5.0,
     42,
     "conv",
@@ -55,7 +55,7 @@ async function main() {
     provider: "Lightricks/LTX-2.5 public Gradio Space",
     character: "Zeno",
     prompt,
-    settings: { duration_seconds: 5, width: 832, height: 1472, seed: 42 },
+    settings: { duration_seconds: 5, width: 512, height: 896, seed: 42 },
     file: { name: path.basename(videoPath), bytes: buffer.length, signature },
     result_summary: Array.isArray(result?.data) ? result.data.slice(1).map(v => String(v).slice(0, 120)) : []
   };
