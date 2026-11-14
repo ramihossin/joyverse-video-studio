@@ -1,0 +1,32 @@
+name: Pika H3 Flex Browser Generation Proof
+on:
+  push:
+    branches:
+      - pika-h3-browser-generation-proof-20261114
+permissions:
+  contents: read
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Install Playwright and Chromium
+        run: |
+          npm install --no-save --package-lock=false playwright
+          npx playwright install --with-deps chromium
+      - name: Generate one Pika H3 Flex clip through its public UI
+        run: node browser-agent/pika-h3-flex-browser-proof.mjs
+      - name: Upload MP4 and evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pika-h3-flex-browser-proof
+          path: pika-browser-proof/
+          if-no-files-found: warn
+          retention-days: 3
