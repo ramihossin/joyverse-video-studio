@@ -2,7 +2,7 @@ name: Browser Agent Proof
 on:
   push:
     branches:
-      - browser-agent-proof-20261113
+      - loremotion-headed-retry-20261115
 permissions:
   contents: read
   actions: read
@@ -12,7 +12,7 @@ concurrency:
 jobs:
   browser:
     runs-on: ubuntu-latest
-    timeout-minutes: 8
+    timeout-minutes: 12
     steps:
       - name: Checkout isolated proof branch
         uses: actions/checkout@v4
@@ -24,8 +24,11 @@ jobs:
         run: |
           npm install --no-save --package-lock=false playwright
           npx playwright install --with-deps chromium
+      - name: Ensure a headed-browser display is available
+        run: |
+          if ! command -v xvfb-run >/dev/null 2>&1; then sudo apt-get update && sudo apt-get install -y xvfb; fi
       - name: Run browser navigation and interaction test
-        run: node browser-agent/smoke.mjs
+        run: xvfb-run -a node browser-agent/smoke.mjs
       - name: Upload browser evidence
         if: always()
         uses: actions/upload-artifact@v4
