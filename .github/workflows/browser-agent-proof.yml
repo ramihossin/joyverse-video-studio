@@ -2,7 +2,7 @@ name: Browser Agent Proof
 on:
   push:
     branches:
-      - loremotion-headed-retry-20261115
+      - loremotion-direct-generate-20261115
 permissions:
   contents: read
   actions: read
@@ -27,7 +27,7 @@ jobs:
       - name: Ensure a headed-browser display is available
         run: |
           if ! command -v xvfb-run >/dev/null 2>&1; then sudo apt-get update && sudo apt-get install -y xvfb; fi
-      - name: Run browser navigation and interaction test
+      - name: Run LTX free generation through the official LoreMotion UI
         run: xvfb-run -a node browser-agent/smoke.mjs
       - name: Upload browser evidence
         if: always()
