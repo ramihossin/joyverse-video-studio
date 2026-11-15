@@ -24,9 +24,14 @@ jobs:
         run: |
           npm install --no-save --package-lock=false playwright
           npx playwright install --with-deps chromium
-      - name: Ensure a headed-browser display is available
+      - name: Ensure a headed-browser display and reliable DNS are available
         run: |
           if ! command -v xvfb-run >/dev/null 2>&1; then sudo apt-get update && sudo apt-get install -y xvfb; fi
+          sudo mkdir -p /etc/systemd/resolved.conf.d
+          printf '[Resolve]\\nDNS=1.1.1.1 8.8.8.8\\nFallbackDNS=1.0.0.1 8.8.4.4\\n' | sudo tee /etc/systemd/resolved.conf.d/99-joyverse-public-dns.conf
+          sudo systemctl restart systemd-resolved
+          resolvectl flush-caches
+          getent hosts challenges.cloudflare.com
       - name: Run LTX free generation through the official LoreMotion UI
         run: xvfb-run -a node browser-agent/smoke.mjs
       - name: Upload browser evidence
