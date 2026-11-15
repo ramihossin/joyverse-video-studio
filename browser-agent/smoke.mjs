@@ -131,20 +131,24 @@ try {
   });
   await page.waitForTimeout(4500);
 
-  // Choose the privacy-preserving option shown by the site's own consent dialog.
-  // This rejects optional partner tracking; it does not affect or replace Turnstile.
-  let privacyChoice = "no-consent-dialog-present";
-  const noConsent = page.getByRole("button", { name: /^Do not consent$/i }).last();
-  if (await noConsent.count() && await noConsent.isVisible().catch(() => false)) {
-    await noConsent.click({ timeout: 8000 });
-    privacyChoice = "do-not-consent";
-    await page.waitForTimeout(1500);
+  // Reject optional advertising cookies and separately opt out of personal-data sale/sharing.
+  // These choices protect privacy; they do not alter or bypass Cloudflare verification.
+  const privacyChoice = [];
+  const rejectOptional = page.getByRole("button", { name: /Reject non-essential/i }).last();
+  if (await rejectOptional.count() && await rejectOptional.isVisible().catch(() => false)) {
+    await rejectOptional.click({ timeout: 8000 });
+    privacyChoice.push("reject-non-essential");
+    await page.waitForTimeout(1000);
   }
-  const consentOverlayStillVisible = await page.locator(".fc-dialog-overlay").isVisible().catch(() => false);
-  if (consentOverlayStillVisible) {
-    throw new Error("Privacy consent dialog remained open after choosing Do not consent; stopping without interacting behind it.");
+  const optOut = page.getByRole("button", { name: /^Opt out$/i }).last();
+  if (await optOut.count() && await optOut.isVisible().catch(() => false)) {
+    await optOut.click({ timeout: 8000 });
+    privacyChoice.push("opt-out-of-sale-sharing");
+    await page.waitForTimeout(1200);
   }
-
+  const privacyDialogs = await page.locator('[role="dialog"], dialog[open]').evaluateAll(nodes =>
+    nodes.map(node => (node.innerText || node.textContent || "").trim()).filter(Boolean)
+  );
   const before = await inspect();
   await page.screenshot({ path: path.join(out, "loremotion-before.png"), fullPage: true });
 
@@ -199,19 +203,25 @@ try {
   const generate = page.getByRole("button", { name: /^Generate/i }).first();
   if (!(await generate.count())) throw new Error("Generate button not found.");
 
-  // Wait for the website's own button state. Do not inject, forge or replace any challenge token.
-  let enabled = await generate.isEnabled().catch(() => false);
-  if (!enabled) {
-    report.siteWaitSeconds = 60;
-    enabled = await page.waitForFunction(() => {
-      const button = [...document.querySelectorAll("button")]
-        .find(item => /^Generate/i.test((item.innerText || item.textContent || "").trim()));
-      return Boolean(button && !button.disabled);
-    }, null, { timeout: 60000 }).then(() => true).catch(() => false);
+  // Wait for a token issued by the site's own Turnstile flow. The Generate button
+  // can look enabled even while the site will reject submission without this token.
+  // Never click the challenge, synthesize a token, or inject a challenge response.
+  const readTokenPresence = async () => page.locator('input[id*="cf-chl-widget"], input[name="cf-turnstile-response"], textarea[name="cf-turnstile-response"]')
+    .evaluateAll(nodes => nodes.some(node => Boolean((node.value || "").trim())))
+    .catch(() => false);
+  let tokenPresent = await readTokenPresence();
+  if (!tokenPresent) {
+    report.siteVerificationWaitSeconds = 90000;
+    tokenPresent = await page.waitForFunction(() => {
+      const inputs = [...document.querySelectorAll('input[id*="cf-chl-widget"], input[name="cf-turnstile-response"], textarea[name="cf-turnstile-response"]')];
+      return inputs.some(node => Boolean((node.value || "").trim()));
+    }, null, { timeout: 90000 }).then(() => true).catch(() => false);
   }
-
+  const enabled = tokenPresent && await generate.isEnabled().catch(() => false);
   report.generateEnabledBySite = Boolean(enabled);
+  report.turnstileResponseIssuedBySite = Boolean(tokenPresent);
   report.privacyChoice = privacyChoice;
+  report.privacyDialogsRemaining = privacyDialogs;
   report.afterSiteWait = await inspect();
 
   if (enabled) {
@@ -262,8 +272,8 @@ try {
     if (!report.result) report.result = await inspect();
     if (!savedFile) await saveVideo(report.result);
   } else {
-    report.stage = "site-kept-generate-disabled";
-    report.reason = "LoreMotion did not enable Generate during the normal 60-second wait; no verification was bypassed.";
+    report.stage = "human-verification-required";
+    report.reason = "LoreMotion did not issue a Turnstile response token during the 90-second normal wait. Generation was not submitted.";
   }
 
   report.savedFile = savedFile;
@@ -299,7 +309,7 @@ try {
     popups
   }, null, 2));
 
-  if (report.stage === "site-kept-generate-disabled") process.exitCode = 2;
+  if (report.stage === "human-verification-required") process.exitCode = 2;
   else if (report.stage === "generation-error" || report.stage === "external-ad-navigation") process.exitCode = 3;
   else if (report.stage === "downloaded-invalid-media") process.exitCode = 4;
   else if (report.stage !== "video-downloaded") process.exitCode = 5;
