@@ -1,120 +1,302 @@
 import { chromium } from "playwright";
 import { mkdir, writeFile, stat } from "node:fs/promises";
 import path from "node:path";
-const out="browser-agent-output"; await mkdir(out,{recursive:true});
-const prompt="A tiny cheerful turquoise dragon with small golden wings gently waves beside a colorful flower garden. Polished friendly 3D cartoon animation, bright joyful colors, soft warm daylight, one simple continuous action, smooth camera movement, no text.";
-const browser=await chromium.launch({headless:false});
-const context=await browser.newContext({acceptDownloads:true});
-const page=await context.newPage({viewport:{width:1365,height:900}});
-const network=[],failures=[],errors=[],downloads=[]; let savedFile=null;
-const safeUrl=r=>{try{const u=new URL(r);return u.origin+u.pathname}catch{return String(r).split("?")[0]}};
-page.on("response",r=>{if(/api|generate|video|task|queue|render|ad|turnstile/i.test(r.url()))network.push({url:safeUrl(r.url()),method:r.request().method(),status:r.status(),contentType:r.headers()["content-type"]||""})});
-page.on("requestfailed",r=>failures.push({url:safeUrl(r.url()),error:r.failure()?.errorText||""}));
-page.on("pageerror",e=>errors.push(String(e?.message||e).slice(0,400)));
-page.on("console",m=>{if(m.type()==="error")errors.push(m.text().slice(0,300))});
-page.on("download",async d=>{const name=path.basename(d.suggestedFilename()||"loremotion-video.mp4").replace(/[^a-zA-Z0-9._-]/g,"_");const p=path.join(out,name);try{await d.saveAs(p);savedFile=p;downloads.push({name,path:p})}catch(e){downloads.push({name,error:String(e).slice(0,250)})}});
-const inspect=()=>page.evaluate(()=>({
- url:location.href,title:document.title,text:(document.body?.innerText||"").slice(0,6500),
- prompt:document.querySelector("#generate-prompt-dock")?.value||null,
- negativePrompt:document.querySelector("#generate-negative-prompt")?.value||null,
- videos:[...document.querySelectorAll("video")].map(v=>({src:v.currentSrc||v.src,readyState:v.readyState,duration:Number.isFinite(v.duration)?v.duration:null})),
- links:[...document.querySelectorAll("a")].map(a=>({text:(a.innerText||a.textContent||"").trim().slice(0,90),href:a.href})).filter(a=>/download|\\.mp4/i.test(a.text+" "+a.href)).slice(0,20),
- controls:[...document.querySelectorAll("input,textarea,button,[role=button]")].slice(0,70).map(e=>({tag:e.tagName.toLowerCase(),id:e.id||null,type:e.type||null,placeholder:e.getAttribute("placeholder"),aria:e.getAttribute("aria-label"),text:(e.innerText||e.textContent||"").trim().slice(0,120),value:"value"in e?e.value:null,disabled:"disabled"in e?e.disabled:null}))
+
+const out = "browser-agent-output";
+await mkdir(out, { recursive: true });
+
+const prompt = "Zeno, a small cheerful turquoise dragon with a cream belly, big amber eyes, two small golden horns and delicate golden wings, stands in a colorful flower garden. Zeno blinks, gently waves one wing and takes one happy little step forward. Polished high-quality friendly 3D cartoon animation, smooth natural motion, warm daylight, vibrant cheerful colors, stable camera, no text, no logos.";
+
+const browser = await chromium.launch({ headless: false });
+const context = await browser.newContext({ acceptDownloads: true });
+const page = await context.newPage({ viewport: { width: 1365, height: 900 } });
+const network = [];
+const failures = [];
+const errors = [];
+const popups = [];
+let savedFile = null;
+
+const cleanUrl = value => {
+  try { const u = new URL(value); return u.origin + u.pathname; }
+  catch { return String(value || "").slice(0, 300); }
+};
+
+page.on("response", response => {
+  if (/api|generate|video|task|queue|render|turnstile/i.test(response.url())) {
+    network.push({
+      url: cleanUrl(response.url()),
+      method: response.request().method(),
+      status: response.status(),
+      contentType: response.headers()["content-type"] || ""
+    });
+  }
+});
+page.on("requestfailed", request => failures.push({
+  url: cleanUrl(request.url()),
+  error: request.failure()?.errorText || ""
 }));
-async function saveVideo(state){
- if(savedFile)return;
- const v=state.videos.find(x=>x.src&&x.readyState>=2)||state.videos.find(x=>x.src); if(!v?.src)return;
- try{
-  if(v.src.startsWith("blob:")){
-   const b64=await page.evaluate(async src=>{const r=await fetch(src);if(!r.ok)throw new Error("blob "+r.status);const b=new Uint8Array(await r.arrayBuffer());let x="";for(let i=0;i<b.length;i+=32768)x+=String.fromCharCode(...b.subarray(i,i+32768));return btoa(x)},v.src);
-   const p=path.join(out,"loremotion-generated.mp4");await writeFile(p,Buffer.from(b64,"base64"));savedFile=p;
-  }else if(/^https?:/i.test(v.src)){const r=await context.request.get(v.src,{timeout:90000});if(r.ok()){const p=path.join(out,"loremotion-generated.mp4");await writeFile(p,await r.body());savedFile=p}}
- }catch(e){errors.push("video-save: "+String(e).slice(0,300))}
+page.on("pageerror", error => errors.push(String(error?.message || error).slice(0, 400)));
+page.on("console", message => {
+  if (message.type() === "error") errors.push(message.text().slice(0, 350));
+});
+context.on("page", popup => {
+  if (popup !== page) {
+    popups.push({ url: cleanUrl(popup.url()), title: "" });
+    popup.title().then(title => { popups[popups.length - 1].title = title; }).catch(() => {});
+  }
+});
+page.on("download", async download => {
+  const name = path.basename(download.suggestedFilename() || "loremotion-video.mp4")
+    .replace(/[^a-zA-Z0-9._-]/g, "_");
+  const filePath = path.join(out, name);
+  try {
+    await download.saveAs(filePath);
+    savedFile = filePath;
+  } catch (error) {
+    errors.push("download: " + String(error).slice(0, 300));
+  }
+});
+
+async function inspect() {
+  return page.evaluate(() => ({
+    url: location.href,
+    title: document.title,
+    text: (document.body?.innerText || "").slice(0, 7000),
+    prompt: document.querySelector("#generate-prompt-dock")?.value || null,
+    settingsLabel: document.querySelector('button[aria-label^="Settings:"]')?.getAttribute("aria-label") || null,
+    videos: [...document.querySelectorAll("video")].map(video => ({
+      src: video.currentSrc || video.src,
+      readyState: video.readyState,
+      duration: Number.isFinite(video.duration) ? video.duration : null
+    })),
+    links: [...document.querySelectorAll("a")].map(anchor => ({
+      text: (anchor.innerText || anchor.textContent || "").trim().slice(0, 100),
+      href: anchor.href
+    })).filter(link => /download|\.mp4/i.test(link.text + " " + link.href)).slice(0, 20),
+    turnstile: {
+      iframeCount: document.querySelectorAll('iframe[src*="challenges.cloudflare.com"]').length,
+      responseInputs: [...document.querySelectorAll('input[id*="cf-chl-widget"], input[name="cf-turnstile-response"]')]
+        .map(input => ({ id: input.id, valuePresent: Boolean((input.value || "").trim()) }))
+    },
+    generateButtons: [...document.querySelectorAll("button")]
+      .filter(button => /^Generate/i.test((button.innerText || button.textContent || "").trim()))
+      .map(button => ({ text: (button.innerText || button.textContent || "").trim(), disabled: button.disabled })),
+    visibleDialogs: [...document.querySelectorAll('[role="dialog"], dialog[open]')].map(dialog => ({
+      text: (dialog.innerText || dialog.textContent || "").trim().slice(0, 1000),
+      buttons: [...dialog.querySelectorAll("button")].map(button => ({
+        text: (button.innerText || button.textContent || "").trim(),
+        aria: button.getAttribute("aria-label")
+      }))
+    }))
+  }));
 }
-try{
- await page.goto("https://loremotion.com/generate/",{waitUntil:"domcontentloaded",timeout:60000});
- await page.waitForTimeout(5000);
- const before=await inspect();
- await page.screenshot({path:path.join(out,"loremotion-before.png"),fullPage:true});
- const promptBox=page.locator("#generate-prompt-dock");
- if(await promptBox.count())await promptBox.fill(prompt);
- await page.waitForTimeout(1000);
- const ready=await inspect();
- const rejectConsent=page.getByRole("button",{name:/Reject non-essential/i}).first();
- if(await rejectConsent.count()){await rejectConsent.click({timeout:8000}).catch(e=>errors.push("consent choice: "+String(e).slice(0,250)));await page.waitForTimeout(1200)}
- const generate=page.getByRole("button",{name:/^Generate/i}).first();
- const buttonCount=await generate.count();
- const buttonEnabled=buttonCount?await generate.isEnabled().catch(()=>false):false;
- const turnstileResponse=await page.locator('input[id*="cf-chl-widget"][type="hidden"]').first().inputValue().catch(()=>"");
- const hasTurnstile=await page.locator('iframe[src*="challenges.cloudflare.com"]').count()>0||await page.locator('input[id*="cf-chl-widget"]').count()>0;
- const state={stage:"inspection-only",before,ready,buttonCount,buttonEnabled,hasTurnstile,turnstileTokenPresent:Boolean(turnstileResponse)};
- console.log("LOREMOTION READY",JSON.stringify({title:ready.title,prompt:ready.prompt,buttonCount,buttonEnabled,hasTurnstile,turnstileTokenPresent:Boolean(turnstileResponse),text:ready.text.slice(0,1800)},null,2));
- const adFrame=page.locator('iframe[title*="ad content" i], iframe[id*="rewarded"], iframe[data-is-safeframe="true"]').first();
- const adPresent=await adFrame.count()>0;
- if(adPresent){
-  state.adDetected=true;
-  state.adWaitSeconds=30;
-  await page.screenshot({path:path.join(out,"loremotion-ad-start.png"),fullPage:true});
-  await page.waitForTimeout(30000);
-  // Dismiss the visible ad using its own Close/X control after the user's requested wait.
-  const closeCandidates=[
-   page.getByRole("button",{name:/close/i}).last(),
-   page.getByLabel(/close/i).last(),
-   page.getByText(/^Close$/i).last()
-  ];
-  for(const c of closeCandidates){
-   try{if(await c.count() && await c.isVisible()){await c.click({timeout:5000});state.adClosed=true;break}}catch(e){state.closeAttemptError=String(e).slice(0,250)}
+
+async function saveVideo(state) {
+  if (savedFile) return;
+  const video = state.videos.find(item => item.src && item.readyState >= 2) ||
+                state.videos.find(item => item.src);
+  if (!video?.src) return;
+
+  try {
+    if (video.src.startsWith("blob:")) {
+      const base64 = await page.evaluate(async source => {
+        const response = await fetch(source);
+        if (!response.ok) throw new Error("Blob fetch HTTP " + response.status);
+        const bytes = new Uint8Array(await response.arrayBuffer());
+        let binary = "";
+        for (let offset = 0; offset < bytes.length; offset += 32768) {
+          binary += String.fromCharCode(...bytes.subarray(offset, offset + 32768));
+        }
+        return btoa(binary);
+      }, video.src);
+      savedFile = path.join(out, "loremotion-generated.mp4");
+      await writeFile(savedFile, Buffer.from(base64, "base64"));
+    } else if (/^https?:/i.test(video.src)) {
+      const response = await context.request.get(video.src, { timeout: 90000 });
+      if (response.ok()) {
+        savedFile = path.join(out, "loremotion-generated.mp4");
+        await writeFile(savedFile, await response.body());
+      }
+    }
+  } catch (error) {
+    errors.push("video-save: " + String(error?.message || error).slice(0, 400));
   }
-  if(!state.adClosed){
-   try{await page.mouse.click(1235,105);await page.waitForTimeout(700);state.adClosed=!(await page.locator('iframe[title*="ad content" i]').count())}catch(e){state.closeCoordinateError=String(e).slice(0,200)}
+}
+
+let report = { stage: "starting" };
+try {
+  await page.goto("https://loremotion.com/generate/", {
+    waitUntil: "domcontentloaded",
+    timeout: 60000
+  });
+  await page.waitForTimeout(4500);
+  const before = await inspect();
+  await page.screenshot({ path: path.join(out, "loremotion-before.png"), fullPage: true });
+
+  // Select the site's own free LTX 2.5 text-to-video template.
+  const ltxTemplate = page.getByRole("button", { name: /Use Write a scene with LTX 2\.5/i }).first();
+  if (await ltxTemplate.count()) {
+    await ltxTemplate.click({ timeout: 10000 });
+    await page.waitForTimeout(1800);
   }
-  await page.waitForTimeout(1200);
- }
- state.postAd=await inspect();
- // Let the site's own verification flow finish normally. This is a regular,
- // headed Chromium session under Xvfb; no token injection or challenge bypass.
- const challengeFrames=await page.locator('iframe[src*="challenges.cloudflare.com"]').evaluateAll(nodes=>nodes.map(n=>n.src).map(s=>{try{return new URL(s).hostname}catch{return "invalid-url"}})).catch(()=>[]);
- state.challengeHosts=challengeFrames;
- state.challengeDNS=[];
- for(const host of challengeFrames){
-  try{
-   const {lookup}=await import("node:dns/promises");
-   const resolved=await lookup(host);
-   state.challengeDNS.push({host,address:resolved.address});
-  }catch(e){state.challengeDNS.push({host,error:String(e?.code||e).slice(0,120)})}
- }
- const generateAfterAd=page.getByRole("button",{name:/^Generate/i}).first();
- state.waitedForSiteVerification=true;
- state.siteVerificationWaitSeconds=45;
- const siteEnabled=await page.waitForFunction(()=>{
-  const button=[...document.querySelectorAll("button")].find(b=>/^Generate/i.test((b.innerText||b.textContent||"").trim()));
-  return Boolean(button && !button.disabled);
- },null,{timeout:45000}).then(()=>true).catch(()=>false);
- await page.screenshot({path:path.join(out,"loremotion-post-ad.png"),fullPage:true});
- const canGenerate=siteEnabled && await generateAfterAd.count() && await generateAfterAd.isEnabled().catch(()=>false);
- state.generateEnabledAfterAd=Boolean(canGenerate);
- state.turnstileResponsePresent=await page.locator('input[name="cf-turnstile-response"], textarea[name="cf-turnstile-response"]').evaluateAll(nodes=>nodes.some(n=>Boolean((n.value||"").trim()))).catch(()=>false);
- if(canGenerate){
-  await generateAfterAd.click({timeout:12000});state.stage="submitted";
-  const start=Date.now();
-  while(Date.now()-start<240000){
-   await page.waitForTimeout(4000);const curr=await inspect();
-   if(curr.videos.some(v=>v.src&&v.readyState>=2)||curr.links.some(a=>/download/i.test(a.text))||savedFile){state.stage="video-ready";state.result=curr;await saveVideo(curr);break}
-   if(/generation failed|request failed|something went wrong|queue is full|try again later|daily limit|limit reached|watch.*ad|continue.*ad/i.test(curr.text)){state.stage="generation-gate-or-error";state.result=curr;break}
+
+  let state = await inspect();
+  if (!/LTX 2\.5/i.test(state.settingsLabel || "") && !/LTX 2\.5/i.test(state.text.slice(0, 1800))) {
+    // The visible model selector is the official way to change the current model.
+    const modelCard = page.getByRole("button", { name: /MiniMax H3/i }).first();
+    if (await modelCard.count()) {
+      await modelCard.click({ timeout: 8000 }).catch(() => {});
+      await page.waitForTimeout(700);
+      const choices = page.getByRole("button", { name: /^LTX 2\.5$/i });
+      if (await choices.count()) await choices.first().click({ timeout: 8000 });
+      await page.waitForTimeout(1200);
+    }
   }
-  if(!state.result)state.result=await inspect();
- }else if(hasTurnstile&&!state.turnstileResponsePresent&&!state.generateEnabledAfterAd){state.stage="human-verification-required"}
- else if(!ready.prompt){state.stage="prompt-field-not-found"}
- else{state.stage="generate-button-unavailable"}
- if(!savedFile&&state.result)await saveVideo(state.result);
- state.savedFile=savedFile;state.network=network;state.failures=failures;state.errors=errors;state.downloads=downloads;
- if(savedFile){const inf=await stat(savedFile);const fs=await import("node:fs/promises");const h=await fs.readFile(savedFile);state.file={bytes:inf.size,ftyp:h.subarray(4,8).toString("ascii"),validMp4Signature:h.subarray(4,8).toString("ascii")==="ftyp"}}
- await page.screenshot({path:path.join(out,"loremotion-after.png"),fullPage:true});
- await writeFile(path.join(out,"loremotion-result.json"),JSON.stringify(state,null,2));
- console.log("LOREMOTION RESULT",JSON.stringify({stage:state.stage,buttonEnabled,hasTurnstile,turnstileTokenPresent:Boolean(turnstileResponse),savedFile,file:state.file,network:network.slice(-15),failures:failures.slice(0,10),errors:errors.slice(0,10)},null,2));
- if(state.stage==="human-verification-required")process.exitCode=2;
- else if(state.stage==="prompt-field-not-found"||state.stage==="generate-button-unavailable")process.exitCode=3;
- else if(state.stage==="generation-gate-or-error")process.exitCode=4;
- else if(state.stage==="video-ready"&&!savedFile)process.exitCode=5;
-}catch(e){await writeFile(path.join(out,"loremotion-exception.txt"),String(e?.stack||e));console.error(e);process.exitCode=1}
-finally{await browser.close()}
+
+  const promptBox = page.locator("#generate-prompt-dock");
+  if (!(await promptBox.count())) throw new Error("LoreMotion prompt field #generate-prompt-dock was not found.");
+  await promptBox.fill(prompt);
+  await page.waitForTimeout(800);
+
+  // Use the vertical short-video format and a low-cost resolution.
+  const ratioButton = page.getByRole("button", { name: "9:16", exact: true }).first();
+  if (await ratioButton.count()) await ratioButton.click({ timeout: 5000 }).catch(() => {});
+  const resolutionButton = page.getByRole("button", { name: "480p", exact: true }).first();
+  if (await resolutionButton.count()) await resolutionButton.click({ timeout: 5000 }).catch(() => {});
+
+  state = await inspect();
+  report = {
+    stage: "ready-check",
+    before: { url: before.url, title: before.title, settingsLabel: before.settingsLabel },
+    configured: {
+      url: state.url,
+      title: state.title,
+      settingsLabel: state.settingsLabel,
+      prompt: state.prompt,
+      turnstile: state.turnstile,
+      generateButtons: state.generateButtons,
+      visibleDialogs: state.visibleDialogs
+    }
+  };
+  await page.screenshot({ path: path.join(out, "loremotion-ready.png"), fullPage: true });
+
+  const generate = page.getByRole("button", { name: /^Generate/i }).first();
+  if (!(await generate.count())) throw new Error("Generate button not found.");
+
+  // Wait for the website's own button state. Do not inject, forge or replace any challenge token.
+  let enabled = await generate.isEnabled().catch(() => false);
+  if (!enabled) {
+    report.siteWaitSeconds = 60;
+    enabled = await page.waitForFunction(() => {
+      const button = [...document.querySelectorAll("button")]
+        .find(item => /^Generate/i.test((item.innerText || item.textContent || "").trim()));
+      return Boolean(button && !button.disabled);
+    }, null, { timeout: 60000 }).then(() => true).catch(() => false);
+  }
+
+  report.generateEnabledBySite = Boolean(enabled);
+  report.afterSiteWait = await inspect();
+
+  if (enabled) {
+    await page.screenshot({ path: path.join(out, "loremotion-before-submit.png"), fullPage: true });
+    await generate.click({ timeout: 12000 });
+    report.stage = "submitted";
+    report.submittedAt = new Date().toISOString();
+
+    const startedAt = Date.now();
+    let rewardedAdWaited = false;
+    while (Date.now() - startedAt < 240000) {
+      await page.waitForTimeout(4000);
+      const current = await inspect();
+      await saveVideo(current);
+
+      if (savedFile || current.videos.some(video => video.src && video.readyState >= 2) ||
+          current.links.some(link => /download/i.test(link.text))) {
+        report.stage = savedFile ? "video-downloaded" : "video-ready";
+        report.result = current;
+        break;
+      }
+
+      const dialogText = current.visibleDialogs.map(dialog => dialog.text).join(" ").toLowerCase();
+      const actualRewardedAd = /watch (a|this) (short )?ad|rewarded ad|ad to continue|watch.*to generate/.test(dialogText);
+      if (actualRewardedAd && !rewardedAdWaited) {
+        rewardedAdWaited = true;
+        report.rewardedAdDetected = true;
+        report.rewardedAdWaitSeconds = 30;
+        await page.waitForTimeout(30000);
+        const dialog = page.getByRole("dialog").filter({ hasText: /watch (a|this) (short )?ad|rewarded ad|ad to continue|watch.*to generate/i }).last();
+        const close = dialog.getByRole("button", { name: /close/i }).last();
+        if (await close.count() && await close.isVisible().catch(() => false)) {
+          await close.click({ timeout: 5000 }).catch(error => errors.push("rewarded-ad close: " + String(error).slice(0, 250)));
+        }
+      }
+
+      if (!/^https:\/\/loremotion\.com\//i.test(current.url)) {
+        report.stage = "external-ad-navigation";
+        report.result = current;
+        break;
+      }
+      if (/generation failed|request failed|something went wrong|queue is full|try again later|daily limit|limit reached/.test(current.text.toLowerCase())) {
+        report.stage = "generation-error";
+        report.result = current;
+        break;
+      }
+    }
+    if (!report.result) report.result = await inspect();
+    if (!savedFile) await saveVideo(report.result);
+  } else {
+    report.stage = "site-kept-generate-disabled";
+    report.reason = "LoreMotion did not enable Generate during the normal 60-second wait; no verification was bypassed.";
+  }
+
+  report.savedFile = savedFile;
+  report.network = network.slice(-80);
+  report.failures = failures.slice(0, 50);
+  report.errors = errors.slice(0, 40);
+  report.popups = popups;
+  if (savedFile) {
+    const info = await stat(savedFile);
+    const fs = await import("node:fs/promises");
+    const bytes = await fs.readFile(savedFile);
+    report.file = {
+      name: path.basename(savedFile),
+      bytes: info.size,
+      signature: bytes.subarray(4, 8).toString("ascii"),
+      validMp4: bytes.length >= 12 && bytes.subarray(4, 8).toString("ascii") === "ftyp"
+    };
+    if (!report.file.validMp4) report.stage = "downloaded-invalid-media";
+  }
+
+  await page.screenshot({ path: path.join(out, "loremotion-after.png"), fullPage: true }).catch(() => {});
+  await writeFile(path.join(out, "loremotion-result.json"), JSON.stringify(report, null, 2));
+  console.log("LOREMOTION DIRECT RESULT", JSON.stringify({
+    stage: report.stage,
+    settingsLabel: report.configured?.settingsLabel,
+    generateEnabledBySite: report.generateEnabledBySite,
+    rewardedAdDetected: report.rewardedAdDetected,
+    file: report.file || null,
+    reason: report.reason || null,
+    resultUrl: report.result?.url || null,
+    failures: failures.slice(0, 10),
+    errors: errors.slice(0, 10),
+    popups
+  }, null, 2));
+
+  if (report.stage === "site-kept-generate-disabled") process.exitCode = 2;
+  else if (report.stage === "generation-error" || report.stage === "external-ad-navigation") process.exitCode = 3;
+  else if (report.stage === "downloaded-invalid-media") process.exitCode = 4;
+  else if (report.stage !== "video-downloaded") process.exitCode = 5;
+} catch (error) {
+  report.stage = "failed";
+  report.error = String(error?.stack || error).slice(0, 5000);
+  report.network = network.slice(-50);
+  report.failures = failures.slice(0, 30);
+  report.errors = errors.slice(0, 30);
+  report.popups = popups;
+  await writeFile(path.join(out, "loremotion-result.json"), JSON.stringify(report, null, 2));
+  await page.screenshot({ path: path.join(out, "loremotion-failure.png"), fullPage: true }).catch(() => {});
+  console.error("LOREMOTION DIRECT FAILURE", report.error);
+  process.exitCode = 1;
+} finally {
+  await browser.close();
+}
