@@ -130,6 +130,21 @@ try {
     timeout: 60000
   });
   await page.waitForTimeout(4500);
+
+  // Choose the privacy-preserving option shown by the site's own consent dialog.
+  // This rejects optional partner tracking; it does not affect or replace Turnstile.
+  let privacyChoice = "no-consent-dialog-present";
+  const noConsent = page.getByRole("button", { name: /^Do not consent$/i }).last();
+  if (await noConsent.count() && await noConsent.isVisible().catch(() => false)) {
+    await noConsent.click({ timeout: 8000 });
+    privacyChoice = "do-not-consent";
+    await page.waitForTimeout(1500);
+  }
+  const consentOverlayStillVisible = await page.locator(".fc-dialog-overlay").isVisible().catch(() => false);
+  if (consentOverlayStillVisible) {
+    throw new Error("Privacy consent dialog remained open after choosing Do not consent; stopping without interacting behind it.");
+  }
+
   const before = await inspect();
   await page.screenshot({ path: path.join(out, "loremotion-before.png"), fullPage: true });
 
@@ -167,6 +182,7 @@ try {
   state = await inspect();
   report = {
     stage: "ready-check",
+    privacyChoice,
     before: { url: before.url, title: before.title, settingsLabel: before.settingsLabel },
     configured: {
       url: state.url,
@@ -195,6 +211,7 @@ try {
   }
 
   report.generateEnabledBySite = Boolean(enabled);
+  report.privacyChoice = privacyChoice;
   report.afterSiteWait = await inspect();
 
   if (enabled) {
