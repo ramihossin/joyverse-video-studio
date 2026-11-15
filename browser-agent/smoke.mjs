@@ -3,7 +3,7 @@ import { mkdir, writeFile, stat } from "node:fs/promises";
 import path from "node:path";
 const out="browser-agent-output"; await mkdir(out,{recursive:true});
 const prompt="A tiny cheerful turquoise dragon with small golden wings gently waves beside a colorful flower garden. Polished friendly 3D cartoon animation, bright joyful colors, soft warm daylight, one simple continuous action, smooth camera movement, no text.";
-const browser=await chromium.launch({headless:true});
+const browser=await chromium.launch({headless:false});
 const context=await browser.newContext({acceptDownloads:true});
 const page=await context.newPage({viewport:{width:1365,height:900}});
 const network=[],failures=[],errors=[],downloads=[]; let savedFile=null;
@@ -71,10 +71,29 @@ try{
   await page.waitForTimeout(1200);
  }
  state.postAd=await inspect();
- await page.screenshot({path:path.join(out,"loremotion-post-ad.png"),fullPage:true});
+ // Let the site's own verification flow finish normally. This is a regular,
+ // headed Chromium session under Xvfb; no token injection or challenge bypass.
+ const challengeFrames=await page.locator('iframe[src*="challenges.cloudflare.com"]').evaluateAll(nodes=>nodes.map(n=>n.src).map(s=>{try{return new URL(s).hostname}catch{return "invalid-url"}})).catch(()=>[]);
+ state.challengeHosts=challengeFrames;
+ state.challengeDNS=[];
+ for(const host of challengeFrames){
+  try{
+   const {lookup}=await import("node:dns/promises");
+   const resolved=await lookup(host);
+   state.challengeDNS.push({host,address:resolved.address});
+  }catch(e){state.challengeDNS.push({host,error:String(e?.code||e).slice(0,120)})}
+ }
  const generateAfterAd=page.getByRole("button",{name:/^Generate/i}).first();
- const canGenerate=await generateAfterAd.count() && await generateAfterAd.isEnabled().catch(()=>false);
+ state.waitedForSiteVerification=true;
+ state.siteVerificationWaitSeconds=45;
+ const siteEnabled=await page.waitForFunction(()=>{
+  const button=[...document.querySelectorAll("button")].find(b=>/^Generate/i.test((b.innerText||b.textContent||"").trim()));
+  return Boolean(button && !button.disabled);
+ },null,{timeout:45000}).then(()=>true).catch(()=>false);
+ await page.screenshot({path:path.join(out,"loremotion-post-ad.png"),fullPage:true});
+ const canGenerate=siteEnabled && await generateAfterAd.count() && await generateAfterAd.isEnabled().catch(()=>false);
  state.generateEnabledAfterAd=Boolean(canGenerate);
+ state.turnstileResponsePresent=await page.locator('input[name="cf-turnstile-response"], textarea[name="cf-turnstile-response"]').evaluateAll(nodes=>nodes.some(n=>Boolean((n.value||"").trim()))).catch(()=>false);
  if(canGenerate){
   await generateAfterAd.click({timeout:12000});state.stage="submitted";
   const start=Date.now();
@@ -84,7 +103,7 @@ try{
    if(/generation failed|request failed|something went wrong|queue is full|try again later|daily limit|limit reached|watch.*ad|continue.*ad/i.test(curr.text)){state.stage="generation-gate-or-error";state.result=curr;break}
   }
   if(!state.result)state.result=await inspect();
- }else if(hasTurnstile&&!turnstileResponse){state.stage="human-verification-required"}
+ }else if(hasTurnstile&&!state.turnstileResponsePresent&&!state.generateEnabledAfterAd){state.stage="human-verification-required"}
  else if(!ready.prompt){state.stage="prompt-field-not-found"}
  else{state.stage="generate-button-unavailable"}
  if(!savedFile&&state.result)await saveVideo(state.result);
