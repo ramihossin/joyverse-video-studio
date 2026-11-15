@@ -2,7 +2,7 @@ name: Browser Agent Proof
 on:
   push:
     branches:
-      - loremotion-direct-generate-20261115
+      - loremotion-verified-submit-20261115
 permissions:
   contents: read
   actions: read
@@ -32,7 +32,7 @@ jobs:
           sudo systemctl restart systemd-resolved
           resolvectl flush-caches
           getent hosts challenges.cloudflare.com
-      - name: Run LTX free generation through the official LoreMotion UI
+      - name: Check official LoreMotion free LTX flow and submit only after site-issued verification
         run: xvfb-run -a node browser-agent/smoke.mjs
       - name: Upload browser evidence
         if: always()
