@@ -72,7 +72,7 @@ The current Render Free Postgres database is temporary. Use this controlled migr
 
 Create a new Neon project and a new, empty Cloudflare R2 Standard bucket. Add these variables to the existing `joyverse-mcp-bridge` service. Do not place credentials in GitHub, this repository, prompts, or browser JavaScript.
 
-- `MIGRATION_TARGET_DATABASE_URL`: Neon pooled PostgreSQL connection string (SSL enabled).
+- `MIGRATION_TARGET_DATABASE_URL`: Neon PostgreSQL direct connection string (SSL enabled).
 - `MIGRATION_R2_ACCOUNT_ID`: Cloudflare account ID.
 - `MIGRATION_R2_BUCKET`: the new, empty R2 bucket name.
 - `MIGRATION_R2_ACCESS_KEY_ID`: R2 S3 access key ID.
