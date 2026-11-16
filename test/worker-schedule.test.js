@@ -11,5 +11,5 @@ test("API starts only one worker run per dispatch or scheduled tick", async () =
 
 test("scheduled queue checks leave an idle window for free Postgres scale-to-zero", async () => {
   const workflow = await readFile(new URL("../.github/workflows/video-worker.yml", import.meta.url), "utf8");
-  assert.match(workflow, /cron: "ळ\/10 \* \* \* \*"/.replace("ळ", "*"));
+  assert.match(workflow, /cron: "\*\/10 \* \* \* \*"/);
 });
