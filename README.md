@@ -62,3 +62,43 @@ The Studio's default bridge URL is `https://joyverse-mcp-bridge.onrender.com`. E
 ## GitHub Actions worker option
 
 A scheduled one-task worker can run without keeping the Android browser open. Configure the repository Actions secret `DATABASE_URL`. S3/R2 secrets are optional for testing: without them the worker uses PostgreSQL object storage (50 MiB maximum per object). For production, configure the S3/R2 bucket, endpoint, access key, and secret key; optionally add `OBJECT_STORAGE_REGION` and `HF_TOKEN`. The scheduled workflow uses the free GitHub-hosted runner allowance and processes one queued scene per run. It is not a permanent always-on server: GitHub scheduling is best-effort, jobs have a maximum runtime, and provider outages or a job timeout can leave a task failed rather than safely resumable. It does not bypass LTX provider limits or guarantee free GPU capacity.
+
+
+## One-time Render to Neon + R2 migration
+
+The current Render Free Postgres database is temporary. Use this controlled migration before its expiry. The migration copies task rows and device-command rows to Neon, copies every object referenced by tasks/commands (and all rows in `joyverse_objects`) to a new R2 bucket, and verifies every copied object's SHA-256 hash. The source database and source objects are never deleted.
+
+### Required private Render environment variables
+
+Create a new Neon project and a new, empty Cloudflare R2 Standard bucket. Add these variables to the existing `joyverse-mcp-bridge` service. Do not place credentials in GitHub, this repository, prompts, or browser JavaScript.
+
+- `MIGRATION_TARGET_DATABASE_URL`: Neon pooled PostgreSQL connection string (SSL enabled).
+- `MIGRATION_R2_ACCOUNT_ID`: Cloudflare account ID.
+- `MIGRATION_R2_BUCKET`: the new, empty R2 bucket name.
+- `MIGRATION_R2_ACCESS_KEY_ID`: R2 S3 access key ID.
+- `MIGRATION_R2_SECRET_ACCESS_KEY`: R2 S3 secret access key.
+- Optional `MIGRATION_R2_ENDPOINT`: full HTTPS R2 S3 endpoint; otherwise it is built from the account ID.
+
+The migration endpoint keeps using the existing `DATABASE_URL` as the source. It does not switch the live service automatically.
+
+### Run and verify the migration
+
+1. Wait until the bridge has deployed the migration code from the main branch.
+2. In GitHub, open **Actions → JoyVerse storage migration → Run workflow** on the `main` branch.
+3. Run the `plan` action first. It tests target connectivity and reports task, command, and object counts and estimated sizes. It does not copy or modify data.
+4. Run the `migrate` action only when the video queue is empty. It freezes API writes during the snapshot, refuses a non-empty destination database on the first run, copies all task and command records, moves referenced media to R2, verifies each object byte-for-byte, and writes a migration marker.
+5. Confirm the workflow reports `migrated: true`, source preservation, and the expected counts. Any failure leaves the old database active; object uploads that completed before a failure can safely be overwritten on a retry.
+
+The migration has conservative free-tier safety ceilings of 750 MiB for task/command metadata and 9.5 GB for media. These are guardrails, not a promise that an account has that much quota remaining; existing Neon/R2 usage also matters.
+
+### Manual cutover (after a successful migration only)
+
+On the existing bridge service, change the active variables to the destination values:
+
+- Set `DATABASE_URL` to the Neon connection string.
+- Set `OBJECT_STORAGE_BUCKET` to the new R2 bucket.
+- Set `OBJECT_STORAGE_ENDPOINT` to `https://<ACCOUNT_ID>.r2.cloudflarestorage.com`.
+- Set `OBJECT_STORAGE_ACCESS_KEY_ID` and `OBJECT_STORAGE_SECRET_ACCESS_KEY` to the R2 keys.
+- Set `OBJECT_STORAGE_REGION=auto`.
+
+Keep the old Render Postgres database and its original credentials available until the new deployment passes a real task-status lookup, reference-image retrieval, generated-MP4 download, and final-video assembly test. The migration endpoint deliberately does not change Render environment variables or delete the source database.
