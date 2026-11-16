@@ -6,6 +6,9 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-
 const MAX_VIDEO_BYTES = 48 * 1024 * 1024;
 
 export async function initializeBingControlStore() {
+  // REST API tests intentionally use the in-memory task store and do not
+  // provision a PostgreSQL instance. Production always initializes the table.
+  if (process.env.NODE_ENV === "test" && process.env.JOYVERSE_TEST_MEMORY_STORE === "1") return;
   await getTaskPool().query(`
     CREATE TABLE IF NOT EXISTS joyverse_bing_commands (
       command_id UUID PRIMARY KEY,
