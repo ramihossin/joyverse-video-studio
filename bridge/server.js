@@ -78,7 +78,7 @@ function getBackgroundVideoWorker() {
 }
 
 function startBackgroundVideoTask() {
-  // The persistent worker is already polling the durable queue; do not spawn a duplicate.
+  // Prevent overlapping one-scene runs against the same durable queue.
   if (backgroundVideoWorkerBusy) return true;
   const worker = getBackgroundVideoWorker();
   if (!worker) return false;
@@ -542,7 +542,8 @@ app.post("/api/hermes/dispatch", async (req, res) => {
     created_at: new Date().toISOString(), claimed_at: null,
     result: null, error: null
   });
-  return res.status(202).json({ accepted: true, task_id: taskId, scene_id, status: "queued" });
+  const workerStarted = startBackgroundVideoTask();
+  return res.status(202).json({ accepted: true, task_id: taskId, scene_id, status: "queued", worker_started: workerStarted });
 });
 
 // Owner-only issue inbox: GitHub Actions exchanges OIDC for a confirmed task.
