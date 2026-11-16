@@ -4,12 +4,13 @@ import { fileURLToPath } from "node:url";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { z } from "zod";
-import { initializeTaskStore, enqueueTask, getTask, claimNextTask, finishTask, getQueueCounts, updateTaskCheckpoint, setTaskReferenceImage } from "./task-store.js";
+import { initializeTaskStore, enqueueTask, getTask, claimNextTask, finishTask, getQueueCounts, updateTaskCheckpoint, setTaskReferenceImage, getTaskPool } from "./task-store.js";
 import { normalizeVideoOptions, assertVideoOptionsForProvider } from "./video-job.js";
 import { createObjectStorage } from "./object-storage.js";
 import { assembleMp4 } from "./ffmpeg-assembler.js";
 import { createVideoWorker } from "./video-worker.js";
 import { verifyGithubActionsToken } from "./github-oidc.js";
+import { runStorageMigration } from "./storage-migration.js";
 import { initializeBingControlStore, installBingControlRoutes, dispatchConfiguredBingCommand, recordBingDeviceResult, logBingCommandStatus } from "./bing-control.js";
 
 const app = express();
@@ -64,6 +65,7 @@ const BING_STATUS_COMMAND_ID = process.env.BING_STATUS_COMMAND_ID || "";
 const SELECTED_VIDEO_PROVIDER = String(process.env.VIDEO_PROVIDER || "ltx").toLowerCase();
 let backgroundVideoWorker = null;
 let backgroundVideoWorkerBusy = false;
+let storageMigrationInProgress = false;
 
 function getBackgroundVideoWorker() {
   if (backgroundVideoWorker) return backgroundVideoWorker;
@@ -78,6 +80,8 @@ function getBackgroundVideoWorker() {
 }
 
 function startBackgroundVideoTask() {
+  // A storage migration temporarily freezes writes and background queue claims.
+  if (storageMigrationInProgress) return false;
   // Prevent overlapping one-scene runs against the same durable queue.
   if (backgroundVideoWorkerBusy) return true;
   const worker = getBackgroundVideoWorker();
@@ -102,6 +106,15 @@ function isValidMacroDroidWebhook(value) {
     return false;
   }
 }
+
+// Freeze API writes while the one-time migration copies a consistent snapshot.
+app.use((req, res, next) => {
+  if (storageMigrationInProgress && req.method !== "GET" &&
+      req.path !== "/api/admin/storage-migration") {
+    return res.status(503).json({ error: "storage_migration_in_progress", retry_after_seconds: 60 });
+  }
+  next();
+});
 
 installBingControlRoutes(app);
 
@@ -544,6 +557,65 @@ app.post("/api/hermes/dispatch", async (req, res) => {
   });
   const workerStarted = startBackgroundVideoTask();
   return res.status(202).json({ accepted: true, task_id: taskId, scene_id, status: "queued", worker_started: workerStarted });
+});
+
+// Owner-only one-time migration. The separate workflow and audience prevent
+// ordinary video diagnostic runs from gaining database/storage migration access.
+app.post("/api/admin/storage-migration", async (req, res) => {
+  const authorization = req.get("authorization") || "";
+  const token = authorization.startsWith("Bearer ") ? authorization.slice(7) : "";
+  try {
+    await verifyGithubActionsToken(token, {
+      repository: VIDEO_WORKER_REPOSITORY,
+      workflowFile: ".github/workflows/storage-migration.yml",
+      branch: "main",
+      audience: "joyverse-storage-migration"
+    });
+  } catch {
+    return res.status(401).json({ error: "invalid_github_actions_identity" });
+  }
+
+  const action = req.body?.action;
+  if (!["plan", "migrate"].includes(action)) {
+    return res.status(400).json({ error: "action_must_be_plan_or_migrate" });
+  }
+  if (action === "migrate") {
+    if (storageMigrationInProgress || backgroundVideoWorkerBusy) {
+      return res.status(409).json({ error: "worker_or_migration_busy" });
+    }
+    storageMigrationInProgress = true;
+  }
+
+  try {
+    if (action === "migrate") {
+      const queue = await getQueueCounts();
+      if (queue.queued > 0 || queue.active > 0) {
+        return res.status(409).json({
+          error: "queue_must_be_idle",
+          queued: queue.queued,
+          active: queue.active,
+          source_preserved: true
+        });
+      }
+    }
+    const result = await runStorageMigration({
+      sourceDb: getTaskPool(),
+      env: process.env,
+      action
+    });
+    res.set("Cache-Control", "no-store");
+    return res.status(200).json({ result });
+  } catch (error) {
+    console.error("JoyVerse storage migration failed:", String(error?.message || error).slice(0, 300));
+    return res.status(502).json({
+      error: "storage_migration_failed",
+      detail: String(error?.message || "Unknown migration error").slice(0, 180),
+      cutover_performed: false,
+      source_preserved: true
+    });
+  } finally {
+    if (action === "migrate") storageMigrationInProgress = false;
+  }
 });
 
 // Owner-only issue inbox: GitHub Actions exchanges OIDC for a confirmed task.
