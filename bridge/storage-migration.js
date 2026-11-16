@@ -40,7 +40,7 @@ function makeTargetStorageEnv(env) {
 }
 
 async function installTargetSchema(db) {
-  await db.query(\`
+  await db.query(`
     CREATE TABLE IF NOT EXISTS joyverse_tasks (
       task_id TEXT PRIMARY KEY,
       scene_id TEXT NOT NULL,
@@ -113,7 +113,7 @@ async function installTargetSchema(db) {
       ON joyverse_tasks (provider, provider_job_id) WHERE provider_job_id IS NOT NULL;
     CREATE INDEX IF NOT EXISTS joyverse_bing_commands_updated_idx
       ON joyverse_bing_commands (updated_at);
-  \`);
+  `);
 }
 
 async function sourceSnapshot(sourceDb) {
@@ -121,20 +121,20 @@ async function sourceSnapshot(sourceDb) {
     sourceDb.query("SELECT COUNT(*)::bigint AS count FROM joyverse_tasks"),
     sourceDb.query("SELECT COUNT(*)::bigint AS count FROM joyverse_bing_commands"),
     sourceDb.query("SELECT object_key, content_type, byte_length FROM joyverse_objects ORDER BY object_key"),
-    sourceDb.query(\`
+    sourceDb.query(`
       SELECT storage_key AS object_key FROM joyverse_tasks WHERE storage_key IS NOT NULL
       UNION
       SELECT reference_image_key AS object_key FROM joyverse_tasks WHERE reference_image_key IS NOT NULL
       UNION
       SELECT storage_key AS object_key FROM joyverse_bing_commands WHERE storage_key IS NOT NULL
       ORDER BY object_key
-    \`),
-    sourceDb.query(\`
+    `),
+    sourceDb.query(`
       SELECT (
         COALESCE(pg_total_relation_size(to_regclass('joyverse_tasks')),0) +
         COALESCE(pg_total_relation_size(to_regclass('joyverse_bing_commands')),0)
       )::bigint AS metadata_bytes
-    \`)
+    `)
   ]);
   const objectMetadata = new Map(objectRows.rows.map(row => [
     row.object_key, { contentType: row.content_type, byteLength: Number(row.byte_length || 0) }
@@ -171,9 +171,9 @@ async function copyTaskRows(sourceDb, targetDb) {
   const updates = TASK_COLUMNS.slice(1).map(column =>
     column + " = EXCLUDED." + column
   ).join(", ");
-  const sql = \`INSERT INTO joyverse_tasks (\${TASK_COLUMNS.join(", ")})
-    VALUES (\${placeholders})
-    ON CONFLICT (task_id) DO UPDATE SET \${updates}\`;
+  const sql = `INSERT INTO joyverse_tasks (${TASK_COLUMNS.join(", ")})
+    VALUES (${placeholders})
+    ON CONFLICT (task_id) DO UPDATE SET ${updates}`;
   for (const row of rows) {
     const values = TASK_COLUMNS.map(column => {
       if (column === "toolsets") return jsonValue(row[column], "[]");
@@ -187,12 +187,12 @@ async function copyTaskRows(sourceDb, targetDb) {
 }
 
 async function copyCommandRows(sourceDb, targetDb) {
-  const { rows } = await sourceDb.query(\`
+  const { rows } = await sourceDb.query(`
     SELECT command_id, command, scene_id, status, device_status, page, message,
            storage_key, byte_length, created_at, updated_at
       FROM joyverse_bing_commands ORDER BY command_id
-  \`);
-  const sql = \`
+  `);
+  const sql = `
     INSERT INTO joyverse_bing_commands
       (command_id, command, scene_id, status, device_status, page, message,
        storage_key, byte_length, created_at, updated_at)
@@ -202,7 +202,7 @@ async function copyCommandRows(sourceDb, targetDb) {
       device_status=EXCLUDED.device_status, page=EXCLUDED.page, message=EXCLUDED.message,
       storage_key=EXCLUDED.storage_key, byte_length=EXCLUDED.byte_length,
       created_at=EXCLUDED.created_at, updated_at=EXCLUDED.updated_at
-  \`;
+  `;
   for (const row of rows) {
     await targetDb.query(sql, [
       row.command_id, row.command, row.scene_id, row.status, row.device_status,
@@ -307,11 +307,12 @@ export async function runStorageMigration({
     }
 
     const objectResult = await copyObjects(snapshot, oldStorage, newStorage);
-    await targetDb.query("BEGIN");
+    const client = typeof targetDb.connect === "function" ? await targetDb.connect() : targetDb;
     try {
-      const tasksCopied = await copyTaskRows(sourceDb, targetDb);
-      const commandsCopied = await copyCommandRows(sourceDb, targetDb);
-      await targetDb.query(\`
+      await client.query("BEGIN");
+      const tasksCopied = await copyTaskRows(sourceDb, client);
+      const commandsCopied = await copyCommandRows(sourceDb, client);
+      await client.query(`
         INSERT INTO joyverse_storage_migrations
           (migration_id, tasks_copied, commands_copied, objects_copied, object_bytes, metadata_bytes, completed_at)
         VALUES ($1,$2,$3,$4,$5,$6,NOW())
@@ -322,9 +323,9 @@ export async function runStorageMigration({
           object_bytes=EXCLUDED.object_bytes,
           metadata_bytes=EXCLUDED.metadata_bytes,
           completed_at=NOW()
-      \`, [MIGRATION_ID, tasksCopied, commandsCopied, objectResult.copied,
+      `, [MIGRATION_ID, tasksCopied, commandsCopied, objectResult.copied,
         objectResult.bytes, snapshot.metadataBytes]);
-      await targetDb.query("COMMIT");
+      await client.query("COMMIT");
       const verifiedCounts = await countTarget(targetDb);
       if (verifiedCounts.tasks < snapshot.taskCount ||
           verifiedCounts.commands < snapshot.commandCount) {
@@ -342,8 +343,10 @@ export async function runStorageMigration({
         cutoverPerformed: false
       };
     } catch (error) {
-      await targetDb.query("ROLLBACK").catch(() => {});
+      await client.query("ROLLBACK").catch(() => {});
       throw error;
+    } finally {
+      if (client !== targetDb) client.release();
     }
   } finally {
     if (ownTargetDb) await targetDb.end().catch(() => {});
