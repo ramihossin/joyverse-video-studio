@@ -1,6 +1,12 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { processClaimedVideoTask, createVideoWorker } from "../bridge/video-worker.js";
+import { processClaimedVideoTask, createVideoWorker, createDefaultVideoProvider } from "../bridge/video-worker.js";
+
+
+test("defaults to public LTX even when a paid-provider key is present", () => {
+  const provider = createDefaultVideoProvider({ AGNES_API_KEY: "configured-but-not-selected" });
+  assert.equal(provider.name, "ltx-gradio");
+});
 
 const baseTask = {
   task_id: "task-1", scene_id: "scene/one", prompt: "A friendly dragon.",

@@ -137,6 +137,25 @@ test("ChatGPT dispatch relay accepts valid text-only tasks and persists them in 
   assert.equal(completed.status, 200);
 });
 
+test("Studio connection verification treats public LTX as ready without an API key", async () => {
+  const response = await fetch(`${baseUrl}/api/studio/verify`, {
+    headers: { authorization: "Bearer test-studio-token-with-at-least-32-characters" }
+  });
+  assert.equal(response.status, 200);
+  const result = await response.json();
+  assert.equal(result.connected, true);
+  assert.equal(result.provider, "ltx");
+  assert.equal(result.provider_ready, true);
+  assert.equal(Object.hasOwn(result, "provider_key_configured"), false);
+});
+
+test("Studio connection verification rejects an invalid scoped token", async () => {
+  const response = await fetch(`${baseUrl}/api/studio/verify`, {
+    headers: { authorization: "Bearer invalid-studio-token" }
+  });
+  assert.equal(response.status, 401);
+});
+
 test("health endpoint remains available and reports runtime metadata", async () => {
   const response = await fetch(`${baseUrl}/health`);
   assert.equal(response.status, 200);

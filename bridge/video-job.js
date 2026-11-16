@@ -21,7 +21,7 @@ export function normalizeVideoOptions(input = {}) {
   if (!input || typeof input !== "object" || Array.isArray(input)) {
     throw new Error("video_options must be an object.");
   }
-  const aspect = input.aspect ?? "portrait";
+  const aspect = input.aspect ?? "landscape";
   if (!Object.hasOwn(DIMENSIONS, aspect)) throw new Error("Unsupported video aspect.");
   const duration = input.duration ?? 5;
   if (!Number.isInteger(duration) || duration < 1 || duration > 12) {

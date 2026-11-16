@@ -9,7 +9,8 @@ test("published JoyVerse Studio loads backend controls", async ({ page }) => {
   await expect(page.locator("#prompt")).toBeVisible();
   await expect(page.locator("#bridge-url")).toHaveValue("https://joyverse-mcp-bridge.onrender.com");
   await expect(page.locator("#start-queue")).toBeDisabled();
-  await expect(page.locator("#aspect")).toHaveValue("portrait");
+  await expect(page.locator("#aspect")).toHaveValue("landscape");
+  await expect(page.locator("#duration")).toHaveValue("5");
 });
 
 test("scene queue accepts and persists a scene without submitting it", async ({ page }) => {

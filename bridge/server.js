@@ -61,7 +61,7 @@ const VIDEO_WORKER_BRANCH = process.env.GITHUB_OIDC_BRANCH || "main";
 const VIDEO_WORKER_AUDIENCE = "joyverse-video-worker";
 const BING_COMMAND_JSON = process.env.BING_COMMAND_JSON || "";
 const BING_STATUS_COMMAND_ID = process.env.BING_STATUS_COMMAND_ID || "";
-const SELECTED_VIDEO_PROVIDER = String(process.env.VIDEO_PROVIDER || (process.env.AGNES_API_KEY ? "agnes" : "ltx")).toLowerCase();
+const SELECTED_VIDEO_PROVIDER = String(process.env.VIDEO_PROVIDER || "ltx").toLowerCase();
 let backgroundVideoWorker = null;
 let backgroundVideoWorkerBusy = false;
 
@@ -491,9 +491,8 @@ app.get("/api/studio/verify", (req, res) => {
   if (!studioAuthorized(req)) return res.status(401).json({ error: "invalid_studio_token" });
   res.set("Cache-Control", "no-store");
   return res.json({ connected: true, provider: SELECTED_VIDEO_PROVIDER,
-    provider_key_configured: SELECTED_VIDEO_PROVIDER === "agnes"
-      ? Boolean(process.env.AGNES_API_KEY)
-      : SELECTED_VIDEO_PROVIDER === "ltx" ? Boolean(process.env.HF_TOKEN) : false });
+    provider_ready: SELECTED_VIDEO_PROVIDER === "ltx" ||
+      (SELECTED_VIDEO_PROVIDER === "agnes" && Boolean(process.env.AGNES_API_KEY)) });
 });
 
 // Hermes phone-worker queue. All endpoints use the existing bearer token.

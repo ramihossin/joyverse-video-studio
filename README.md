@@ -7,7 +7,7 @@ Mobile-first scene queue for the JoyVerse Kids workflow. The Studio UI dispatche
 1. Add scenes in the browser. Optional reference images are saved in IndexedDB on the phone until dispatch.
 2. When the user starts the queue, the browser uploads each reference image to the authenticated bridge, then dispatches the scene and its validated LTX options.
 3. PostgreSQL stores each task and its reference-image storage key.
-4. The standalone `npm run worker` process claims confirmed video tasks, uploads any reference image to the LTX-2.5 Gradio Space, calls its real `/run` generation endpoint, downloads the returned MP4, and stores it in S3-compatible storage.
+4. The current Render bridge starts its background video worker inside the API service. It claims confirmed video tasks, uploads any reference image to the LTX-2.5 Gradio Space, calls the real `/run` generation endpoint, downloads the MP4, and stores it in S3-compatible storage. The standalone `npm run worker` command is available when deliberately hosting a separate worker.
 5. The Studio polls task status while open. Closing the browser does not cancel tasks already dispatched to the server.
 6. On return, the Studio restores task IDs from browser storage, queries their server status, retrieves stored clips, and can request server-side FFmpeg assembly. The final ID is saved locally and the final MP4 can be fetched again.
 
@@ -29,11 +29,14 @@ The Studio's default bridge URL is `https://joyverse-mcp-bridge.onrender.com`. E
 
 ## Worker process and persistence caveats
 
-- The API process and `npm run worker` are separate processes. The worker must be deployed and running continuously on a host that supports a persistent background process.
-- A sleeping/free web service does not guarantee background execution. A separate persistent worker host may be required; no keep-alive workaround is assumed.
+- In the current Render deployment, the API and one background worker share the same Free web service. Do not start a second worker against the same queue unless parallel generation is intentional.
+- Render Free web services spin down after 15 minutes without inbound traffic. The scheduled GitHub Actions workflow pings the bridge every five minutes so an LTX request can continue while the browser is closed. If that workflow is disabled or delayed for long enough, Render may suspend the process during a generation.
+- Render grants 750 Free instance hours per workspace each month. Keeping this bridge awake continuously uses about 720 hours in a 30-day month, leaving little room for other active Free web services. Monitor workspace usage in Render.
+- The Render Free Postgres database is temporary and expires 30 days after creation. Migrate task records and stored objects to a durable free database/object store before the current database expires.
 - PostgreSQL is required for durable tasks. Without S3/R2 settings, reference images, clips, and final MP4s use a PostgreSQL BYTEA table with a 50 MiB per-object limit. Use private object storage for production and larger videos.
 - The LTX Gradio request does not expose a durable provider job ID to this worker. If the worker restarts after submitting a request, the task is failed safely instead of submitting again and potentially consuming a second free GPU quota. Check the Space before manually retrying such a task.
 - A successful dispatch response means the task was accepted by the queue, not that a video has completed. The Studio only marks a scene complete after reading the persisted task result.
+- LTX-2.5 accepts 1–5 second clips. The Studio therefore limits LTX scene durations to that range and defaults to 16:9 for standard YouTube videos.
 - Browser-side scene metadata is kept in local storage and reference blobs in IndexedDB until uploaded. After dispatch, the server-side task and object storage are the durable source of truth. The browser token is session-only and must be re-entered in a new browser session.
 
 ## Provider and cost policy
@@ -41,7 +44,7 @@ The Studio's default bridge URL is `https://joyverse-mcp-bridge.onrender.com`. E
 - The server worker calls the public `Lightricks/LTX-2.5` Gradio Space through `@gradio/client` and downloads the MP4 returned by its `/run` endpoint. It does not generate placeholder videos with FFmpeg.
 - It does not use LoreMotion, TinyFish, or a paid provider API.
 - Public Space capacity, queue time, uptime, and free access are controlled by the provider and are not guaranteed.
-- The app does not bypass provider queues, account checks, ads, or limits and does not silently switch to a paid model.
+- LTX is the default provider even when an Agnes API key happens to exist in the environment. Agnes is used only when `VIDEO_PROVIDER=agnes` is explicitly configured. The app does not bypass provider queues, account checks, ads, or limits.
 - Prompts and reference images are sent to the external model provider. Do not upload private or sensitive images.
 
 ## Development

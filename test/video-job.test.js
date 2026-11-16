@@ -4,7 +4,7 @@ import { normalizeVideoOptions, assertVideoOptionsForProvider } from "../bridge/
 
 test("normalizes supported LTX aspect ratios and defaults", () => {
   assert.deepEqual(normalizeVideoOptions(), {
-    aspect: "portrait", width: 832, height: 1472, duration: 5, seed: 42,
+    aspect: "landscape", width: 1472, height: 832, duration: 5, seed: 42,
     randomize_seed: false, enhance_prompt: false, decoder: "conv", auto_len: false
   });
   assert.deepEqual(
