@@ -46,7 +46,7 @@ function createTargetDb(initialCounts = { tasks: 0, commands: 0 }) {
     state,
     async query(sql, values = []) {
       if (sql === "SELECT 1 AS connected") return { rows: [{ connected: 1 }] };
-      if (sql.startsWith("CREATE TABLE") || sql.startsWith("BEGIN") ||
+      if (sql.trimStart().startsWith("CREATE TABLE") || sql.startsWith("BEGIN") ||
           sql.startsWith("COMMIT") || sql.startsWith("ROLLBACK") ||
           sql.startsWith("CREATE INDEX") || sql.startsWith("ALTER TABLE")) {
         return { rows: [] };
