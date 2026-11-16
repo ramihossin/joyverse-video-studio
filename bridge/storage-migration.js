@@ -261,10 +261,10 @@ export async function runStorageMigration({
     connectionTimeoutMillis: 10000,
     idleTimeoutMillis: 10000
   });
-  const oldStorage = sourceStorage || createObjectStorage({ env });
-  const newStorage = targetStorage || createObjectStorage({ env: targetEnv });
 
   try {
+    const oldStorage = sourceStorage || createObjectStorage({ env });
+    const newStorage = targetStorage || createObjectStorage({ env: targetEnv });
     if (newStorage.backend !== "s3") {
       throw new Error("The migration destination must be an S3-compatible R2 bucket.");
     }
