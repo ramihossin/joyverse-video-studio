@@ -336,9 +336,11 @@ $("test-connection").addEventListener("click", async () => {
     const response = await apiRequest("/api/studio/verify", { method: "GET" });
     const result = await response.json();
     if (!result.connected) throw new Error("تعذر تأكيد اتصال الاستوديو.");
-    const provider = result.provider === "agnes" ? "Agnes" : result.provider;
-    if (!result.provider_key_configured) setStatus("رمز الاستوديو صحيح والجسر متصل، لكن مفتاح مزود " + provider + " غير مضبوط على الخادم.");
-    else setStatus("نجح الاتصال: رمز الاستوديو صحيح، والجسر متصل، ومفتاح مزود " + provider + " مضبوط.");
+    const provider = result.provider === "ltx" ? "LTX-2.5 العام" :
+      result.provider === "agnes" ? "Agnes" : result.provider;
+    if (!result.provider_ready) setStatus("رمز الاستوديو صحيح والجسر متصل، لكن إعدادات مزود " + provider + " غير مكتملة على الخادم.");
+    else if (result.provider === "ltx") setStatus("نجح الاتصال: رمز الاستوديو صحيح والجسر متصل. محرك LTX-2.5 العام لا يحتاج إلى مفتاح API.");
+    else setStatus("نجح الاتصال: رمز الاستوديو صحيح والجسر متصل، وإعدادات مزود " + provider + " مكتملة.");
   } catch (error) { setStatus("فشل اختبار الاتصال: " + error.message); }
   finally { button.disabled = false; }
 });
