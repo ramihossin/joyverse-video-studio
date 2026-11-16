@@ -10,6 +10,7 @@ on:
 permissions:
   contents: read
   id-token: write
+  issues: write
 
 concurrency:
   group: joyverse-background-video-worker
@@ -20,29 +21,139 @@ jobs:
     # Prevent public issue spam from consuming the provider's free generation quota.
     if: github.event_name != 'issues' || (github.event.issue.user.login == github.repository_owner && startsWith(github.event.issue.title, '[video]'))
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
     steps:
-      - name: Request short-lived GitHub Actions identity
+      - name: Dispatch and verify one diagnostic scene
+        id: dispatch
         env:
           BRIDGE_URL: https://joyverse-mcp-bridge.onrender.com
           EVENT_NAME: ${{ github.event_name }}
           ISSUE_NUMBER: ${{ github.event.issue.number }}
           ISSUE_BODY: ${{ github.event.issue.body }}
         run: |
-          set -eu
-          response="$(curl --fail --silent --show-error \
-            -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
-            "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=joyverse-video-worker")"
-          oidc_token="$(printf '%s' "$response" | python -c 'import json,sys; print(json.load(sys.stdin)["value"])')"
-          test -n "$oidc_token"
-          if [ "$EVENT_NAME" = "issues" ]; then
-            test -n "$ISSUE_NUMBER"
-            payload="$(python -c 'import json,os,re; body=os.environ.get("ISSUE_BODY","").strip(); match=re.search(r"<!--\s*joyverse-video-options\s+(\{.*?\})\s*-->",body,re.S); opts=json.loads(match.group(1)) if match else {}; body=(body[:match.start()]+body[match.end():]).strip() if match else body; print(json.dumps({"scene_id":"issue-"+os.environ["ISSUE_NUMBER"],"prompt":body,"video_options":opts}))')"
-            curl --fail --silent --show-error --max-time 90 \
-              -X POST "$BRIDGE_URL/api/hermes/worker/dispatch" \
-              -H "Authorization: Bearer $oidc_token" -H "Content-Type: application/json" -d "$payload"
-          else
+          set -euo pipefail
+
+          get_oidc_token() {
+            response="$(curl --fail --silent --show-error \
+              -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+              "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=joyverse-video-worker")"
+            printf '%s' "$response" | python -c 'import json,sys; print(json.load(sys.stdin)["value"])'
+          }
+
+          if [ "$EVENT_NAME" != "issues" ]; then
+            oidc_token="$(get_oidc_token)"
             curl --fail --silent --show-error --max-time 90 \
               -X POST "$BRIDGE_URL/api/hermes/worker/tick" \
-              -H "Authorization: Bearer $oidc_token" -H "Content-Type: application/json" -d '{}'
+              -H "Authorization: Bearer $oidc_token" \
+              -H "Content-Type: application/json" -d '{}'
+            exit 0
           fi
+
+          test -n "$ISSUE_NUMBER"
+          payload="$(python -c 'import json,os,re; body=os.environ.get("ISSUE_BODY","").strip(); match=re.search(r"<!--\\s*joyverse-video-options\\s+(\\{.*?\\})\\s*-->",body,re.S); opts=json.loads(match.group(1)) if match else {}; body=(body[:match.start()]+body[match.end():]).strip() if match else body; print(json.dumps({"scene_id":"issue-"+os.environ["ISSUE_NUMBER"],"prompt":body,"video_options":opts}))')"
+          oidc_token="$(get_oidc_token)"
+          accepted="$(curl --fail --silent --show-error --max-time 90 \
+            -X POST "$BRIDGE_URL/api/hermes/worker/dispatch" \
+            -H "Authorization: Bearer $oidc_token" \
+            -H "Content-Type: application/json" -d "$payload")"
+          task_id="$(printf '%s' "$accepted" | python -c 'import json,sys; print(json.load(sys.stdin)["task_id"])')"
+          echo "task_id=$task_id" >> "$GITHUB_OUTPUT"
+          echo "issue_number=$ISSUE_NUMBER" >> "$GITHUB_OUTPUT"
+
+          status="queued"
+          stage="queued"
+          provider="ltx-gradio"
+          error=""
+          clip_ready="false"
+
+          # The render worker may be finishing an older queued scene. Nudge it
+          # again while polling so FIFO tasks drain one at a time without overlap.
+          for attempt in $(seq 1 24); do
+            oidc_token="$(get_oidc_token)"
+            status_json="$(curl --fail --silent --show-error --max-time 30 \
+              -H "Authorization: Bearer $oidc_token" \
+              "$BRIDGE_URL/api/hermes/worker/status/$task_id")"
+            status="$(printf '%s' "$status_json" | python -c 'import json,sys; print(json.load(sys.stdin).get("status","unknown"))')"
+            stage="$(printf '%s' "$status_json" | python -c 'import json,sys; print(json.load(sys.stdin).get("stage","unknown"))')"
+            provider="$(printf '%s' "$status_json" | python -c 'import json,sys; print(json.load(sys.stdin).get("provider") or "ltx-gradio")')"
+            error="$(printf '%s' "$status_json" | python -c 'import json,sys; print((json.load(sys.stdin).get("error") or "").replace("\\n"," ")[:400])')"
+
+            if [ "$status" = "completed" ]; then
+              oidc_token="$(get_oidc_token)"
+              curl --fail --silent --show-error --max-time 90 \
+                -H "Authorization: Bearer $oidc_token" \
+                "$BRIDGE_URL/api/hermes/worker/video/$task_id" \
+                -o joyverse-diagnostic.mp4
+              test -s joyverse-diagnostic.mp4
+              clip_ready="true"
+              break
+            fi
+            if [ "$status" = "failed" ]; then
+              break
+            fi
+
+            # Wake the next one-task worker only after the preceding run has settled.
+            oidc_token="$(get_oidc_token)"
+            curl --silent --show-error --max-time 30 \
+              -X POST "$BRIDGE_URL/api/hermes/worker/tick" \
+              -H "Authorization: Bearer $oidc_token" \
+              -H "Content-Type: application/json" -d '{}' >/dev/null || true
+            sleep 15
+          done
+
+          echo "status=$status" >> "$GITHUB_OUTPUT"
+          echo "stage=$stage" >> "$GITHUB_OUTPUT"
+          echo "provider=$provider" >> "$GITHUB_OUTPUT"
+          echo "error=$error" >> "$GITHUB_OUTPUT"
+          echo "clip_ready=$clip_ready" >> "$GITHUB_OUTPUT"
+
+      - name: Upload generated MP4
+        id: artifact
+        if: ${{ always() && steps.dispatch.outputs.clip_ready == 'true' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: joyverse-ltx-diagnostic
+          path: joyverse-diagnostic.mp4
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Report result on the originating issue
+        if: ${{ always() && github.event_name == 'issues' && steps.dispatch.outputs.issue_number != '' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPOSITORY: ${{ github.repository }}
+          ISSUE_NUMBER: ${{ steps.dispatch.outputs.issue_number }}
+          TASK_ID: ${{ steps.dispatch.outputs.task_id }}
+          TASK_STATUS: ${{ steps.dispatch.outputs.status || 'dispatch_failed' }}
+          TASK_STAGE: ${{ steps.dispatch.outputs.stage || 'unknown' }}
+          TASK_PROVIDER: ${{ steps.dispatch.outputs.provider || 'unknown' }}
+          TASK_ERROR: ${{ steps.dispatch.outputs.error || '' }}
+          CLIP_READY: ${{ steps.dispatch.outputs.clip_ready || 'false' }}
+          ARTIFACT_URL: ${{ steps.artifact.outputs.artifact-url || '' }}
+        run: |
+          set -euo pipefail
+          python - <<'PY' > /tmp/comment.md
+          import os
+          status = os.environ.get("TASK_STATUS", "unknown")
+          stage = os.environ.get("TASK_STAGE", "unknown")
+          provider = os.environ.get("TASK_PROVIDER", "unknown")
+          task_id = os.environ.get("TASK_ID", "not-dispatched")
+          error = os.environ.get("TASK_ERROR", "")
+          clip = os.environ.get("CLIP_READY") == "true"
+          artifact = os.environ.get("ARTIFACT_URL", "")
+          lines = [
+            "## JoyVerse LTX diagnostic",
+            f"- Task: `{task_id}`",
+            f"- Status: **{status}** (stage: {stage})",
+            f"- Provider: `{provider}`",
+          ]
+          if clip and artifact:
+            lines.append(f"- MP4 artifact: {artifact}")
+          if error:
+            lines.append(f"- Error: `{error[:400]}`")
+          if status not in ("completed", "failed"):
+            lines.append("- The task did not reach a terminal state within this run; check the task in the Studio before retrying.")
+          print("\\n".join(lines))
+          PY
+          gh api "repos/$GH_REPOSITORY/issues/$ISSUE_NUMBER/comments" \
+            -f body="$(cat /tmp/comment.md)" >/dev/null
