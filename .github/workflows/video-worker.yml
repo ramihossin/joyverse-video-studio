@@ -50,7 +50,8 @@ jobs:
           fi
 
           test -n "$ISSUE_NUMBER"
-          payload="$(python -c 'import json,os,re; body=os.environ.get("ISSUE_BODY","").strip(); match=re.search(r"<!--\\s*joyverse-video-options\\s+(\\{.*?\\})\\s*-->",body,re.S); opts=json.loads(match.group(1)) if match else {}; body=(body[:match.start()]+body[match.end():]).strip() if match else body; print(json.dumps({"scene_id":"issue-"+os.environ["ISSUE_NUMBER"],"prompt":body,"video_options":opts}))')"
+          echo "issue_number=$ISSUE_NUMBER" >> "$GITHUB_OUTPUT"
+          payload="$(python -c 'import json,os,re; body=os.environ.get("ISSUE_BODY","").strip(); match=re.search(r"<!--\s*joyverse-video-options\s+(\{.*?\})\s*-->",body,re.S); opts=json.loads(match.group(1)) if match else {}; body=(body[:match.start()]+body[match.end():]).strip() if match else body; print(json.dumps({"scene_id":"issue-"+os.environ["ISSUE_NUMBER"],"prompt":body,"video_options":opts}))')"
           oidc_token="$(get_oidc_token)"
           accepted="$(curl --fail --silent --show-error --max-time 90 \
             -X POST "$BRIDGE_URL/api/hermes/worker/dispatch" \
@@ -153,7 +154,7 @@ jobs:
             lines.append(f"- Error: `{error[:400]}`")
           if status not in ("completed", "failed"):
             lines.append("- The task did not reach a terminal state within this run; check the task in the Studio before retrying.")
-          print("\\n".join(lines))
+          print("\n".join(lines))
           PY
           gh api "repos/$GH_REPOSITORY/issues/$ISSUE_NUMBER/comments" \
             -f body="$(cat /tmp/comment.md)" >/dev/null
