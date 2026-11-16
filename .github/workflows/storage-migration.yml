@@ -1,0 +1,55 @@
+name: JoyVerse storage migration
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: "plan = inspect only; migrate = copy and verify data (no cutover)"
+        required: true
+        type: choice
+        default: plan
+        options:
+          - plan
+          - migrate
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: joyverse-storage-migration
+  cancel-in-progress: false
+
+jobs:
+  migrate:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Request a short-lived identity token
+        id: token
+        env:
+          OIDC_URL: \${{ env.ACTIONS_ID_TOKEN_REQUEST_URL }}
+          OIDC_TOKEN: \${{ env.ACTIONS_ID_TOKEN_REQUEST_TOKEN }}
+        run: |
+          set -euo pipefail
+          response="$(curl --fail --silent --show-error \
+            -H "Authorization: bearer $OIDC_TOKEN" \
+            "\${OIDC_URL}&audience=joyverse-storage-migration")"
+          value="$(printf '%s' "$response" | python -c 'import json,sys; print(json.load(sys.stdin)["value"])')"
+          echo "::add-mask::$value"
+          echo "value=$value" >> "$GITHUB_OUTPUT"
+
+      - name: Run storage migration plan or verified copy
+        env:
+          BRIDGE_URL: https://joyverse-mcp-bridge.onrender.com
+          OIDC_TOKEN: \${{ steps.token.outputs.value }}
+          ACTION: \${{ inputs.action }}
+        run: |
+          set -euo pipefail
+          response="$(curl --fail --silent --show-error --max-time 1800 \
+            -X POST "$BRIDGE_URL/api/admin/storage-migration" \
+            -H "Authorization: Bearer $OIDC_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d "{\"action\":\"$ACTION\"}")"
+          printf '%s\n' "$response" | python -m json.tool | tee -a "$GITHUB_STEP_SUMMARY"
