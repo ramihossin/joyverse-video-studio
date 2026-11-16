@@ -78,7 +78,7 @@ function getBackgroundVideoWorker() {
 }
 
 function startBackgroundVideoTask() {
-  // The persistent worker is already polling the durable queue; do not spawn a duplicate.
+  // Prevent overlapping one-scene runs against the same durable queue.
   if (backgroundVideoWorkerBusy) return true;
   const worker = getBackgroundVideoWorker();
   if (!worker) return false;
@@ -542,7 +542,8 @@ app.post("/api/hermes/dispatch", async (req, res) => {
     created_at: new Date().toISOString(), claimed_at: null,
     result: null, error: null
   });
-  return res.status(202).json({ accepted: true, task_id: taskId, scene_id, status: "queued" });
+  const workerStarted = startBackgroundVideoTask();
+  return res.status(202).json({ accepted: true, task_id: taskId, scene_id, status: "queued", worker_started: workerStarted });
 });
 
 // Owner-only issue inbox: GitHub Actions exchanges OIDC for a confirmed task.
@@ -948,16 +949,10 @@ initializeTaskStore().then(async () => {
       void logBingCommandStatus(BING_STATUS_COMMAND_ID)
         .catch(error => console.error("Bing status diagnostic failed:", String(error?.message || error).slice(0, 180)));
     }
-    // Run the configured video provider inside this service so confirmed scenes
-    // are processed without relying on an external scheduled wake-up.
-    const worker = getBackgroundVideoWorker();
-    if (worker) {
-      backgroundVideoWorkerBusy = true;
-      console.log("Starting persistent JoyVerse " + (worker.name || "configured video") + " worker.");
-      void worker.run()
-        .catch(error => console.error("Persistent video worker stopped:", String(error?.message || error).slice(0, 300)))
-        .finally(() => { backgroundVideoWorkerBusy = false; });
-    }
+    // Do not keep a database-polling worker alive while the queue is empty.
+    // A dispatch starts one task immediately; scheduled GitHub Actions ticks
+    // start the next queued task. This lets idle serverless Postgres scale down.
+    console.log("Video worker is event-driven: scene dispatch or scheduled queue tick.");
   });
 }).catch(error => {
   console.error("Durable task store initialization failed:", error);
