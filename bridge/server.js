@@ -603,6 +603,71 @@ app.post("/api/hermes/worker/tick", async (req, res) => {
   return res.status(202).json({ accepted: true, status: "worker_started" });
 });
 
+// Owner-only diagnostics for GitHub Actions. These endpoints expose only task status
+// and a completed task's MP4; every request must carry a fresh, audience-bound OIDC identity.
+app.get("/api/hermes/worker/status/:taskId", async (req, res) => {
+  const authorization = req.get("authorization") || "";
+  const token = authorization.startsWith("Bearer ") ? authorization.slice(7) : "";
+  try {
+    await verifyGithubActionsToken(token, {
+      repository: VIDEO_WORKER_REPOSITORY,
+      workflowFile: VIDEO_WORKER_WORKFLOW,
+      branch: VIDEO_WORKER_BRANCH,
+      audience: VIDEO_WORKER_AUDIENCE
+    });
+  } catch {
+    return res.status(401).json({ error: "invalid_github_actions_identity" });
+  }
+  const task = await getTask(req.params.taskId);
+  if (!task) return res.status(404).json({ error: "task_not_found" });
+  res.set("Cache-Control", "no-store");
+  return res.json({
+    task_id: task.task_id,
+    scene_id: task.scene_id,
+    status: task.status,
+    stage: task.stage,
+    provider: task.provider,
+    error: task.error,
+    storage_key: task.storage_key,
+    bytes: task.result?.bytes ?? null,
+    finished_at: task.finished_at ?? null
+  });
+});
+
+app.get("/api/hermes/worker/video/:taskId", async (req, res) => {
+  const authorization = req.get("authorization") || "";
+  const token = authorization.startsWith("Bearer ") ? authorization.slice(7) : "";
+  try {
+    await verifyGithubActionsToken(token, {
+      repository: VIDEO_WORKER_REPOSITORY,
+      workflowFile: VIDEO_WORKER_WORKFLOW,
+      branch: VIDEO_WORKER_BRANCH,
+      audience: VIDEO_WORKER_AUDIENCE
+    });
+  } catch {
+    return res.status(401).json({ error: "invalid_github_actions_identity" });
+  }
+  const task = await getTask(req.params.taskId);
+  if (!task) return res.status(404).json({ error: "task_not_found" });
+  if (task.status !== "completed" || !task.storage_key) {
+    return res.status(409).json({ error: "video_not_completed" });
+  }
+  try {
+    const video = await createObjectStorage().get(task.storage_key);
+    res.set({
+      "Content-Type": "video/mp4",
+      "Content-Length": String(video.length),
+      "Content-Disposition": 'attachment; filename="joyverse-diagnostic.mp4"',
+      "Cache-Control": "private, no-store",
+      "X-Content-Type-Options": "nosniff"
+    });
+    return res.status(200).send(video);
+  } catch (error) {
+    console.error("GitHub Actions video retrieval failed:", String(error?.message || error).slice(0, 180));
+    return res.status(502).json({ error: "video_retrieval_failed" });
+  }
+});
+
 app.get("/api/hermes/next", async (req, res) => {
   if (!HERMES_WORKER_TOKEN) return res.status(503).json({ error: "hermes_worker_token_not_configured" });
   if (!hermesWorkerAuthorized(req)) return res.status(401).json({ error: "unauthorized" });

@@ -42,6 +42,18 @@ after(() => {
   if (child && child.exitCode === null) child.kill("SIGTERM");
 });
 
+test("GitHub Actions status endpoint rejects requests without a verified OIDC identity", async () => {
+  const response = await fetch(`${baseUrl}/api/hermes/worker/status/hermes_test_task`);
+  assert.equal(response.status, 401);
+  assert.deepEqual(await response.json(), { error: "invalid_github_actions_identity" });
+});
+
+test("GitHub Actions MP4 endpoint rejects requests without a verified OIDC identity", async () => {
+  const response = await fetch(`${baseUrl}/api/hermes/worker/video/hermes_test_task`);
+  assert.equal(response.status, 401);
+  assert.deepEqual(await response.json(), { error: "invalid_github_actions_identity" });
+});
+
 test("background worker trigger rejects requests without a verified GitHub Actions identity", async () => {
   const response = await fetch(`${baseUrl}/api/hermes/worker/tick`, {
     method: "POST", headers: { "content-type": "application/json" }, body: "{}"
