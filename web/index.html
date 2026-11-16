@@ -58,17 +58,17 @@
           <label>المحرك<input type="text" value="المحرك المحدد في إعدادات الخادم" readonly></label>
           <label>نسبة العرض
             <select id="aspect">
-              <option value="portrait" selected>عمودي 9:16 — المشروع الحالي</option>
-              <option value="landscape">أفقي 16:9 — YouTube</option>
+              <option value="landscape" selected>أفقي 16:9 — فيديو YouTube</option>
+              <option value="portrait">عمودي 9:16 — Shorts</option>
               <option value="square">مربع 1:1</option>
             </select>
           </label>
           <label>المدة
-            <select id="duration"><option value="12">12 ثانية</option><option value="11">11 ثانية</option><option value="10">10 ثوانٍ</option><option value="9">9 ثوانٍ</option><option value="8">8 ثوانٍ</option><option value="7">7 ثوانٍ</option><option value="6">6 ثوانٍ</option><option value="5" selected>5 ثوانٍ</option><option value="4">4 ثوانٍ</option></select>
+            <select id="duration"><option value="5" selected>5 ثوانٍ</option><option value="4">4 ثوانٍ</option><option value="3">3 ثوانٍ</option><option value="2">ثانيتان</option><option value="1">ثانية واحدة</option></select>
           </label>
           <label>Seed<input id="seed" type="number" min="0" max="2147483647" value="42"></label>
         </div>
-        <p class="token-note">رمز ربط الاستوديو منفصل عن مفتاح Agnes API. يتصل الجسر بالمحرك المحدد في إعدادات الخادم؛ لا تضع مفتاح Agnes في خانة رمز الاستوديو.</p>
+        <p class="token-note">يدعم محرك LTX-2.5 مشاهد من ثانية واحدة إلى 5 ثوانٍ لكل طلب. النسبة الافتراضية 16:9 لفيديوهات YouTube؛ اختر 9:16 لمقاطع Shorts. لا يحتاج LTX العام إلى مفتاح API.</p>
         <label class="toggle-row"><input id="random-seed" type="checkbox" checked><span>Seed عشوائي لكل مشهد</span></label>
         <label class="toggle-row"><input id="enhance-prompt" type="checkbox" checked><span>تحسين الوصف تلقائياً</span></label>
         <label class="consent"><input id="consent" type="checkbox"><span>أوافق على إرسال الوصف والصورة الاختيارية إلى مزود النموذج لتوليد الفيديو.</span></label>
