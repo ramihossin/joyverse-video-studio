@@ -6,7 +6,7 @@ import { createLtxGradioVideoProvider } from "./ltx-gradio-video-provider.js";
 import { createAgnesVideoProvider } from "./agnes-video-provider.js";
 
 export function createDefaultVideoProvider(env = process.env) {
-  const selected = String(env.VIDEO_PROVIDER || (env.AGNES_API_KEY ? "agnes" : "ltx")).toLowerCase();
+  const selected = String(env.VIDEO_PROVIDER || "ltx").toLowerCase();
   if (selected === "agnes") return createAgnesVideoProvider({
     apiKey: env.AGNES_API_KEY,
     model: env.AGNES_VIDEO_MODEL || "agnes-video-2.5-flash"
