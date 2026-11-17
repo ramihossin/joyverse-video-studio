@@ -45,7 +45,7 @@ function addPageIssue(type, message, url = null, status = null) {
   const issue = {
     at: new Date().toISOString(),
     type: String(type).slice(0, 30),
-    message: String(message || "").replace(/https?:\\/\\/\\S+/g, "[URL]").slice(0, 240)
+    message: String(message || "").replace(/https?:\/\/\S+/g, "[URL]").slice(0, 240)
   };
   if (url) issue.url = safeDiagnosticUrl(url);
   if (Number.isFinite(status)) issue.status = status;
