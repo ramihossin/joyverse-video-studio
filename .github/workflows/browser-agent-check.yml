@@ -1,0 +1,26 @@
+name: Browser Agent Validation
+on:
+  push:
+    branches: [feature/free-browser-video-agent]
+    paths:
+      - "browser-agent/**"
+      - ".github/workflows/browser-agent-check.yml"
+  pull_request:
+    paths:
+      - "browser-agent/**"
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install dependencies
+        working-directory: browser-agent
+        run: npm install
+      - name: Check JavaScript syntax
+        working-directory: browser-agent
+        run: node --check server.js
+      - name: Build browser container
+        run: docker build -t joyverse-browser-agent ./browser-agent
