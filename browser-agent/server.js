@@ -6,6 +6,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import os from "node:os";
 import { fileURLToPath } from "node:url";
+import { safeDiagnosticUrl, findVerificationHints } from "./browser-utils.js";
 import {
   initStore, listSites, getSite, saveSite, deleteSite,
   getSession, saveSession, deleteSession
@@ -37,6 +38,80 @@ let page;
 let currentSiteId = null;
 let busy = false;
 const jobs = new Map();
+
+let pageDiagnostics = { navigation: null, issues: [] };
+
+function addPageIssue(type, message, url = null, status = null) {
+  const issue = {
+    at: new Date().toISOString(),
+    type: String(type).slice(0, 30),
+    message: String(message || "").replace(/https?:\\/\\/\\S+/g, "[URL]").slice(0, 240)
+  };
+  if (url) issue.url = safeDiagnosticUrl(url);
+  if (Number.isFinite(status)) issue.status = status;
+  pageDiagnostics.issues.push(issue);
+  if (pageDiagnostics.issues.length > 60) pageDiagnostics.issues.splice(0, pageDiagnostics.issues.length - 60);
+}
+
+function observePage(targetPage) {
+  targetPage.on("pageerror", error => addPageIssue("page-error", error?.message || error));
+  targetPage.on("console", message => {
+    if (message.type() === "error") addPageIssue("console-error", message.text());
+  });
+  targetPage.on("requestfailed", request => {
+    addPageIssue("request-failed", request.failure()?.errorText || "Request failed", request.url());
+  });
+  targetPage.on("response", response => {
+    if (response.status() >= 400) {
+      addPageIssue("http-response", "HTTP response error", response.url(), response.status());
+    }
+  });
+}
+
+async function navigatePage(targetPage, destination) {
+  const started = Date.now();
+  const startedAt = new Date(started).toISOString();
+  pageDiagnostics = {
+    navigation: { status: "starting", startedAt, url: safeDiagnosticUrl(destination) },
+    issues: []
+  };
+
+  let response = null;
+  let navigationError = null;
+  try {
+    // Return as soon as the first document response commits. Heavy third-party
+    // scripts must not keep the dashboard waiting for DOMContentLoaded.
+    response = await targetPage.goto(destination, { waitUntil: "commit", timeout: 30000 });
+  } catch (error) {
+    navigationError = String(error?.message || error).slice(0, 240);
+    addPageIssue("navigation", navigationError, destination);
+    if (targetPage.isClosed() || targetPage.url() === "about:blank") throw error;
+  }
+
+  // Give the page a short opportunity to build its DOM, then return a usable
+  // partial preview even when a blocking script prevents DOMContentLoaded.
+  const domContentLoaded = await targetPage
+    .waitForLoadState("domcontentloaded", { timeout: 7000 })
+    .then(() => true)
+    .catch(() => false);
+  const details = await targetPage.evaluate(() => ({
+    readyState: document.readyState,
+    title: document.title || ""
+  })).catch(() => ({ readyState: "unknown", title: "" }));
+
+  const navigation = {
+    status: domContentLoaded ? "loaded" : "partial",
+    startedAt,
+    elapsedMs: Date.now() - started,
+    httpStatus: response?.status() ?? null,
+    domContentLoaded,
+    readyState: details.readyState,
+    error: navigationError
+  };
+  pageDiagnostics.navigation = navigation;
+  return { url: targetPage.url(), title: details.title, navigation };
+}
+
 
 if (TOKEN.length < 32) throw new Error("BROWSER_AGENT_TOKEN must be at least 32 characters.");
 
@@ -206,12 +281,14 @@ async function openSite(site, targetUrl = null) {
   const mainPage = page;
   page.on("popup", popup => {
     page = popup;
+    observePage(popup);
     popup.setDefaultTimeout(20000);
     popup.once("close", () => { if (mainPage && !mainPage.isClosed()) page = mainPage; });
   });
   currentSiteId = site.id;
-  await page.goto(destination, { waitUntil: "domcontentloaded", timeout: 60000 });
-  return { url: page.url(), title: await page.title(), sessionRestored: Boolean(saved) };
+  observePage(page);
+  const opened = await navigatePage(page, destination);
+  return { ...opened, sessionRestored: Boolean(saved) };
 }
 function withBrowser(fn) {
   return async (req, res) => {
@@ -273,13 +350,13 @@ app.post("/api/browser/navigate", withBrowser(async (req, res) => {
   const site = await getSite(currentSiteId);
   const url = assertSafeUrl(String(req.body?.url || ""));
   if (!hostAllowed(url.toString(), site)) throw new Error("النطاق غير موجود في قائمة النطاقات المسموح بها لهذا الموقع.");
-  await page.goto(url.toString(), { waitUntil: "domcontentloaded", timeout: 60000 });
-  await persistCurrentSession();
-  res.json({ ok: true, url: page.url(), title: await page.title() });
+  const opened = await navigatePage(page, url.toString());
+  await persistCurrentSession().catch(() => {});
+  res.json({ ok: true, ...opened });
 }));
 app.get("/api/browser/snapshot", withBrowser(async (_req, res) => {
   browserRequired();
-  const text = await page.locator("body").innerText({ timeout: 10000 }).catch(() => "");
+  const text = await page.locator("body").innerText({ timeout: 4000 }).catch(() => "");
   const controls = await page.locator("input,textarea,button,select,[role=button],a,video,canvas").evaluateAll(nodes =>
     nodes.slice(0, 180).map((el, index) => {
       const id = el.id;
@@ -296,7 +373,22 @@ app.get("/api/browser/snapshot", withBrowser(async (_req, res) => {
         placeholder, name, disabled: Boolean(el.disabled), selector };
     })
   );
-  res.json({ url: page.url(), title: await page.title(), text: text.slice(0, 12000), controls });
+  const frames = page.frames().slice(0, 40).map(frame => ({
+    url: safeDiagnosticUrl(frame.url()),
+    name: String(frame.name() || "").slice(0, 80),
+    mainFrame: frame === page.mainFrame()
+  }));
+  const verification = findVerificationHints(page.frames().map(frame => frame.url()), text);
+  res.json({
+    url: page.url(),
+    title: await page.title().catch(() => ""),
+    text: text.slice(0, 12000),
+    controls,
+    frames,
+    verification,
+    navigation: pageDiagnostics.navigation,
+    issues: pageDiagnostics.issues.slice(-25)
+  });
 }));
 app.get("/api/browser/screenshot", withBrowser(async (_req, res) => {
   browserRequired();
