@@ -114,17 +114,27 @@ async function ensureBrowser() {
 async function persistCurrentSession() {
   if (!context || !page || !currentSiteId) return false;
   let storageState;
-  try { storageState = await context.storageState({ indexedDB: true }); }
-  catch { storageState = await context.storageState(); }
-  const sessionStorage = await page.evaluate(() => {
-    const values = {};
-    for (let i = 0; i < window.sessionStorage.length; i++) {
-      const key = window.sessionStorage.key(i);
-      values[key] = window.sessionStorage.getItem(key);
+  try { storageState = await context.storageState({ indexedDB: true, opfs: true }); }
+  catch {
+    try { storageState = await context.storageState({ indexedDB: true }); }
+    catch { storageState = await context.storageState(); }
+  }
+  const sessionStorageByOrigin = {};
+  for (const currentPage of context.pages()) {
+    if (currentPage.isClosed()) continue;
+    const snapshot = await currentPage.evaluate(() => {
+      const values = {};
+      for (let i = 0; i < window.sessionStorage.length; i++) {
+        const key = window.sessionStorage.key(i);
+        values[key] = window.sessionStorage.getItem(key);
+      }
+      return { origin: location.origin, values };
+    }).catch(() => null);
+    if (snapshot?.origin && Object.keys(snapshot.values || {}).length) {
+      sessionStorageByOrigin[snapshot.origin] = snapshot.values;
     }
-    return { origin: location.origin, values };
-  }).catch(() => null);
-  await saveSession(currentSiteId, { storageState, sessionStorage, savedAt: new Date().toISOString() });
+  }
+  await saveSession(currentSiteId, { storageState, sessionStorageByOrigin, savedAt: new Date().toISOString() });
   return true;
 }
 async function openSite(site, targetUrl = null) {
@@ -141,14 +151,17 @@ async function openSite(site, targetUrl = null) {
     acceptDownloads: true,
     viewport: VIEWPORT
   });
-  if (saved?.sessionStorage?.origin && saved.sessionStorage?.values) {
-    await context.addInitScript(({ origin, values }) => {
-      if (location.origin === origin) {
+  const sessionEntries = saved?.sessionStorageByOrigin ||
+    (saved?.sessionStorage?.origin ? { [saved.sessionStorage.origin]: saved.sessionStorage.values || {} } : null);
+  if (sessionEntries && Object.keys(sessionEntries).length) {
+    await context.addInitScript(entries => {
+      const values = entries[location.origin];
+      if (values) {
         for (const [key, value] of Object.entries(values)) {
           try { sessionStorage.setItem(key, value); } catch {}
         }
       }
-    }, saved.sessionStorage);
+    }, sessionEntries);
   }
   page = await context.newPage();
   page.setDefaultTimeout(20000);
