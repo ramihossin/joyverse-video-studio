@@ -118,7 +118,7 @@ export async function getSession(siteId) {
   } else record = localSessions[siteId];
   return record ? decrypt(record) : null;
 }
-export async function saveSession(siteId, session) {
+export async function deleteSession(siteId) {\n  if (pool) await pool.query("DELETE FROM joyverse_browser_sessions WHERE site_id=$1", [siteId]);\n  else { delete localSessions[siteId]; await writeJsonAtomic(path.join(DATA_DIR, "sessions.json"), localSessions); }\n}\nexport async function saveSession(siteId, session) {
   const record = encrypt(session);
   if (pool) await pool.query(
     "INSERT INTO joyverse_browser_sessions(site_id,iv,auth_tag,ciphertext,updated_at) VALUES($1,$2,$3,$4,NOW()) ON CONFLICT(site_id) DO UPDATE SET iv=EXCLUDED.iv,auth_tag=EXCLUDED.auth_tag,ciphertext=EXCLUDED.ciphertext,updated_at=NOW()",
