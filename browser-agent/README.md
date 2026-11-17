@@ -4,12 +4,13 @@ A private, mobile-friendly Playwright browser agent for operating selected video
 
 ## Preloaded site profiles
 
-On first startup, the dashboard seeds two profiles automatically:
+On first startup, the dashboard seeds three profiles automatically:
 
 - **LoreMotion** — video generation at `https://loremotion.com/generate/`, with its sign-in page prefilled. The generation selectors are intentionally left blank until the user inspects the live page and configures the actual controls.
+- **Pavo AI** — video generation at `https://app.pavo-ai.work/`, with its sign-in page prefilled. This profile was added after the user confirmed parent/legal-guardian consent. The generation selectors remain blank until configured against the live interface.
 - **There's An AI For That** — discovery-only directory profile. It is not a video generator; one-click generation is disabled for this profile. Open a listing's official provider site and add that provider as a separate video profile.
 
-Other providers, including Pavo, should be added only after checking the provider's current eligibility terms and any required parent/guardian consent. Do not store passwords in site profiles.
+Pavo's terms require users aged 13–17 to have parent/legal-guardian consent, and the parent or guardian must agree to the terms on the user's behalf. The user is responsible for ensuring that condition is met before using Pavo. Do not store passwords in site profiles.
 
 ## User workflow
 
