@@ -7,7 +7,7 @@ import os from "node:os";
 import { fileURLToPath } from "node:url";
 import {
   initStore, listSites, getSite, saveSite, deleteSite,
-  getSession, saveSession, getDataDir
+  getSession, saveSession, deleteSession
 } from "./store.js";
 
 const app = express();
@@ -238,12 +238,20 @@ app.get("/api/browser/snapshot", withBrowser(async (_req, res) => {
   browserRequired();
   const text = await page.locator("body").innerText({ timeout: 10000 }).catch(() => "");
   const controls = await page.locator("input,textarea,button,select,[role=button],a").evaluateAll(nodes =>
-    nodes.slice(0, 180).map((el, index) => ({
-      index, tag: el.tagName.toLowerCase(), type: el.getAttribute("type"),
-      text: (el.innerText || el.getAttribute("aria-label") || el.getAttribute("placeholder") || "").trim().replace(/\\s+/g, " ").slice(0, 150),
-      placeholder: el.getAttribute("placeholder"), name: el.getAttribute("name"),
-      disabled: Boolean(el.disabled), selector: selectorFor(el)
-    }))
+    nodes.slice(0, 180).map((el, index) => {
+      const id = el.id;
+      const name = el.getAttribute("name");
+      const placeholder = el.getAttribute("placeholder");
+      const label = (el.innerText || el.getAttribute("aria-label") || placeholder || "").trim().replace(/\s+/g, " ").slice(0, 150);
+      let selector = el.tagName.toLowerCase();
+      if (id) selector = "#" + id.replace(/[^a-zA-Z0-9_-]/g, "\\$&");
+      else if (name) selector += '[name="' + name.replace(/"/g, '\\"') + '"]';
+      else if (placeholder && ["INPUT", "TEXTAREA"].includes(el.tagName)) selector += '[placeholder="' + placeholder.replace(/"/g, '\\"') + '"]';
+      else if (el.type === "file") selector = 'input[type="file"]';
+      else if (label && ["BUTTON", "A"].includes(el.tagName)) selector += ':has-text("' + label.replace(/"/g, '\\"') + '")';
+      return { index, tag: el.tagName.toLowerCase(), type: el.getAttribute("type"), text: label,
+        placeholder, name, disabled: Boolean(el.disabled), selector };
+    })
   );
   res.json({ url: page.url(), title: await page.title(), text: text.slice(0, 12000), controls });
 }));
@@ -300,7 +308,6 @@ app.delete("/api/sites/:id/session", async (req, res) => {
     if (currentSiteId === req.params.id && busy) return res.status(409).json({ error: "Close the active browser before clearing this session." });
     const site = await getSite(req.params.id);
     if (!site) return res.status(404).json({ error: "Site not found." });
-    const { deleteSession } = await import("./store.js");
     await deleteSession(req.params.id);
     res.json({ ok: true });
   } catch (error) { res.status(400).json({ error: String(error?.message || error) }); }
