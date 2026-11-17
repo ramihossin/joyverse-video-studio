@@ -13,6 +13,7 @@
   "dependencies": {
     "express": "^4.21.2",
     "playwright": "1.64.1",
-    "pg": "^8.13.1"
+    "pg": "^8.13.1",
+    "dotenv": "^16.4.7"
   }
 }
