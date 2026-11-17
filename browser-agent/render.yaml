@@ -1,0 +1,27 @@
+services:
+  - type: web
+    name: joyverse-video-browser-agent
+    runtime: docker
+    plan: free
+    region: frankfurt
+    branch: feature/free-browser-video-agent
+    dockerContext: ./browser-agent
+    dockerfilePath: ./browser-agent/Dockerfile
+    healthCheckPath: /health
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: joyverse-video-studio-db
+          property: connectionString
+      - key: BROWSER_AGENT_TOKEN
+        sync: false
+      - key: SESSION_ENCRYPTION_KEY
+        sync: false
+
+databases:
+  - name: joyverse-video-studio-db
+    databaseName: joyverse_video_studio_db
+    user: joyverse_video_studio_db_user
+    plan: free
+    region: frankfurt
+    postgresMajorVersion: "18"
