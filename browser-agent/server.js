@@ -42,17 +42,33 @@ function auth(req, res, next) {
   if (!authorized(req)) return res.status(401).json({ error: "Unauthorized" });
   next();
 }
+function isPrivateHost(rawHost) {
+  const host = String(rawHost || "").toLowerCase().replace(/^\\[|\\]$/g, "");
+  if (!host || host === "localhost" || host.endsWith(".localhost") || host.endsWith(".local") ||
+      host.endsWith(".internal") || host === "metadata.google.internal") return true;
+  if (host.includes(":")) {
+    return host === "::" || host === "::1" || host.startsWith("fc") || host.startsWith("fd") ||
+      /^fe[89ab]/.test(host) || host.startsWith("ff") || host.startsWith("2001:db8:") ||
+      /^::ffff:(?:0:)?(?:0\\.|10\\.|127\\.|169\\.254\\.|192\\.168\\.|172\\.(?:1[6-9]|2[0-9]|3[01])\\.)/.test(host);
+  }
+  const octets = host.split(".");
+  if (octets.length === 4 && octets.every(part => /^\\d{1,3}$/.test(part) && Number(part) <= 255)) {
+    const [x, y] = octets.map(Number);
+    return x === 0 || x === 10 || x === 127 || x >= 224 ||
+      (x === 100 && y >= 64 && y <= 127) ||
+      (x === 169 && y === 254) ||
+      (x === 172 && y >= 16 && y <= 31) ||
+      (x === 192 && y === 168) ||
+      (x === 192 && y === 0) ||
+      (x === 198 && (y === 18 || y === 19));
+  }
+  return false;
+}
 function assertSafeUrl(value) {
   let url;
   try { url = new URL(value); } catch { throw new Error("أدخل رابطاً صحيحاً يبدأ بـ https:// أو http://"); }
   if (!["http:", "https:"].includes(url.protocol)) throw new Error("Only HTTP and HTTPS destinations are allowed.");
-  const host = url.hostname.toLowerCase();
-  if (host === "localhost" || host.endsWith(".localhost") || host === "metadata.google.internal" ||
-      host === "169.254.169.254" || host === "0.0.0.0" || host === "::1" ||
-      /^127\\./.test(host) || /^10\\./.test(host) || /^192\\.168\\./.test(host) ||
-      /^172\\.(1[6-9]|2\\d|3[01])\\./.test(host)) {
-    throw new Error("Local and private network destinations are blocked.");
-  }
+  if (isPrivateHost(url.hostname)) throw new Error("Local and private network destinations are blocked.");
   return url;
 }
 function hostAllowed(urlValue, site) {
@@ -150,6 +166,16 @@ async function openSite(site, targetUrl = null) {
     ...(saved?.storageState ? { storageState: saved.storageState } : {}),
     acceptDownloads: true,
     viewport: VIEWPORT
+  });
+  await context.route("**/*", async route => {
+    try {
+      const requested = new URL(route.request().url());
+      if (["blob:", "data:", "about:"].includes(requested.protocol)) return route.continue();
+      if (!["http:", "https:", "ws:", "wss:"].includes(requested.protocol) || isPrivateHost(requested.hostname)) {
+        return route.abort("blockedbyclient");
+      }
+      return route.continue();
+    } catch { return route.abort("blockedbyclient"); }
   });
   const sessionEntries = saved?.sessionStorageByOrigin ||
     (saved?.sessionStorage?.origin ? { [saved.sessionStorage.origin]: saved.sessionStorage.values || {} } : null);
