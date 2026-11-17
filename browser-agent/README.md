@@ -2,6 +2,15 @@
 
 A private, mobile-friendly Playwright browser agent for operating selected video-generation websites. It supports user-controlled login, encrypted per-site session persistence, configurable generation selectors, reference-image upload, screenshots, and one-click generation/download workflows.
 
+## Preloaded site profiles
+
+On first startup, the dashboard seeds two profiles automatically:
+
+- **LoreMotion** — video generation at `https://loremotion.com/generate/`, with its sign-in page prefilled. The generation selectors are intentionally left blank until the user inspects the live page and configures the actual controls.
+- **There's An AI For That** — discovery-only directory profile. It is not a video generator; one-click generation is disabled for this profile. Open a listing's official provider site and add that provider as a separate video profile.
+
+Other providers, including Pavo, should be added only after checking the provider's current eligibility terms and any required parent/guardian consent. Do not store passwords in site profiles.
+
 ## User workflow
 
 1. Deploy the service privately and open its dashboard at `/` on your Android phone.
