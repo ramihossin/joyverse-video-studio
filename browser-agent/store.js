@@ -50,6 +50,18 @@ const DEFAULT_SITES = [
     waitSeconds: 300,
     createdAt: "2026-11-17T00:00:00.000Z",
     updatedAt: "2026-11-17T00:00:00.000Z"
+  },
+  {
+    id: "pavo-ai-video",
+    name: "Pavo AI — توليد الفيديو",
+    baseUrl: "https://app.pavo-ai.work/",
+    loginUrl: "https://app.pavo-ai.work/login",
+    allowedHosts: ["app.pavo-ai.work", "pavo-ai.work", "www.pavo-ai.work"],
+    purpose: "video",
+    selectors: { promptSelector: "", uploadSelector: "", generateSelector: "", readySelector: "", downloadSelector: "" },
+    waitSeconds: 360,
+    createdAt: "2026-11-17T00:00:00.000Z",
+    updatedAt: "2026-11-17T00:00:00.000Z"
   }
 ];
 
