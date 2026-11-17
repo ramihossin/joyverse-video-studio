@@ -14,6 +14,15 @@ import {
 const app = express();
 app.disable("x-powered-by");
 app.use(express.json({ limit: "30mb" }));
+app.use((_req, res, next) => {
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("Referrer-Policy", "no-referrer");
+  res.setHeader("X-Frame-Options", "DENY");
+  res.setHeader("Content-Security-Policy",
+    "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; font-src 'self' data:; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'");
+  next();
+});
+
 
 const PORT = Number(process.env.PORT || 8080);
 const TOKEN = process.env.BROWSER_AGENT_TOKEN || "";
@@ -438,7 +447,7 @@ app.post("/api/browser/close", async (_req, res) => {
   } catch (error) { res.status(400).json({ error: String(error?.message || error) }); }
 });
 
-app.use(express.static(UI_DIR, { index: "index.html", maxAge: "1h" }));
+app.use(express.static(UI_DIR, { index: "index.html", maxAge: 0, setHeaders: res => res.setHeader("Cache-Control", "no-store") }));
 app.get("/", (_req, res) => res.sendFile(path.join(UI_DIR, "index.html")));
 
 await initStore();
