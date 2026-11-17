@@ -27,3 +27,5 @@ jobs:
         run: node --check server.js && node --check store.js
       - name: Build browser container
         run: docker build -t joyverse-browser-agent ./browser-agent
+      - name: Launch Chromium with its sandbox enabled
+        run: docker run --rm --init --ipc=host --user pwuser --security-opt seccomp=./browser-agent/seccomp_profile.json joyverse-browser-agent node smoke-test.js
