@@ -152,6 +152,12 @@ async function openSite(site, targetUrl = null) {
   }
   page = await context.newPage();
   page.setDefaultTimeout(20000);
+  const mainPage = page;
+  page.on("popup", popup => {
+    page = popup;
+    popup.setDefaultTimeout(20000);
+    popup.once("close", () => { if (mainPage && !mainPage.isClosed()) page = mainPage; });
+  });
   currentSiteId = site.id;
   await page.goto(destination, { waitUntil: "domcontentloaded", timeout: 60000 });
   return { url: page.url(), title: await page.title(), sessionRestored: Boolean(saved) };
@@ -237,7 +243,7 @@ app.post("/api/browser/navigate", withBrowser(async (req, res) => {
 app.get("/api/browser/snapshot", withBrowser(async (_req, res) => {
   browserRequired();
   const text = await page.locator("body").innerText({ timeout: 10000 }).catch(() => "");
-  const controls = await page.locator("input,textarea,button,select,[role=button],a").evaluateAll(nodes =>
+  const controls = await page.locator("input,textarea,button,select,[role=button],a,video,canvas").evaluateAll(nodes =>
     nodes.slice(0, 180).map((el, index) => {
       const id = el.id;
       const name = el.getAttribute("name");
