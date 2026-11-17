@@ -149,7 +149,9 @@ function fillSite(site) {
   $("baseUrl").value = site?.baseUrl || "";
   $("loginUrl").value = site?.loginUrl || "";
   $("allowedHosts").value = (site?.allowedHosts || []).filter(h => h !== new URL(site.baseUrl).hostname).join(", ");
-  for (const [key,value] of Object.entries(site?.selectors || {})) $(key).value = value || "";
+  for (const key of ["promptSelector","uploadSelector","generateSelector","readySelector","downloadSelector"]) {
+    $(key).value = site?.selectors?.[key] || "";
+  }
   $("waitSeconds").value = site?.waitSeconds || 300;
   setStatus("sessionStatus", site ? (site.hasSavedSession ? "توجد جلسة دخول محفوظة ومشفّرة لهذا الموقع." : "لا توجد جلسة محفوظة؛ سجّل الدخول ثم احفظها.") : "أضف موقعاً أو اختر موقعاً محفوظاً.");
 }
@@ -246,7 +248,7 @@ $("inspect").onclick = async () => {
   try {
     const d = await api("/api/browser/snapshot");
     $("controlsList").innerHTML = "";
-    const candidates = d.controls.filter(c => ["input","textarea","button","a"].includes(c.tag));
+    const candidates = d.controls.filter(c => ["input","textarea","button","a","video"].includes(c.tag));
     for (const c of candidates) {
       const row = document.createElement("div"); row.className="control";
       const code = document.createElement("code"); code.textContent = c.selector + (c.text ? " — " + c.text : "");
@@ -255,6 +257,7 @@ $("inspect").onclick = async () => {
       if (c.tag==="input" || c.tag==="textarea") mk("حقل الوصف","promptSelector");
       if (c.type==="file") mk("رفع الصورة","uploadSelector");
       if (c.tag==="button" || c.tag==="a") { mk("زر التوليد","generateSelector"); mk("زر التنزيل","downloadSelector"); }
+      if (c.tag==="video") mk("عنصر جاهزية النتيجة","readySelector");
       row.append(code,actions); $("controlsList").appendChild(row);
     }
     setStatus("sessionStatus","عنوان الصفحة: "+d.title+"\nتم اكتشاف "+candidates.length+" عنصراً قابلاً للاستخدام. اختر المحدد المناسب لكل وظيفة.","good");
