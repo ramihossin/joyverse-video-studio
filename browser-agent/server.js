@@ -108,6 +108,8 @@ function validateSiteInput(body, existing = null) {
       throw new Error("رابط تسجيل الدخول يجب أن يكون ضمن نطاق الموقع أو النطاقات الإضافية المسموح بها.");
     }
   }
+  const purpose = String(body.purpose || existing?.purpose || "video");
+  if (!["video", "directory"].includes(purpose)) throw new Error("نوع الموقع غير صالح.");
   const selectors = { ...(existing?.selectors || {}), ...(body.selectors || {}) };
   for (const [key, value] of Object.entries(selectors)) {
     if (typeof value !== "string" || value.length > 350) throw new Error("Each CSS selector must be a string up to 350 characters.");
@@ -115,7 +117,7 @@ function validateSiteInput(body, existing = null) {
   return {
     id: existing?.id || randomUUID(),
     name, baseUrl, loginUrl: loginUrl ? String(loginUrl) : "",
-    allowedHosts,
+    allowedHosts, purpose,
     selectors: {
       promptSelector: selectors.promptSelector || "",
       uploadSelector: selectors.uploadSelector || "",
@@ -365,6 +367,7 @@ app.post("/api/generate", async (req, res) => {
   if (!siteId || !prompt || prompt.length > 12000) return res.status(400).json({ error: "اختر موقعاً وأدخل وصف الفيديو." });
   const site = await getSite(siteId).catch(() => null);
   if (!site) return res.status(404).json({ error: "الموقع غير موجود." });
+  if (site.purpose === "directory") return res.status(400).json({ error: "هذا ملف دليل لاكتشاف الأدوات، وليس موقع توليد فيديو. افتح الأداة التي تختارها وأضفها كملف مستقل." });
   const { promptSelector, generateSelector, readySelector, downloadSelector, uploadSelector } = site.selectors;
   if (!promptSelector || !generateSelector || !readySelector || !downloadSelector) {
     return res.status(400).json({ error: "للتوليد بضغطة واحدة، اضبط محدد حقل الوصف وزر التوليد وعنصر جاهزية النتيجة وزر التنزيل أولاً." });
