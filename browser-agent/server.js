@@ -75,7 +75,7 @@ function validateSiteInput(body, existing = null) {
       throw new Error("أحد أسماء النطاقات الإضافية غير صالح.");
     }
   }
-  const loginUrl = body.loginUrl || existing?.loginUrl || "";
+  const loginUrl = Object.prototype.hasOwnProperty.call(body, "loginUrl") ? String(body.loginUrl || "").trim() : (existing?.loginUrl || "");
   if (loginUrl) {
     const u = assertSafeUrl(String(loginUrl));
     if (!allowedHosts.includes(u.hostname.toLowerCase()) && !u.hostname.toLowerCase().endsWith("." + baseHost)) {
@@ -97,7 +97,7 @@ function validateSiteInput(body, existing = null) {
       readySelector: selectors.readySelector || "",
       downloadSelector: selectors.downloadSelector || ""
     },
-    waitSeconds: Math.min(600, Math.max(10, Number(body.waitSeconds ?? existing?.waitSeconds ?? 300))),
+    waitSeconds: Number.isFinite(Number(body.waitSeconds ?? existing?.waitSeconds ?? 300)) ? Math.min(600, Math.max(10, Number(body.waitSeconds ?? existing?.waitSeconds ?? 300))) : 300,
     createdAt: existing?.createdAt || new Date().toISOString(),
     updatedAt: new Date().toISOString()
   };
@@ -300,6 +300,11 @@ app.delete("/api/sites/:id/session", async (req, res) => {
     if (currentSiteId === req.params.id && busy) return res.status(409).json({ error: "Close the active browser before clearing this session." });
     const site = await getSite(req.params.id);
     if (!site) return res.status(404).json({ error: "Site not found." });
+    if (currentSiteId === req.params.id) {
+      await context?.close().catch(() => {});
+      context = page = null;
+      currentSiteId = null;
+    }
     await deleteSession(req.params.id);
     res.json({ ok: true });
   } catch (error) { res.status(400).json({ error: String(error?.message || error) }); }
