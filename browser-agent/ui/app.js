@@ -28,6 +28,7 @@ function selectorData() {
 function fillSite(site) {
   activeSite = site;
   $("siteName").value = site?.name || "";
+  $("sitePurpose").value = site?.purpose || "video";
   $("baseUrl").value = site?.baseUrl || "";
   $("loginUrl").value = site?.loginUrl || "";
   $("allowedHosts").value = (site?.allowedHosts || []).filter(h => h !== new URL(site.baseUrl).hostname).join(", ");
@@ -35,7 +36,12 @@ function fillSite(site) {
     $(key).value = site?.selectors?.[key] || "";
   }
   $("waitSeconds").value = site?.waitSeconds || 300;
-  setStatus("sessionStatus", site ? (site.hasSavedSession ? "توجد جلسة دخول محفوظة ومشفّرة لهذا الموقع." : "لا توجد جلسة محفوظة؛ سجّل الدخول ثم احفظها.") : "أضف موقعاً أو اختر موقعاً محفوظاً.");
+  const isDirectory = site?.purpose === "directory";
+  $("generate").disabled = isDirectory;
+  $("generate").title = isDirectory ? "هذا الموقع دليل لاكتشاف الأدوات وليس مولداً للفيديو." : "";
+  setStatus("sessionStatus", site ? (isDirectory
+    ? "هذا ملف دليل لاكتشاف أدوات الذكاء الاصطناعي؛ لا تُرسل إليه مهام توليد الفيديو."
+    : (site.hasSavedSession ? "توجد جلسة دخول محفوظة ومشفّرة لهذا الموقع." : "لا توجد جلسة محفوظة؛ سجّل الدخول ثم احفظها.")) : "أضف موقعاً أو اختر موقعاً محفوظاً.");
 }
 async function loadSites() {
   const data = await api("/api/sites");
@@ -50,7 +56,7 @@ async function loadSites() {
 function escapeHtml(s) { return String(s).replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c])); }
 function sitePayload() {
   return {
-    name: $("siteName").value.trim(), baseUrl: $("baseUrl").value.trim(),
+    name: $("siteName").value.trim(), purpose: $("sitePurpose").value, baseUrl: $("baseUrl").value.trim(),
     loginUrl: $("loginUrl").value.trim(), allowedHosts: $("allowedHosts").value.split(",").map(x=>x.trim()).filter(Boolean),
     selectors: selectorData(), waitSeconds: Number($("waitSeconds").value || 300)
   };
@@ -192,6 +198,7 @@ async function pollJob(id) {
 $("generate").onclick = async () => {
   try {
     if (!activeSite) throw new Error("اختر موقعاً أولاً.");
+    if (activeSite.purpose === "directory") throw new Error("هذا الموقع دليل لاكتشاف الأدوات، وليس مولداً للفيديو.");
     const prompt=$("prompt").value.trim(); if(!prompt) throw new Error("اكتب وصف الفيديو.");
     const file=$("reference").files[0];
     const imageBase64=await fileAsBase64(file);
