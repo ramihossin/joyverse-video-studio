@@ -127,6 +127,19 @@ app.post("/api/download", exclusive(async (_req, res) => {
   await download.saveAs(target);
   res.json({ ok: true, filename, path: target, failure: await download.failure() });
 }));
+app.post("/api/click-download", exclusive(async (req, res) => {
+  const { selector } = req.body || {};
+  if (!selector) throw new Error("Provide the download button selector.");
+  await fs.mkdir(DOWNLOAD_DIR, { recursive: true });
+  const [download] = await Promise.all([
+    page.waitForEvent("download", { timeout: 60000 }),
+    page.locator(String(selector)).first().click()
+  ]);
+  const filename = path.basename(download.suggestedFilename() || ("video-" + Date.now() + ".mp4"));
+  const target = path.join(DOWNLOAD_DIR, randomUUID() + "-" + filename);
+  await download.saveAs(target);
+  res.json({ ok: true, filename, path: target });
+}));
 app.post("/api/close", async (_req, res) => {
   if (busy) return res.status(409).json({ error: "Browser is busy." });
   if (browser) await browser.close();
