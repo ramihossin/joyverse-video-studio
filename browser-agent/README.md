@@ -8,7 +8,7 @@ A private, mobile-friendly Playwright browser agent for operating selected video
 2. Enter the private `BROWSER_AGENT_TOKEN` in the dashboard.
 3. Add a site profile with its base URL and, when needed, the sign-in URL and additional identity-provider hostnames.
 4. Open that site's remote browser. Complete sign-in yourself, including any email code, authenticator code, or CAPTCHA presented by the provider.
-5. Press **Save encrypted login session**. The agent stores an encrypted Playwright storage snapshot, including cookies, local storage, IndexedDB where supported, and the current origin's sessionStorage.
+5. Press **Save encrypted login session**. The agent stores an encrypted Playwright storage snapshot, including cookies, local storage, IndexedDB and OPFS where supported, plus per-origin sessionStorage across open tabs.
 6. Inspect the page and set the CSS selectors for the prompt field, optional image upload, Generate button, ready/result element, and Download button. Save the profile.
 7. For later runs, select the site, enter a prompt, optionally upload a reference image, and press **Generate video and download**.
 
@@ -76,7 +76,7 @@ A generation profile must specify selectors for the prompt field, Generate butto
 - Session snapshots contain authentication cookies and tokens; treat them as sensitive credentials. They are encrypted at rest, but users with access to both the database and encryption key can decrypt them.
 - The remote browser is controlled only through the authenticated dashboard/API. Use a dedicated account on generation sites where possible.
 - The browser can visit only public HTTP(S) destinations; obvious private-network targets are rejected. This validation is a safeguard, not a substitute for network-level egress controls.
-- CAPTCHA, MFA, email verification, account checks, ads, queues, paywalls, and provider quotas remain under the site's control. The user completes human verification in the visible remote-browser preview; the agent does not bypass those controls.
+- CAPTCHA, MFA, email verification, age requirements, account checks, ads, queues, paywalls, and provider quotas remain under the site's control. The user completes human verification in the visible remote-browser preview; the agent does not bypass those controls.
 - Sites may expire or revoke sessions, change their UI, prohibit automation, or require a fresh login. A saved session is best-effort and does not guarantee permanent access.
 - Site selectors must be configured for the actual UI. If a provider changes its website, update the selectors before using one-click generation.
 - Generation is free only when the selected provider itself offers a free path. This project does not supply GPU compute or bypass limits.
