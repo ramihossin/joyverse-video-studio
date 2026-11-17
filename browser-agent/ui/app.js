@@ -100,10 +100,21 @@ async function refreshScreen() {
 $("openSite").onclick = async () => {
   try {
     if (!activeSite) throw new Error("اختر أو احفظ موقعاً أولاً.");
+    setStatus("sessionStatus", "جارٍ فتح الموقع واستقبال محتواه...", "");
     const result = await api("/api/sites/" + activeSite.id + "/open", { method:"POST", body:"{}" });
-    setStatus("sessionStatus", "تم فتح " + result.title + "\n" + result.url + "\n" + (result.sessionRestored ? "استعيدت الجلسة المحفوظة." : "سجّل الدخول بنفسك ثم احفظ الجلسة."), "good");
+    const nav = result.navigation || {};
+    const loadMessage = nav.domContentLoaded
+      ? "اكتمل تحميل بنية الصفحة."
+      : "عُرضت الصفحة جزئياً؛ قد تظل بعض العناصر قيد التحميل.";
+    setStatus("sessionStatus", "تم فتح " + (result.title || "الموقع") + "\n" + result.url + "\n" + loadMessage + "\n" + (result.sessionRestored ? "استعيدت الجلسة المحفوظة." : "أكمل تسجيل الدخول بنفسك عند الحاجة ثم احفظ الجلسة."), nav.domContentLoaded ? "good" : "");
     await refreshScreen();
-  } catch(e) { setStatus("sessionStatus",e.message,"bad"); }
+    setTimeout(() => refreshScreen().catch(() => {}), 3500);
+  } catch(e) {
+    // A navigation can time out after the remote page has already appeared.
+    // Refresh the preview before reporting the error so a partial page is not hidden.
+    await refreshScreen().catch(() => {});
+    setStatus("sessionStatus", e.message, "bad");
+  }
 };
 $("refreshScreen").onclick = () => refreshScreen().catch(e => setStatus("sessionStatus",e.message,"bad"));
 $("saveSession").onclick = async () => {
@@ -159,7 +170,22 @@ $("inspect").onclick = async () => {
       if (c.tag==="video") mk("عنصر جاهزية النتيجة","readySelector");
       row.append(code,actions); $("controlsList").appendChild(row);
     }
-    setStatus("sessionStatus","عنوان الصفحة: "+d.title+"\nتم اكتشاف "+candidates.length+" عنصراً قابلاً للاستخدام. اختر المحدد المناسب لكل وظيفة.","good");
+    const report = [
+      "عنوان الصفحة: " + (d.title || "لم يظهر عنوان بعد"),
+      "عناصر قابلة للاستخدام: " + candidates.length,
+      "إطارات الصفحة: " + (d.frames?.length || 0),
+      "حالة التحميل: " + (d.navigation?.domContentLoaded ? "اكتمل" : "جزئي أو ما زال جارياً")
+    ];
+    if (d.verification?.detected) report.push("توجد مؤشرات على خطوة تحقق أمنية. أكملها يدوياً داخل معاينة الصفحة؛ لا يمكن للوكيل تجاوزها.");
+    if (d.issues?.length) {
+      report.push("ملاحظات أخطاء التحميل الأخيرة: " + d.issues.length);
+      for (const issue of d.issues.slice(-6)) {
+        report.push("• " + issue.type + (issue.status ? " " + issue.status : "") + (issue.url ? " — " + issue.url : "") + (issue.message ? " — " + issue.message : ""));
+      }
+    } else {
+      report.push("لم تُسجل أخطاء شبكة أو JavaScript حتى الآن.");
+    }
+    setStatus("sessionStatus", report.join("\n"), d.verification?.detected || d.issues?.length ? "" : "good");
   } catch(e) { setStatus("sessionStatus",e.message,"bad"); }
 };
 $("saveSelectors").onclick = async () => {
