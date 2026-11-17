@@ -26,6 +26,33 @@ function parseEncryptionKey(value) {
   if (decoded.length === 32) return decoded;
   throw new Error("SESSION_ENCRYPTION_KEY must be 32 bytes encoded as 64 hex characters or base64.");
 }
+const DEFAULT_SITES = [
+  {
+    id: "loremotion-free-video",
+    name: "LoreMotion — توليد الفيديو",
+    baseUrl: "https://loremotion.com/generate/",
+    loginUrl: "https://loremotion.com/auth",
+    allowedHosts: ["loremotion.com", "www.loremotion.com"],
+    purpose: "video",
+    selectors: { promptSelector: "", uploadSelector: "", generateSelector: "", readySelector: "", downloadSelector: "" },
+    waitSeconds: 300,
+    createdAt: "2026-11-17T00:00:00.000Z",
+    updatedAt: "2026-11-17T00:00:00.000Z"
+  },
+  {
+    id: "taaft-discovery",
+    name: "There's An AI For That — دليل اكتشاف الأدوات",
+    baseUrl: "https://theresanaiforthat.com/",
+    loginUrl: "",
+    allowedHosts: ["theresanaiforthat.com", "www.theresanaiforthat.com"],
+    purpose: "directory",
+    selectors: { promptSelector: "", uploadSelector: "", generateSelector: "", readySelector: "", downloadSelector: "" },
+    waitSeconds: 300,
+    createdAt: "2026-11-17T00:00:00.000Z",
+    updatedAt: "2026-11-17T00:00:00.000Z"
+  }
+];
+
 export async function initStore() {
   await fs.mkdir(DATA_DIR, { recursive: true, mode: 0o700 });
   if (process.env.SESSION_ENCRYPTION_KEY) key = parseEncryptionKey(process.env.SESSION_ENCRYPTION_KEY);
@@ -55,9 +82,20 @@ export async function initStore() {
         updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       );
     `);
+    for (const site of DEFAULT_SITES) {
+      await pool.query(
+        "INSERT INTO joyverse_browser_sites(site_id,config,updated_at) VALUES($1,$2,NOW()) ON CONFLICT(site_id) DO NOTHING",
+        [site.id, site]
+      );
+    }
   } else {
     localSites = await readJson(SITES_FILE, {});
     localSessions = await readJson(path.join(DATA_DIR, "sessions.json"), {});
+    let seeded = false;
+    for (const site of DEFAULT_SITES) {
+      if (!localSites[site.id]) { localSites[site.id] = site; seeded = true; }
+    }
+    if (seeded) await writeJsonAtomic(SITES_FILE, localSites);
   }
 }
 function encrypt(value) {
