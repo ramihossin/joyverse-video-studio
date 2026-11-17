@@ -40,7 +40,7 @@ All `/api/*` routes require `Authorization: Bearer <BROWSER_AGENT_TOKEN>`.
 - `POST /api/click` — `{"selector":"button[type=submit]"}` or `{"text":"Generate"}`
 - `POST /api/upload` — `{"selector":"input[type=file]","filename":"ref.png","contentBase64":"..."}`
 - `POST /api/screenshot` — returns a base64 JPEG
-- `POST /api/download` — saves the next normal browser download
+- `POST /api/click-download` — `{\"selector\":\"button.download\"}` clicks a site download button and saves its browser download\n- `POST /api/download` — saves the next normal browser download
 - `POST /api/close` — closes the browser session
 - `GET /health` — liveness check (no secret)
 
