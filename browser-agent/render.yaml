@@ -5,8 +5,8 @@ services:
     plan: free
     region: frankfurt
     branch: feature/free-browser-video-agent
-    dockerContext: ./browser-agent
-    dockerfilePath: ./browser-agent/Dockerfile
+    dockerContext: browser-agent
+    dockerfilePath: browser-agent/Dockerfile
     healthCheckPath: /health
     envVars:
       - key: DATABASE_URL
