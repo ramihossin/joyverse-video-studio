@@ -74,6 +74,8 @@ hr{border:0;border-top:1px solid #28384e;margin:14px 0}
   <h2>3. تسجيل الدخول وحفظ الجلسة</h2>
   <div class="actions">
     <button id="refreshScreen" class="secondary">تحديث الشاشة</button>
+    <button id="scrollUp" class="secondary">تمرير لأعلى</button>
+    <button id="scrollDown" class="secondary">تمرير لأسفل</button>
     <button id="saveSession" class="primary">حفظ جلسة الدخول المشفّرة</button>
     <button id="clearSession" class="danger">حذف جلسة الدخول المحفوظة</button>
     <button id="closeBrowser" class="secondary">إغلاق المتصفح</button>
@@ -248,8 +250,10 @@ $("screen").onclick = async event => {
     setTimeout(()=>refreshScreen().catch(()=>{}),700);
   } catch(e) { setStatus("sessionStatus",e.message,"bad"); }
 };
+$("scrollUp").onclick = () => api("/api/browser/scroll",{method:"POST",body:JSON.stringify({deltaY:-650})}).then(refreshScreen).catch(e=>setStatus("sessionStatus",e.message,"bad"));
+$("scrollDown").onclick = () => api("/api/browser/scroll",{method:"POST",body:JSON.stringify({deltaY:650})}).then(refreshScreen).catch(e=>setStatus("sessionStatus",e.message,"bad"));
 $("sendText").onclick = async () => {
-  try { const text=$("typing").value; await api("/api/browser/type",{method:"POST",body:JSON.stringify({text})}); $("typing").value=""; }
+  try { const text=$("typing").value; await api("/api/browser/type",{method:"POST",body:JSON.stringify({text})}); $("typing").value=""; setTimeout(()=>refreshScreen().catch(()=>{}),250); }
   catch(e) { setStatus("sessionStatus",e.message,"bad"); }
 };
 $("pressEnter").onclick = () => api("/api/browser/key",{method:"POST",body:JSON.stringify({key:"Enter"})}).then(refreshScreen).catch(e=>setStatus("sessionStatus",e.message,"bad"));
