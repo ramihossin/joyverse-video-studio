@@ -75,6 +75,7 @@ hr{border:0;border-top:1px solid #28384e;margin:14px 0}
   <div class="actions">
     <button id="refreshScreen" class="secondary">تحديث الشاشة</button>
     <button id="saveSession" class="primary">حفظ جلسة الدخول المشفّرة</button>
+    <button id="clearSession" class="danger">حذف جلسة الدخول المحفوظة</button>
     <button id="closeBrowser" class="secondary">إغلاق المتصفح</button>
   </div>
   <p class="small">افتح الموقع، وسجّل الدخول بنفسك من الشاشة أدناه. يمكنك التعامل مع التحقق البشري أو رمز المصادقة بنفسك؛ الوكيل لا يتجاوز CAPTCHA أو وسائل الحماية.</p>
@@ -223,6 +224,15 @@ $("saveSession").onclick = async () => {
     const d = await api("/api/browser/save-session",{method:"POST",body:"{}"});
     setStatus("sessionStatus","تم حفظ جلسة الموقع بصورة مشفّرة في مخزن الجلسات. "+d.savedAt,"good");
     await loadSites();
+  } catch(e) { setStatus("sessionStatus",e.message,"bad"); }
+};
+$("clearSession").onclick = async () => {
+  try {
+    if (!activeSite) throw new Error("اختر موقعاً أولاً.");
+    if (!confirm("سيتم حذف جلسة الدخول المحفوظة لهذا الموقع. ستحتاج إلى تسجيل الدخول مجدداً. متابعة؟")) return;
+    await api("/api/sites/"+activeSite.id+"/session",{method:"DELETE"});
+    await loadSites();
+    setStatus("sessionStatus","حُذفت جلسة الدخول المحفوظة لهذا الموقع.","good");
   } catch(e) { setStatus("sessionStatus",e.message,"bad"); }
 };
 $("closeBrowser").onclick = async () => {
