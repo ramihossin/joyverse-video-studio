@@ -171,20 +171,6 @@ function withBrowser(fn) {
     finally { busy = false; }
   };
 }
-function selectorFor(el) {
-  if (el.id) return "#" + el.id.replace(/[^a-zA-Z0-9_-]/g, "\\\\$&");
-  const name = el.getAttribute("name");
-  if (name) return el.tagName.toLowerCase() + '[name="' + name.replace(/"/g, '\\\\"') + '"]';
-  const placeholder = el.getAttribute("placeholder");
-  if (placeholder && ["INPUT", "TEXTAREA"].includes(el.tagName)) {
-    return el.tagName.toLowerCase() + '[placeholder="' + placeholder.replace(/"/g, '\\\\"') + '"]';
-  }
-  const text = (el.innerText || el.getAttribute("aria-label") || "").trim().replace(/\\s+/g, " ").slice(0, 50);
-  if (text && ["BUTTON", "A"].includes(el.tagName)) return el.tagName.toLowerCase() + ':has-text("' + text.replace(/"/g, '\\\\"') + '")';
-  if (el.type === "file") return 'input[type="file"]';
-  return el.tagName.toLowerCase();
-}
-
 app.get("/health", (_req, res) => res.json({
   ok: true, service: "joyverse-free-browser-agent", browserStarted: Boolean(browser),
   persistence: process.env.DATABASE_URL ? "postgres-encrypted" : "local-encrypted",
