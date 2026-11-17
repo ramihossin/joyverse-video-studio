@@ -124,7 +124,7 @@ function browserRequired() {
 async function ensureBrowser() {
   if (!browser) browser = await chromium.launch({
     headless: true,
-    args: ["--no-sandbox", "--disable-dev-shm-usage"]
+    args: ["--disable-dev-shm-usage"]
   });
 }
 async function persistCurrentSession() {
