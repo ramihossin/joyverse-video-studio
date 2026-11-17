@@ -24,7 +24,7 @@ jobs:
         run: npm test
       - name: Check JavaScript syntax
         working-directory: browser-agent
-        run: node --check server.js && node --check store.js
+        run: node --check server.js && node --check store.js && node --check ui/app.js && node --check smoke-test.js
       - name: Build browser container
         run: docker build -t joyverse-browser-agent ./browser-agent
       - name: Launch Chromium with its sandbox enabled
