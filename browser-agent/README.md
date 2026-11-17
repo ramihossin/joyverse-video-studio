@@ -40,7 +40,9 @@ Docker:
 
 ```sh
 docker build -t joyverse-browser-agent .
-docker run --rm -p 8080:8080 \
+docker run --rm --init --ipc=host --user pwuser \
+  --security-opt seccomp=./seccomp_profile.json \
+  -p 8080:8080 \
   -e BROWSER_AGENT_TOKEN="$BROWSER_AGENT_TOKEN" \
   -e DATABASE_URL="$DATABASE_URL" \
   -e SESSION_ENCRYPTION_KEY="$SESSION_ENCRYPTION_KEY" \
@@ -75,7 +77,7 @@ A generation profile must specify selectors for the prompt field, Generate butto
 - Never commit secrets, cookies, exported storage state, passwords, or encryption keys to GitHub.
 - Session snapshots contain authentication cookies and tokens; treat them as sensitive credentials. They are encrypted at rest, but users with access to both the database and encryption key can decrypt them.
 - The remote browser is controlled only through the authenticated dashboard/API. Use a dedicated account on generation sites where possible.
-- The browser can visit only public HTTP(S) destinations; obvious private-network targets are rejected. This validation is a safeguard, not a substitute for network-level egress controls.
+- The browser rejects obvious private-network destinations for direct navigation and blocks requests to private/local address ranges. This is a safeguard, not a substitute for network-level egress controls or DNS-rebinding protection.
 - CAPTCHA, MFA, email verification, age requirements, account checks, ads, queues, paywalls, and provider quotas remain under the site's control. The user completes human verification in the visible remote-browser preview; the agent does not bypass those controls.
 - Sites may expire or revoke sessions, change their UI, prohibit automation, or require a fresh login. A saved session is best-effort and does not guarantee permanent access.
 - Site selectors must be configured for the actual UI. If a provider changes its website, update the selectors before using one-click generation.
