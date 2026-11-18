@@ -7,6 +7,11 @@ export function safeDiagnosticUrl(value) {
   }
 }
 
+export function detectGoogleAutomatedBrowserBlock(bodyText = "") {
+  const text = String(bodyText).slice(0, 20000);
+  return /this browser or app may not be secure|disallowed_useragent|browser may not be secure/i.test(text);
+}
+
 export function findVerificationHints(frameUrls = [], bodyText = "") {
   const framePattern = /captcha|turnstile|recaptcha|hcaptcha|challenge-platform/i;
   const textPattern = /verify (?:that )?you are human|checking your browser|complete (?:the )?security check|security verification|human verification/i;
