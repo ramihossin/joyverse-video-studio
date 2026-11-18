@@ -31,7 +31,8 @@ function fillSite(site) {
   $("sitePurpose").value = site?.purpose || "video";
   $("baseUrl").value = site?.baseUrl || "";
   $("loginUrl").value = site?.loginUrl || "";
-  $("allowedHosts").value = (site?.allowedHosts || []).filter(h => h !== new URL(site.baseUrl).hostname).join(", ");
+  const baseHost = site?.baseUrl ? new URL(site.baseUrl).hostname : "";
+  $("allowedHosts").value = (site?.allowedHosts || []).filter(h => h !== baseHost).join(", ");
   for (const key of ["promptSelector","uploadSelector","generateSelector","readySelector","downloadSelector"]) {
     $(key).value = site?.selectors?.[key] || "";
   }
@@ -136,6 +137,14 @@ $("clearSession").onclick = async () => {
 $("closeBrowser").onclick = async () => {
   try { await api("/api/browser/close",{method:"POST",body:"{}"}); $("screen").removeAttribute("src"); setStatus("sessionStatus","أُغلق المتصفح بعد حفظ الجلسة.","good"); }
   catch(e) { setStatus("sessionStatus",e.message,"bad"); }
+};
+$("recoverBrowser").onclick = async () => {
+  if (!confirm("سيتم إيقاف العملية الحالية وإعادة تشغيل المتصفح. أي تغييرات لم تحفظها قد تضيع. متابعة؟")) return;
+  try {
+    const result = await api("/api/browser/recover",{method:"POST",body:"{}"});
+    $("screen").removeAttribute("src");
+    setStatus("sessionStatus",result.message,"good");
+  } catch(e) { setStatus("sessionStatus",e.message,"bad"); }
 };
 $("screen").onclick = async event => {
   try {
