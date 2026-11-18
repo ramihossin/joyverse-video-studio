@@ -40,9 +40,14 @@ function fillSite(site) {
   const isDirectory = site?.purpose === "directory";
   $("generate").disabled = isDirectory;
   $("generate").title = isDirectory ? "هذا الموقع دليل لاكتشاف الأدوات وليس مولداً للفيديو." : "";
+  const providerHint = site?.id === "loremotion-free-video"
+    ? "LoreMotion: ابدأ من صفحة التوليد مباشرة؛ أول فيديو متاح دون تسجيل حساب."
+    : site?.id === "pavo-ai-video"
+      ? "Pavo AI: استخدم التسجيل أو الدخول بالبريد الإلكتروني؛ لا تستخدم Google داخل المتصفح البعيد."
+      : "";
   setStatus("sessionStatus", site ? (isDirectory
     ? "هذا ملف دليل لاكتشاف أدوات الذكاء الاصطناعي؛ لا تُرسل إليه مهام توليد الفيديو."
-    : (site.hasSavedSession ? "توجد جلسة دخول محفوظة ومشفّرة لهذا الموقع." : "لا توجد جلسة محفوظة؛ سجّل الدخول ثم احفظها.")) : "أضف موقعاً أو اختر موقعاً محفوظاً.");
+    : ((site.hasSavedSession ? "توجد جلسة دخول محفوظة ومشفّرة لهذا الموقع." : "لا توجد جلسة محفوظة.") + (providerHint ? "\n" + providerHint : ""))) : "أضف موقعاً أو اختر موقعاً محفوظاً.");
 }
 async function loadSites() {
   const data = await api("/api/sites");
@@ -186,6 +191,7 @@ $("inspect").onclick = async () => {
       "حالة التحميل: " + (d.navigation?.domContentLoaded ? "اكتمل" : "جزئي أو ما زال جارياً")
     ];
     if (d.verification?.detected) report.push("توجد مؤشرات على خطوة تحقق أمنية. أكملها يدوياً داخل معاينة الصفحة؛ لا يمكن للوكيل تجاوزها.");
+    if (d.googleAuthBlocked) report.push("Google رفض تسجيل الدخول لأن المتصفح خاضع للتحكم الآلي. لا تعاود محاولة Google هنا؛ استخدم البريد الإلكتروني إن كان الموقع يتيحه. في LoreMotion لا تحتاج إلى تسجيل حساب لأول توليد.");
     if (d.issues?.length) {
       report.push("ملاحظات أخطاء التحميل الأخيرة: " + d.issues.length);
       for (const issue of d.issues.slice(-6)) {
