@@ -7,6 +7,7 @@ import path from "node:path";
 import os from "node:os";
 import { fileURLToPath } from "node:url";
 import { safeDiagnosticUrl, findVerificationHints } from "./browser-utils.js";
+import { createOperationGate } from "./browser-lock.js";
 import {
   initStore, listSites, getSite, saveSite, deleteSite,
   getSession, saveSession, deleteSession
@@ -36,7 +37,9 @@ let browser;
 let context;
 let page;
 let currentSiteId = null;
-let busy = false;
+let browserGeneration = 0;
+let recovering = false;
+const operationGate = createOperationGate();
 const jobs = new Map();
 
 let pageDiagnostics = { navigation: null, issues: [] };
@@ -209,10 +212,18 @@ function browserRequired() {
   if (!page || !context || !currentSiteId) throw new Error("افتح أحد المواقع أولاً.");
 }
 async function ensureBrowser() {
-  if (!browser) browser = await chromium.launch({
+  if (browser) return browser;
+  const generation = browserGeneration;
+  const launched = await chromium.launch({
     headless: true,
     args: ["--disable-dev-shm-usage"]
   });
+  if (generation !== browserGeneration) {
+    await launched.close().catch(() => {});
+    throw new Error("أُعيد تشغيل المتصفح أثناء بدء التشغيل. أعد المحاولة.");
+  }
+  browser = launched;
+  return launched;
 }
 async function persistCurrentSession() {
   if (!context || !page || !currentSiteId) return false;
@@ -243,17 +254,23 @@ async function persistCurrentSession() {
 async function openSite(site, targetUrl = null) {
   const destination = assertSafeUrl(targetUrl || site.loginUrl || site.baseUrl).toString();
   if (!hostAllowed(destination, site)) throw new Error("هذا النطاق غير مسموح لهذا الموقع. أضفه إلى النطاقات الإضافية أولاً.");
-  await ensureBrowser();
+  const generation = browserGeneration;
+  const activeBrowser = await ensureBrowser();
   if (context) {
     await persistCurrentSession().catch(() => {});
     await context.close().catch(() => {});
   }
   const saved = await getSession(site.id);
-  context = await browser.newContext({
+  const newContext = await activeBrowser.newContext({
     ...(saved?.storageState ? { storageState: saved.storageState } : {}),
     acceptDownloads: true,
     viewport: VIEWPORT
   });
+  if (generation !== browserGeneration || browser !== activeBrowser) {
+    await newContext.close().catch(() => {});
+    throw new Error("أُلغيت عملية فتح الموقع لإعادة تهيئة المتصفح. أعد فتح الموقع.");
+  }
+  context = newContext;
   await context.route("**/*", async route => {
     try {
       const requested = new URL(route.request().url());
@@ -292,11 +309,19 @@ async function openSite(site, targetUrl = null) {
 }
 function withBrowser(fn) {
   return async (req, res) => {
-    if (busy) return res.status(409).json({ error: "المتصفح ينفذ مهمة أخرى حالياً." });
-    busy = true;
+    if (recovering) return res.status(409).json({ error: "تجري إعادة تهيئة المتصفح الآن. أعد المحاولة بعد انتهائها." });
+    const lease = operationGate.acquire(req.method + " " + req.path);
+    if (!lease) {
+      return res.status(409).json({
+        error: "المتصفح ينفذ أمراً آخر حالياً.",
+        operation: operationGate.snapshot()
+      });
+    }
     try { await fn(req, res); }
-    catch (error) { res.status(400).json({ error: String(error?.message || error).slice(0, 500) }); }
-    finally { busy = false; }
+    catch (error) {
+      if (!res.headersSent) res.status(400).json({ error: String(error?.message || error).slice(0, 500) });
+    }
+    finally { operationGate.release(lease); }
   };
 }
 app.get("/health", (_req, res) => res.json({
@@ -331,7 +356,7 @@ app.put("/api/sites/:id", async (req, res) => {
 app.delete("/api/sites/:id", async (req, res) => {
   try {
     if (currentSiteId === req.params.id) {
-      if (busy) return res.status(409).json({ error: "Close the active browser before deleting this site." });
+      if (operationGate.busy || recovering) return res.status(409).json({ error: "Close the active browser before deleting this site." });
       await context?.close().catch(() => {});
       context = page = null; currentSiteId = null;
     }
@@ -400,7 +425,8 @@ app.post("/api/browser/click", withBrowser(async (req, res) => {
   const x = Number(req.body?.x), y = Number(req.body?.y);
   if (!Number.isFinite(x) || !Number.isFinite(y) || x < 0 || y < 0 || x > VIEWPORT.width || y > VIEWPORT.height) throw new Error("نقطة النقر خارج مساحة المتصفح.");
   await page.mouse.click(x, y);
-  await persistCurrentSession().catch(() => {});
+  // Session persistence is explicit or performed when switching/closing sites;
+  // doing it after every click blocks the next screenshot and keyboard action.
   res.json({ ok: true, url: page.url() });
 }));
 app.post("/api/browser/type", withBrowser(async (req, res) => {
@@ -416,7 +442,6 @@ app.post("/api/browser/key", withBrowser(async (req, res) => {
   const key = String(req.body?.key || "");
   if (!allowed.has(key)) throw new Error("مفتاح لوحة المفاتيح غير مسموح.");
   await page.keyboard.press(key);
-  await persistCurrentSession().catch(() => {});
   res.json({ ok: true });
 }));
 app.post("/api/browser/scroll", withBrowser(async (req, res) => {
@@ -440,7 +465,7 @@ app.post("/api/browser/save-session", withBrowser(async (_req, res) => {
 }));
 app.delete("/api/sites/:id/session", async (req, res) => {
   try {
-    if (currentSiteId === req.params.id && busy) return res.status(409).json({ error: "Close the active browser before clearing this session." });
+    if (currentSiteId === req.params.id && (operationGate.busy || recovering)) return res.status(409).json({ error: "Close the active browser before clearing this session." });
     const site = await getSite(req.params.id);
     if (!site) return res.status(404).json({ error: "Site not found." });
     if (currentSiteId === req.params.id) {
@@ -453,7 +478,7 @@ app.delete("/api/sites/:id/session", async (req, res) => {
   } catch (error) { res.status(400).json({ error: String(error?.message || error) }); }
 });
 app.post("/api/generate", async (req, res) => {
-  if (busy) return res.status(409).json({ error: "المتصفح ينفذ مهمة أخرى حالياً." });
+  if (recovering) return res.status(409).json({ error: "تجري إعادة تهيئة المتصفح الآن. أعد المحاولة بعد انتهائها." });
   const siteId = String(req.body?.siteId || currentSiteId || "");
   const prompt = String(req.body?.prompt || "").trim();
   if (!siteId || !prompt || prompt.length > 12000) return res.status(400).json({ error: "اختر موقعاً وأدخل وصف الفيديو." });
@@ -469,7 +494,8 @@ app.post("/api/generate", async (req, res) => {
   if (imageBase64 && (!uploadSelector || typeof imageBase64 !== "string" || imageBase64.length > 20_000_000)) {
     return res.status(400).json({ error: "حدد حقل رفع الصور، ولا يتجاوز حجم الصورة المرسلة الحد المسموح." });
   }
-  busy = true;
+  const operation = operationGate.acquire("POST /api/generate");
+  if (!operation) return res.status(409).json({ error: "المتصفح ينفذ أمراً آخر حالياً.", operation: operationGate.snapshot() });
   const job = {
     id: randomUUID(), siteId, status: "queued", stage: "queued",
     createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
@@ -516,7 +542,7 @@ app.post("/api/generate", async (req, res) => {
       job.status = "failed"; job.stage = "failed";
       job.error = String(error?.message || error).slice(0, 500);
       job.updatedAt = new Date().toISOString();
-    } finally { busy = false; }
+    } finally { operationGate.release(operation); }
   })();
 });
 app.get("/api/jobs/:id", (req, res) => {
@@ -532,8 +558,49 @@ app.get("/api/downloads/:id", async (req, res) => {
     res.download(path.join(DOWNLOAD_DIR, match), match.slice(req.params.id.length + 1));
   } catch (error) { res.status(404).json({ error: String(error?.message || error) }); }
 });
+app.get("/api/browser/status", (_req, res) => res.json({
+  ok: true,
+  busy: operationGate.busy,
+  operation: operationGate.snapshot(),
+  recovering,
+  browserStarted: Boolean(browser),
+  activeSite: currentSiteId
+}));
+app.post("/api/browser/recover", async (_req, res) => {
+  if (recovering) return res.status(409).json({ error: "إعادة تهيئة المتصفح جارية بالفعل." });
+  recovering = true;
+  const cancelledOperation = operationGate.forceRelease();
+  const oldContext = context;
+  const oldBrowser = browser;
+  browserGeneration += 1;
+  context = null;
+  page = null;
+  currentSiteId = null;
+  browser = null;
+  for (const job of jobs.values()) {
+    if (job.status === "queued" || job.status === "running") {
+      job.status = "failed";
+      job.stage = "cancelled";
+      job.error = "أُلغيت المهمة بسبب إعادة تهيئة المتصفح.";
+      job.updatedAt = new Date().toISOString();
+    }
+  }
+  try {
+    await oldContext?.close().catch(() => {});
+    await oldBrowser?.close().catch(() => {});
+    res.json({
+      ok: true,
+      cancelledOperation: cancelledOperation?.label || null,
+      message: "أُعيد تشغيل محرك المتصفح. افتح الموقع من جديد؛ وقد تحتاج إلى تسجيل الدخول إذا لم تكن جلستك محفوظة."
+    });
+  } catch (error) {
+    res.status(500).json({ error: String(error?.message || error).slice(0, 300) });
+  } finally {
+    recovering = false;
+  }
+});
 app.post("/api/browser/close", async (_req, res) => {
-  if (busy) return res.status(409).json({ error: "المتصفح مشغول." });
+  if (operationGate.busy || recovering) return res.status(409).json({ error: "المتصفح مشغول." });
   try {
     await persistCurrentSession().catch(() => {});
     await context?.close().catch(() => {});
