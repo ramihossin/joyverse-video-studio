@@ -31,7 +31,7 @@ const DEFAULT_SITES = [
     id: "loremotion-free-video",
     name: "LoreMotion — توليد الفيديو",
     baseUrl: "https://loremotion.com/generate/",
-    loginUrl: "https://loremotion.com/auth",
+    loginUrl: "",
     allowedHosts: ["loremotion.com", "www.loremotion.com"],
     purpose: "video",
     selectors: { promptSelector: "", uploadSelector: "", generateSelector: "", readySelector: "", downloadSelector: "" },
@@ -54,9 +54,9 @@ const DEFAULT_SITES = [
   {
     id: "pavo-ai-video",
     name: "Pavo AI — توليد الفيديو",
-    baseUrl: "https://app.pavo-ai.work/",
-    loginUrl: "https://app.pavo-ai.work/login",
-    allowedHosts: ["app.pavo-ai.work", "pavo-ai.work", "www.pavo-ai.work"],
+    baseUrl: "https://pavoai.app/",
+    loginUrl: "",
+    allowedHosts: ["pavoai.app", "www.pavoai.app"],
     purpose: "video",
     selectors: { promptSelector: "", uploadSelector: "", generateSelector: "", readySelector: "", downloadSelector: "" },
     waitSeconds: 360,
@@ -64,6 +64,27 @@ const DEFAULT_SITES = [
     updatedAt: "2026-11-17T00:00:00.000Z"
   }
 ];
+
+function migrateLegacySite(site) {
+  if (!site) return null;
+  const next = { ...site };
+  let changed = false;
+  if (next.id === "loremotion-free-video" && next.loginUrl === "https://loremotion.com/auth") {
+    next.loginUrl = "";
+    changed = true;
+  }
+  let host = "";
+  try { host = new URL(next.baseUrl).hostname.toLowerCase(); } catch {}
+  if (next.id === "pavo-ai-video" && ["app.pavo-ai.work", "pavo-ai.work", "www.pavo-ai.work"].includes(host)) {
+    next.baseUrl = "https://pavoai.app/";
+    next.loginUrl = "";
+    next.allowedHosts = ["pavoai.app", "www.pavoai.app"];
+    changed = true;
+  }
+  if (!changed) return null;
+  next.updatedAt = new Date().toISOString();
+  return next;
+}
 
 export async function initStore() {
   await fs.mkdir(DATA_DIR, { recursive: true, mode: 0o700 });
@@ -99,6 +120,14 @@ export async function initStore() {
         "INSERT INTO joyverse_browser_sites(site_id,config,updated_at) VALUES($1,$2,NOW()) ON CONFLICT(site_id) DO NOTHING",
         [site.id, site]
       );
+      const existing = await pool.query("SELECT config FROM joyverse_browser_sites WHERE site_id=$1", [site.id]);
+      const migrated = migrateLegacySite(existing.rows[0]?.config);
+      if (migrated) {
+        await pool.query(
+          "UPDATE joyverse_browser_sites SET config=$2,updated_at=NOW() WHERE site_id=$1",
+          [site.id, migrated]
+        );
+      }
     }
   } else {
     localSites = await readJson(SITES_FILE, {});
@@ -106,6 +135,10 @@ export async function initStore() {
     let seeded = false;
     for (const site of DEFAULT_SITES) {
       if (!localSites[site.id]) { localSites[site.id] = site; seeded = true; }
+      else {
+        const migrated = migrateLegacySite(localSites[site.id]);
+        if (migrated) { localSites[site.id] = migrated; seeded = true; }
+      }
     }
     if (seeded) await writeJsonAtomic(SITES_FILE, localSites);
   }
