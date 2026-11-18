@@ -6,7 +6,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import os from "node:os";
 import { fileURLToPath } from "node:url";
-import { safeDiagnosticUrl, findVerificationHints } from "./browser-utils.js";
+import { safeDiagnosticUrl, findVerificationHints, detectGoogleAutomatedBrowserBlock } from "./browser-utils.js";
 import { createOperationGate } from "./browser-lock.js";
 import {
   initStore, listSites, getSite, saveSite, deleteSite,
@@ -99,8 +99,13 @@ async function navigatePage(targetPage, destination) {
     .catch(() => false);
   const details = await targetPage.evaluate(() => ({
     readyState: document.readyState,
-    title: document.title || ""
-  })).catch(() => ({ readyState: "unknown", title: "" }));
+    title: document.title || "",
+    bodyText: document.body?.innerText?.slice(0, 20000) || ""
+  })).catch(() => ({ readyState: "unknown", title: "", bodyText: "" }));
+  const googleAuthBlocked = detectGoogleAutomatedBrowserBlock(details.bodyText);
+  if (googleAuthBlocked) {
+    addPageIssue("google-auth-blocked", "Google refused sign-in from an automated browser. Use a supported non-Google sign-in method where available.");
+  }
 
   const navigation = {
     status: domContentLoaded ? "loaded" : "partial",
@@ -109,10 +114,11 @@ async function navigatePage(targetPage, destination) {
     httpStatus: response?.status() ?? null,
     domContentLoaded,
     readyState: details.readyState,
+    googleAuthBlocked,
     error: navigationError
   };
   pageDiagnostics.navigation = navigation;
-  return { url: targetPage.url(), title: details.title, navigation };
+  return { url: targetPage.url(), title: details.title, navigation, googleAuthBlocked };
 }
 
 
@@ -411,6 +417,7 @@ app.get("/api/browser/snapshot", withBrowser(async (_req, res) => {
     controls,
     frames,
     verification,
+    googleAuthBlocked: detectGoogleAutomatedBrowserBlock(text) || Boolean(pageDiagnostics.navigation?.googleAuthBlocked),
     navigation: pageDiagnostics.navigation,
     issues: pageDiagnostics.issues.slice(-25)
   });
