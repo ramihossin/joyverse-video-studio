@@ -29,3 +29,10 @@ test("ordinary pages are not misclassified as verification pages", () => {
     { detected: false, frame: false, text: false }
   );
 });
+
+test("Google automated-browser rejection is detected from its visible message", async () => {
+  const { detectGoogleAutomatedBrowserBlock } = await import("./browser-utils.js");
+  assert.equal(detectGoogleAutomatedBrowserBlock("This browser or app may not be secure."), true);
+  assert.equal(detectGoogleAutomatedBrowserBlock("403 disallowed_useragent"), true);
+  assert.equal(detectGoogleAutomatedBrowserBlock("Welcome to the video generator."), false);
+});
