@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { safeDiagnosticUrl, findVerificationHints } from "./browser-utils.js";
+import { safeDiagnosticUrl, findVerificationHints, isEditableFocus } from "./browser-utils.js";
 
 test("diagnostic URLs omit query strings and fragments", () => {
   assert.equal(
@@ -35,4 +35,22 @@ test("Google automated-browser rejection is detected from its visible message", 
   assert.equal(detectGoogleAutomatedBrowserBlock("This browser or app may not be secure."), true);
   assert.equal(detectGoogleAutomatedBrowserBlock("403 disallowed_useragent"), true);
   assert.equal(detectGoogleAutomatedBrowserBlock("Welcome to the video generator."), false);
+});
+
+
+test("editable focus accepts text inputs, textareas, contenteditable and textboxes", () => {
+  assert.equal(isEditableFocus({ tagName: "INPUT", type: "text" }), true);
+  assert.equal(isEditableFocus({ tagName: "TEXTAREA" }), true);
+  assert.equal(isEditableFocus({ tagName: "DIV", contentEditable: true }), true);
+  assert.equal(isEditableFocus({ tagName: "DIV", role: "textbox" }), true);
+  assert.equal(isEditableFocus({ tagName: "IFRAME" }), true);
+});
+
+test("editable focus rejects missing, disabled, read-only and non-text controls", () => {
+  assert.equal(isEditableFocus(null), false);
+  assert.equal(isEditableFocus({ tagName: "BODY" }), false);
+  assert.equal(isEditableFocus({ tagName: "INPUT", type: "checkbox" }), false);
+  assert.equal(isEditableFocus({ tagName: "INPUT", type: "text", disabled: true }), false);
+  assert.equal(isEditableFocus({ tagName: "TEXTAREA", readOnly: true }), false);
+  assert.equal(isEditableFocus({ tagName: "DIV", role: "textbox", ariaReadonly: true }), false);
 });
