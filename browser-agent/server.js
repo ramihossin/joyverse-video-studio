@@ -6,7 +6,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import os from "node:os";
 import { fileURLToPath } from "node:url";
-import { safeDiagnosticUrl, findVerificationHints, detectGoogleAutomatedBrowserBlock } from "./browser-utils.js";
+import { safeDiagnosticUrl, findVerificationHints, detectGoogleAutomatedBrowserBlock, isEditableFocus } from "./browser-utils.js";
 import { createOperationGate } from "./browser-lock.js";
 import {
   initStore, listSites, getSite, saveSite, deleteSite,
@@ -440,8 +440,28 @@ app.post("/api/browser/type", withBrowser(async (req, res) => {
   browserRequired();
   const value = String(req.body?.text ?? "");
   if (value.length > 5000) throw new Error("النص أطول من الحد المسموح.");
+
+  const focus = await page.evaluate(() => {
+    let active = document.activeElement;
+    while (active?.shadowRoot?.activeElement) active = active.shadowRoot.activeElement;
+    if (!active) return null;
+    return {
+      tagName: String(active.tagName || "").toLowerCase(),
+      type: String(active.getAttribute?.("type") || "").toLowerCase(),
+      role: String(active.getAttribute?.("role") || "").toLowerCase(),
+      contentEditable: Boolean(active.isContentEditable),
+      ariaReadonly: active.getAttribute?.("aria-readonly") === "true",
+      disabled: Boolean(active.disabled),
+      readOnly: Boolean(active.readOnly)
+    };
+  }).catch(() => null);
+
+  if (!isEditableFocus(focus)) {
+    throw new Error("لا يوجد حقل كتابة نشط في صفحة الموقع. انقر أولاً داخل حقل النص في صورة المتصفح البعيد، ثم أعد إرسال النص.");
+  }
+
   await page.keyboard.insertText(value);
-  res.json({ ok: true });
+  res.json({ ok: true, focusedElement: focus.tagName });
 }));
 app.post("/api/browser/key", withBrowser(async (req, res) => {
   browserRequired();
