@@ -19,3 +19,21 @@ export function findVerificationHints(frameUrls = [], bodyText = "") {
   const text = textPattern.test(String(bodyText).slice(0, 12000));
   return { detected: frame || text, frame, text };
 }
+
+
+const NON_TEXT_INPUT_TYPES = new Set([
+  "button", "checkbox", "color", "file", "hidden", "image",
+  "radio", "range", "reset", "submit"
+]);
+
+export function isEditableFocus(focus) {
+  if (!focus || focus.disabled || focus.readOnly || focus.ariaReadonly) return false;
+  const tag = String(focus.tagName || "").toLowerCase();
+  if (tag === "textarea" || tag === "iframe") return true;
+  if (tag === "input") {
+    const type = String(focus.type || "text").toLowerCase();
+    return !NON_TEXT_INPUT_TYPES.has(type);
+  }
+  return Boolean(focus.contentEditable) ||
+    String(focus.role || "").toLowerCase() === "textbox";
+}
