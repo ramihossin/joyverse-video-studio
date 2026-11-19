@@ -441,27 +441,35 @@ app.post("/api/browser/type", withBrowser(async (req, res) => {
   const value = String(req.body?.text ?? "");
   if (value.length > 5000) throw new Error("النص أطول من الحد المسموح.");
 
-  const focus = await page.evaluate(() => {
-    let active = document.activeElement;
-    while (active?.shadowRoot?.activeElement) active = active.shadowRoot.activeElement;
-    if (!active) return null;
-    return {
-      tagName: String(active.tagName || "").toLowerCase(),
-      type: String(active.getAttribute?.("type") || "").toLowerCase(),
-      role: String(active.getAttribute?.("role") || "").toLowerCase(),
-      contentEditable: Boolean(active.isContentEditable),
-      ariaReadonly: active.getAttribute?.("aria-readonly") === "true",
-      disabled: Boolean(active.disabled),
-      readOnly: Boolean(active.readOnly)
-    };
-  }).catch(() => null);
+  const focusedEditors = await Promise.all(page.frames().map(async frame => {
+    const focus = await frame.evaluate(() => {
+      let active = document.activeElement;
+      while (active?.shadowRoot?.activeElement) active = active.shadowRoot.activeElement;
+      if (!active) return null;
+      return {
+        tagName: String(active.tagName || "").toLowerCase(),
+        type: String(active.getAttribute?.("type") || "").toLowerCase(),
+        role: String(active.getAttribute?.("role") || "").toLowerCase(),
+        contentEditable: Boolean(active.isContentEditable),
+        ariaReadonly: active.getAttribute?.("aria-readonly") === "true",
+        disabled: Boolean(active.disabled),
+        readOnly: Boolean(active.readOnly)
+      };
+    }).catch(() => null);
+    return isEditableFocus(focus) ? { focus, url: frame.url() } : null;
+  }));
 
-  if (!isEditableFocus(focus)) {
+  const focusedEditor = focusedEditors.find(Boolean);
+  if (!focusedEditor) {
     throw new Error("لا يوجد حقل كتابة نشط في صفحة الموقع. انقر أولاً داخل حقل النص في صورة المتصفح البعيد، ثم أعد إرسال النص.");
   }
 
   await page.keyboard.insertText(value);
-  res.json({ ok: true, focusedElement: focus.tagName });
+  res.json({
+    ok: true,
+    focusedElement: focusedEditor.focus.tagName,
+    frameUrl: safeDiagnosticUrl(focusedEditor.url)
+  });
 }));
 app.post("/api/browser/key", withBrowser(async (req, res) => {
   browserRequired();
