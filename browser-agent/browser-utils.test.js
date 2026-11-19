@@ -43,7 +43,7 @@ test("editable focus accepts text inputs, textareas, contenteditable and textbox
   assert.equal(isEditableFocus({ tagName: "TEXTAREA" }), true);
   assert.equal(isEditableFocus({ tagName: "DIV", contentEditable: true }), true);
   assert.equal(isEditableFocus({ tagName: "DIV", role: "textbox" }), true);
-  assert.equal(isEditableFocus({ tagName: "IFRAME" }), true);
+  assert.equal(isEditableFocus({ tagName: "IFRAME" }), false);
 });
 
 test("editable focus rejects missing, disabled, read-only and non-text controls", () => {
