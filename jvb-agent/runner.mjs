@@ -13,7 +13,7 @@ const ALLOWED_HOSTS = new Set([
 ]);
 const MAX_STEPS = 16;
 const MAX_TEXT = 5000;
-const MAX_UPLOAD_BYTES = 12 * 1024 * 1024;
+const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
 const MAX_DOWNLOAD_BYTES = 80 * 1024 * 1024;
 const DEFAULT_TIMEOUT = 15000;
 const UPLOAD_MIME = new Map([
@@ -264,7 +264,7 @@ async function performStep(page, context, task, step, index, downloads) {
     const selector = safeSelector(step.selector);
     if (typeof step.fileBase64 !== "string" || step.fileBase64.length < 16 ||
         step.fileBase64.length > Math.ceil(MAX_UPLOAD_BYTES * 4 / 3) + 16) {
-      throw new Error("upload requires fileBase64 for a file no larger than 12 MB.");
+      throw new Error("upload requires fileBase64 for a file no larger than 10 MB.");
     }
     const fileName = safeFileName(step.fileName, "jvb-reference.png");
     const ext = path.extname(fileName).toLowerCase();
@@ -272,7 +272,7 @@ async function performStep(page, context, task, step, index, downloads) {
     if (!mimeType) throw new Error("Unsupported upload type. Use PNG, JPG, WEBP, MP4, WEBM, MP3, or WAV.");
     const buffer = Buffer.from(step.fileBase64, "base64");
     if (!buffer.length || buffer.length > MAX_UPLOAD_BYTES) {
-      throw new Error("Uploaded file is empty or exceeds the 12 MB limit.");
+      throw new Error("Uploaded file is empty or exceeds the 10 MB limit.");
     }
     const locator = page.locator(selector).first();
     const inputMeta = await locator.evaluate(node => ({
