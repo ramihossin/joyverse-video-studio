@@ -82,6 +82,13 @@ async function pageState(page) {
       url: location.href,
       title: document.title,
       text: (document.body?.innerText || "").replace(/\s+/g, " ").slice(0, 6500),
+      fileInputs: [...document.querySelectorAll('input[type="file"]')].slice(0, 20).map(node => ({
+        id: node.id || "",
+        name: node.getAttribute("name") || "",
+        accept: node.getAttribute("accept") || "",
+        multiple: Boolean(node.multiple),
+        disabled: Boolean(node.disabled),
+      })),
       inputs: [...document.querySelectorAll("input, textarea, select, [contenteditable='true']")]
         .filter(node => {
           const r = node.getBoundingClientRect();
@@ -250,13 +257,14 @@ async function performStep(page, context, task, step, index, downloads) {
     }
     if (/generate|create video|render video/i.test(label) && task.allowFreeGeneration === true) {
       const pageText = (await page.locator("body").innerText({ timeout })).toLowerCase();
-      const explicitZeroCost = /(?:cost|price|تكلفة|السعر)\\s*[:：]?\\s*(?:0|0\\.00|\\$0|€0|£0)(?:\\b|\\s|$)/i.test(pageText) ||
-        /(?:0|0\\.00)\\s*(?:credits?|coins?|tokens?|رصيد|اعتمادات)/i.test(pageText);
-      const explicitlyFree = /\\bfree\\b|مجاني/i.test(label + " " + pageText);
+      const explicitZeroCost = /(?:cost|price|credits? cost|تكلفة|السعر)\s*[:：]?\s*(?:0(?:\.00)?|\$0|€0|£0)(?:\b|\s|$)/i.test(pageText) ||
+        /(?:0(?:\.00)?)\s*(?:credits?|coins?|tokens?|رصيد|اعتمادات)/i.test(pageText);
+      const explicitlyFree = /\bfree\b|مجاني/i.test(label + " " + pageText);
       if (!explicitZeroCost && !explicitlyFree) {
         throw new Error("No explicit zero-cost or free indicator is visible beside the generation flow; submission is blocked.");
       }
-      if (/not enough credits|buy credits|payment required|subscribe to generate|upgrade to generate|daily limit reached|credits required|لا يوجد رصيد كاف|اشتر رصيد/.test(pageText)) {
+      if ((!explicitZeroCost && /not enough credits|credits required|لا يوجد رصيد كاف/.test(pageText)) ||
+          /buy credits|payment required|subscribe to generate|upgrade to generate|daily limit reached|اشتر رصيد/.test(pageText)) {
         throw new Error("The site indicates that generation requires credits, payment, or an upgrade; no generation was submitted.");
       }
     }
