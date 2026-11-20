@@ -1,0 +1,21 @@
+{
+  "taskId": "jvb-loremotion-upload-test-20261121",
+  "operation": "sequence",
+  "url": "https://loremotion.com/generate/",
+  "steps": [
+    {
+      "type": "upload",
+      "selector": "input[type=file]",
+      "fileName": "jvb-test-reference.png",
+      "fileBase64": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGP4//8/AAX+Av4N70a4AAAAAElFTkSuQmCC"
+    },
+    {
+      "type": "inspect"
+    },
+    {
+      "type": "screenshot",
+      "fileName": "jvb-loremotion-upload-test.png",
+      "fullPage": false
+    }
+  ]
+}
