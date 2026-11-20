@@ -34,7 +34,7 @@ Supported sequence step types:
 - `fill`: fill an ordinary text field or prompt textarea. Password, email, phone, payment, secret, and token fields are blocked.
 - `select`: choose an option from a select control.
 - `click`: click an element. Login, purchase, payment, subscription, account deletion and logout controls are blocked.
-- `upload`: attach a file to an `input[type=file]`. Supported: PNG, JPG, WEBP, MP4, WEBM, MP3 and WAV; 12 MB maximum.
+- `upload`: attach a file to an `input[type=file]`. Supported: PNG, JPG, WEBP, MP4, WEBM, MP3 and WAV; 10 MB maximum.
 - `download`: click an element and save the browser download; 80 MB maximum.
 - `saveVideo`: save a video element's current source; 80 MB maximum.
 - `screenshot`: capture the current page.
