@@ -505,8 +505,7 @@ function createMcpServer() {
               const type = String(el.getAttribute("type") || "").toLowerCase();
               const label = String(el.getAttribute("aria-label") || el.getAttribute("placeholder") || el.innerText || "").trim().replace(/\s+/g, " ").slice(0, 120);
               let selector = tag;
-              if (el.id) selector = "#" + el.id.replace(/[^a-zA-Z0-9_-]/g, "\\app.use("/api", auth);
-");
+              if (el.id) selector = "#" + CSS.escape(el.id);
               else if (el.getAttribute("name")) selector += '[name="' + el.getAttribute("name").replace(/"/g, '\\"') + '"]';
               else if (el.getAttribute("placeholder") && ["input", "textarea"].includes(tag)) selector += '[placeholder="' + el.getAttribute("placeholder").replace(/"/g, '\\"') + '"]';
               return {
