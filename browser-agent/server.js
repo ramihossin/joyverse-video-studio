@@ -7,6 +7,7 @@ import path from "node:path";
 import os from "node:os";
 import { fileURLToPath } from "node:url";
 import { safeDiagnosticUrl, findVerificationHints, detectGoogleAutomatedBrowserBlock, isEditableFocus } from "./browser-utils.js";
+import { isRestrictedDestination } from "./url-safety.js";
 import { createOperationGate } from "./browser-lock.js";
 import {
   initStore, listSites, getSite, saveSite, deleteSite,
@@ -169,10 +170,6 @@ function isPrivateHost(rawHost) {
       (x === 198 && (y === 18 || y === 19));
   }
   return false;
-}
-function isRestrictedDestination(url) {
-  const target = `${url.hostname}${url.pathname}`.toLowerCase();
-  return /casino|sportsbook|poker|gambling|wager|binary[-.]?options?|bet(?:ting)?|prediction[-.]?market/.test(target);
 }
 function assertSafeUrl(value) {
   let url;
