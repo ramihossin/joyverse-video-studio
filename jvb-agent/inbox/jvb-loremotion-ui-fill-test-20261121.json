@@ -1,0 +1,25 @@
+{
+  "taskId": "jvb-loremotion-ui-fill-test-20261121",
+  "operation": "sequence",
+  "url": "https://loremotion.com/generate/",
+  "steps": [
+    {
+      "type": "wait",
+      "selector": "#generate-prompt-dock",
+      "timeoutMs": 20000
+    },
+    {
+      "type": "fill",
+      "selector": "#generate-prompt-dock",
+      "value": "JVB interface verification only. Do not generate or submit this prompt."
+    },
+    {
+      "type": "inspect"
+    },
+    {
+      "type": "screenshot",
+      "fileName": "jvb-loremotion-ui-fill-test.png",
+      "fullPage": true
+    }
+  ]
+}
