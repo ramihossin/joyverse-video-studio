@@ -4,6 +4,7 @@ WORKDIR /app
 COPY package.json ./
 RUN npm install --omit=dev
 COPY --chown=pwuser:pwuser . ./
+RUN node --check server.js && node --check store.js && npm test
 RUN mkdir -p /data /tmp/joyverse-agent-uploads \
     && chown -R pwuser:pwuser /app /data /tmp/joyverse-agent-uploads
 ENV NODE_ENV=production
