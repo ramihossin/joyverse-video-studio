@@ -384,7 +384,9 @@ function mcpText(value) {
   return { content: [{ type: "text", text: typeof value === "string" ? value : JSON.stringify(value) }] };
 }
 function mcpError(error) {
-  return { isError: true, content: [{ type: "text", text: String(error?.message || error).slice(0, 500) }] };
+  const message = String(error?.message || error)
+    .replace(/https?:\/\/[^\s"'<>]+/g, value => safeDiagnosticUrl(value));
+  return { isError: true, content: [{ type: "text", text: message.slice(0, 500) }] };
 }
 async function withMcpOperation(label, callback) {
   if (recovering) throw new Error("تجري إعادة تهيئة المتصفح. أعد المحاولة لاحقاً.");
@@ -453,7 +455,7 @@ function createMcpServer() {
         return mcpText({
           opened: true,
           title: result.title,
-          url: result.url,
+          url: safeDiagnosticUrl(result.url),
           navigation: result.navigation,
           sessionRestored: result.sessionRestored
         });
@@ -481,7 +483,7 @@ function createMcpServer() {
         return mcpText({
           navigated: true,
           title: result.title,
-          url: result.url,
+          url: safeDiagnosticUrl(result.url),
           navigation: result.navigation
         });
       } catch (error) { return mcpError(error); }
@@ -519,7 +521,7 @@ function createMcpServer() {
             url: safeDiagnosticUrl(page.url()),
             title: await page.title().catch(() => ""),
             text: text.slice(0, 12000),
-            controls,
+            controls: controls.map(control => control.href ? { ...control, href: safeDiagnosticUrl(control.href) } : control),
             verification: findVerificationHints(page.frames().map(frame => frame.url()), text),
             navigation: pageDiagnostics.navigation
           };
@@ -637,7 +639,7 @@ function createMcpServer() {
           await persistCurrentSession().catch(() => {});
           return opened;
         });
-        return mcpText({ navigated: true, title: result.title, url: result.url, navigation: result.navigation });
+        return mcpText({ navigated: true, title: result.title, url: safeDiagnosticUrl(result.url), navigation: result.navigation });
       } catch (error) { return mcpError(error); }
     }
   );
