@@ -17,7 +17,7 @@ concurrency:
 jobs:
   inspect:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
     steps:
       - name: Check out task queue
         uses: actions/checkout@v4
@@ -35,10 +35,10 @@ jobs:
           npm install --no-save playwright
           npx playwright install --with-deps chromium
 
-      - name: Run queued JVB inspections
+      - name: Run queued JVB browser tasks
         run: node jvb-agent/runner.mjs
 
-      - name: Commit inspection results
+      - name: Commit JVB task results
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -47,7 +47,16 @@ jobs:
             echo "No new results to commit."
             exit 0
           fi
-          git commit -m "JVB: record public-site inspection results [skip ci]"
+          git commit -m "JVB: save browser task results [skip ci]"
           git fetch origin "${GITHUB_REF_NAME}"
           git rebase "origin/${GITHUB_REF_NAME}"
           git push origin HEAD:"${GITHUB_REF_NAME}"
+
+      - name: Upload JVB screenshots and downloaded files
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jvb-browser-output-${{ github.run_id }}
+          path: jvb-agent/output/
+          if-no-files-found: ignore
+          retention-days: 1
