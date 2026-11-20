@@ -1,6 +1,7 @@
 const $ = id => document.getElementById(id);
 let activeSite = null;
 let sites = [];
+let remoteViewport = { width: 1280, height: 720 };
 const tokenKey = "joyverse_browser_agent_token";
 $("token").value = sessionStorage.getItem(tokenKey) || "";
 function setStatus(id, text, kind) { $(id).textContent = text; $(id).className = "status " + (kind || ""); }
@@ -69,9 +70,10 @@ function sitePayload() {
 }
 async function connect() {
   sessionStorage.setItem(tokenKey, getToken());
-  await api("/health").catch(()=>null);
+  const health = await api("/health");
   await loadSites();
-  setStatus("connection", "متصل بالخدمة", "good");
+  const rss = health.memoryMiB?.rss;
+  setStatus("connection", Number.isFinite(rss) ? `متصل بالخدمة · الذاكرة ${rss} MiB` : "متصل بالخدمة", "good");
 }
 $("connect").onclick = () => connect().catch(e => setStatus("connection", e.message, "bad"));
 $("forgetToken").onclick = () => { sessionStorage.removeItem(tokenKey); $("token").value=""; setStatus("connection","تم مسح الرمز",""); };
@@ -101,6 +103,10 @@ $("deleteSite").onclick = async () => {
 };
 async function refreshScreen() {
   const d = await api("/api/browser/screenshot", { method:"GET" });
+  remoteViewport = {
+    width: Number(d.width) > 0 ? Number(d.width) : 1280,
+    height: Number(d.height) > 0 ? Number(d.height) : 720
+  };
   $("screen").src = "data:image/jpeg;base64," + d.imageBase64;
 }
 $("openSite").onclick = async () => {
@@ -154,8 +160,8 @@ $("recoverBrowser").onclick = async () => {
 $("screen").onclick = async event => {
   try {
     const rect = event.currentTarget.getBoundingClientRect();
-    const x = (event.clientX - rect.left) * 1365 / rect.width;
-    const y = (event.clientY - rect.top) * 900 / rect.height;
+    const x = (event.clientX - rect.left) * remoteViewport.width / rect.width;
+    const y = (event.clientY - rect.top) * remoteViewport.height / rect.height;
     await api("/api/browser/click",{method:"POST",body:JSON.stringify({x,y})});
     setTimeout(()=>refreshScreen().catch(()=>{}),700);
   } catch(e) { setStatus("sessionStatus",e.message,"bad"); }
