@@ -3,7 +3,19 @@ import { chromium } from "playwright";
 
 const browser = await chromium.launch({
   headless: true,
-  args: ["--disable-dev-shm-usage"]
+  timeout: 30000,
+  args: [
+    "--disable-dev-shm-usage",
+    "--disable-gpu",
+    "--disable-extensions",
+    "--disable-background-networking",
+    "--disable-sync",
+    "--disable-default-apps",
+    "--no-first-run",
+    "--metrics-recording-only",
+    "--renderer-process-limit=2",
+    "--disable-features=BackForwardCache,MediaRouter,OptimizationHints"
+  ]
 });
 try {
   const page = await browser.newPage();
