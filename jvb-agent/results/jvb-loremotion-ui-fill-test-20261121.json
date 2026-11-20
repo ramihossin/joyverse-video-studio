@@ -1,0 +1,935 @@
+{
+  "taskId": "jvb-loremotion-ui-fill-test-20261121",
+  "ok": true,
+  "operation": "sequence",
+  "url": "https://loremotion.com/generate/",
+  "httpStatus": 200,
+  "state": {
+    "url": "https://loremotion.com/generate/",
+    "title": "Free AI Video Generator — LTX 2.5 & MiniMax H3, No Watermark | LoreMotion",
+    "text": "Skip to generator Create Editor Storyboard Discover Check-in Blog Plans 25 Queue SETTINGS MODEL Video Image MiniMax H3 Free · ad-supported · 480p up to 5s while more than 20 jobs are waiting · two at a time · Clean and Executive keep 720p Starts from text Animates a start image First & last frame Generates sound Faster now Best for free video Free Change What MiniMax H3 can do FORMAT LENGTH 5s 5s 1s 5s ASPECT 16:9 16:9 9:16 1:1 4:3 QUALITY 480p 480p 720p More than 20 H3 jobs are waiting. Free MiniMax H3 is 480p up to 5 seconds, and two can run at a time. MiniMax H3 5s · 16:9 · 480p Free One short ad No CSAM, weapons, or non-consensual deepfakes · prompts and IPs are logged for NCMEC reporting. LoreMotion Generator TEXT TO VIDEO · 16:9 Your video appears here Write a prompt, hit Generate — the short ad and your render start together. Text to Video Image to Video Video to Video Image Templates Prompt Timeline Presets History Attach image or video 71 / 2500 Enhance Generate Free [ AD ] [ AD ] [ AD ] [ AD ] Sign in to keep your videos for 48 hours Anonymous videos aren't saved. A free account gives you a history page and email notifications. Create free account [ TEMPLATES ] Start from a template. Pick a task, then any model that can do it. We set the mode and inputs; you add your files and tweak the prompt. The starred model is our pick. All 30 From text 7 From photos 9 Edit a clip 6 Images 8 ✦ VIDEO Write a scene Free Describe a shot in words and get a video. Free on LTX. WORKS WITH 12 MODELS LTX 2.5 MiniMax H3 Wan 3.0 Wan 3.0 Prime Seedance 2.5 Seedance 2 Mini Veo 3.1 Kling 3.0 Omni Flash Grok 3 Grok 1.5 Lite Muse YOUR PHOTO SWAPPED Character swap Sign in Put a character from your photo into a clip. Wan 3.0 Edit keeps the motion and camera of the clip. Kling 4.0 Motion keeps real faces. WORKS WITH 7 MODELS Wan 3.0 Edit Wan 3.0 Edit Wan 3.0 Prime Edit Kling 4.0 Motion Kling 4.0 Motion Seedance 2.5 Edit Seedance 2.5 Stable MOTION CLIP Motion transfer Sign in Your character copies the moves from a reference video. WORKS WITH 4 MODELS Kling 4.0 Motion Kling 4.0 Motion Kling 3 Motion Kling 3 Motion YOUR CLIP ANIME STYLE Restyle a clip Sign in Change the look of your footage while keeping its motion. WORKS WITH 6 MODELS Wan 3.0 Edit Wan 3.0 Prime Edit Seedance 2.5 Edit Seedance 2.5 Stable Kling O3 Edit Kling 3 Edit YOUR CLIP + NEW SECONDS Extend a clip Free Add seconds after the end of a video. Free on LTX. WORKS WITH 4 MODELS LTX 2.5 MiniMax H3 Seedance 2.5 Extend Seedance 2.5 Stable CAMERA REF Copy a camera move Sign in Reuse the camera motion or action from a clip in a brand-new scene. WORKS WITH 3 MODELS Seedance 2.5 Stable Wan 3.0 Kling O3 Video Ref PHOTO VIDEO Animate a photo Free Bring a still image to life. Free on LTX and MiniMax. WORKS WITH 14 MODELS LTX 2.5 MiniMax H3 Wan 3.0 Wan 3.0 Prime Seedance 2.5 Seedance 2 Mini Veo 3.1 Kling 3.0 Seedance 2 Omni Flash Grok 3 Grok 1.5 Lite Muse Kling 2.5 FIRST LAST First & last frame Sign in Set where the shot starts and ends; the model fills the middle. WORKS WITH 8 MODELS Wan 3.0 Wan 3.0 Prime Seedance 2.5 Veo 3.1 Kling 3.0 Kling O3 Seedance 2 Kling 2.5 Cast your characters Sign in Write a scene starring the people or objects in your photos. WORKS WITH 10 MODELS Seedance 2.5 Stable Wan 3.0 Wan 3.0 Prime Kling O3 Seedance 2.5 Seedance 2 Seedance 2 Fast Kling 3.0 Veo 3.1 Grok 3 Scene with dialogue Sign in Characters speak your lines, with voices and sound made with the video. WORKS WITH 6 MODELS Veo 3.1 Wan 3.0 Wan 3.0 Prime Seedance 2.5 Stable Kling 3.0 Stable Omni Flash Product showcase Sign in Turn a product photo into a clean studio spin with moving light. WORKS WITH 7 MODELS Kling 3.0 Stable Wan 3.0 Wan 3.0 Prime Seedance 2.5 Veo 3.1 Kling 3.0 LTX 2.5 NO CUTS 0s 15s 30s One long take Sign in A single continuous shot up to 30 seconds, with no cuts. WORKS WITH 5 MODELS Wan 3.0 Wan 3.0 Prime Seedance 2.5 Seedance 2.5 Stable Kling 3.0 Stable HD 4K 4K cinematic shot Sign in Top-resolution footage for big screens and client work. WORKS WITH 4 MODELS Kling 3.0 Stable Seedance 2.5 Seedance 2 Stable Veo 3.1 PHOTO EDITED Edit a photo Sign in Change a photo with words; the subject stays the same. WORKS WITH 7 MODELS Nano Banana 2 Nano Banana 2.1 Nano Banana Pro Seedream 5.0 GPT Image Affordable GPT Image Grok Image TITLE LAYOUT READY Poster or thumbnail Sign in Readable titles and clean layouts for covers, thumbnails and ads. WORKS WITH 5 MODELS GPT Image Affordable GPT Image Nano Banana 2.1 Nano Banana Pro Seedream Flash BLENDED Blend photos Sign in Combine people, products and places from several photos into one image. WORKS WITH 7 MODELS Nano Banana Pro Nano Banana 2 Nano Banana 2.1 Seedream 5.0 GPT Image Affordable GPT Image Grok Image @IMAGE1 @IMAGE2 9:16 Product ad Sign in A presenter shows off your product, phone-style, with a spoken line. Ready for TikTok and Reels. WORKS WITH 4 MODELS Wan 3.0 Kling O3 Veo 3.1 Seedance 2.5 @IMAGE1 @IMAGE2 TRY-ON Outfit try-on Sign in See a person wearing clothes from your photos, turning and walking like a lookbook. WORKS WITH 4 MODELS Wan 3.0 Kling O3 Veo 3.1 Seedance 2.5 SHOT 1 SHOT 2 SHOT 3 0s 5s 10s 15s Multi-shot story Sign in Several timed shots in one clip, like a mini trailer. Add photos to keep a character consistent. WORKS WITH 5 MODELS Wan 3.0 Seedance 2.5 Wan 3.0 Prime Seedance 2.5 Stable Veo 3.1 @IMAGE1 STYLE NEW SCENE Copy a look Sign in Use any image as a style guide: its colours, texture and art style, on a brand-new scene. WORKS WITH 4 MODELS Wan 3.0 Seedance 2.5 Kling O3 Seedance 2.5 Stable @VIDEO1 @IMAGE1 SWAPPED Swap an object Sign in Replace a product, prop or logo in your clip with the one in your photo. Motion stays. WORKS WITH 5 MODELS Seedance 2.5 Edit Wan 3.0 Edit Wan 3.0 Prime Edit Kling O3 Edit Kling 3 Edit PHOTO VOICE + LIP SYNC Make a photo talk Sign in The person or character in your photo speaks your line, with voice and lip sync. WORKS WITH 4 MODELS Veo 3.1 Wan 3.0 Seedance 2.5 Omni Flash @IMAGE1 Logo reveal Sign in Turn your logo into a short animated intro for videos, ads and socials. WORKS WITH 4 MODELS Wan 3.0 Seedance 2.5 Kling O3 Veo 3.1 TIKTOK REELS SHORTS 9:16 Vertical short Free Eye-catching 9:16 clips for TikTok, Reels and Shorts. Free on LTX. WORKS WITH 5 MODELS LTX 2.5 Seedance 2.5 Flash Wan 3.0 Seedance 2.5 Veo 3.1 ANIME Anime scene Sign in Hand-drawn anime style: action, slice of life or fantasy, with sound. WORKS WITH 5 MODELS Wan 3.0 Seedance 2.5 Flash",
+    "inputs": [
+      {
+        "tag": "textarea",
+        "type": "",
+        "id": "generate-prompt-dock",
+        "name": "",
+        "placeholder": "Describe the shot — camera, lighting, motion…",
+        "aria": "",
+        "valueLength": 71,
+        "disabled": false
+      }
+    ],
+    "buttons": [
+      {
+        "text": "",
+        "aria": "Notifications",
+        "disabled": false
+      },
+      {
+        "text": "Video",
+        "aria": "",
+        "disabled": false
+      },
+      {
+        "text": "Image",
+        "aria": "",
+        "disabled": false
+      },
+      {
+        "text": "MiniMax H3\nFree · ad-supported · 480p up to 5s while more than 20 jobs are waiting · two at a time · Clean and Executive",
+        "aria": "",
+        "disabled": false
+      },
+      {
+        "text": "",
+        "aria": "Shorter",
+        "disabled": false
+      },
+      {
+        "text": "",
+        "aria": "Longer",
+        "disabled": true
+      },
+      {
+        "text": "16:9",
+        "aria": "",
+        "disabled": false
+      },
+      {
+        "text": "9:16",
+        "aria": "",
+        "disabled": false
+      },
+      {
+        "text": "1:1",
+        "aria": "",
+        "disabled": false
+      },
+      {
+        "text": "4:3",
+        "aria": "",
+        "disabled": false
+      },
+      {
+        "text": "480p",
+        "aria": "",
+        "disabled": false
+      },
+      {
+        "text": "720p",
+        "aria": "",
+        "disabled": true
+      },
+      {
+        "text": "Text to Video",
+        "aria": "",
+        "disabled": false
+      },
+      {
+        "text": "Image to Video",
+        "aria": "",
+        "disabled": false
+      },
+      {
+        "text": "Video to Video",
+        "aria": "",
+        "disabled": false
+      },
+      {
+        "text": "Image",
+        "aria": "",
+        "disabled": false
+      },
+      {
+        "text": "Templates",
+        "aria": "",
+        "disabled": false
+      },
+      {
+        "text": "Timeline",
+        "aria": "",
+        "disabled": false
+      },
+      {
+        "text": "Presets",
+        "aria": "",
+        "disabled": false
+      },
+      {
+        "text": "History",
+        "aria": "",
+        "disabled": false
+      },
+      {
+        "text": "Attach image or video",
+        "aria": "",
+        "disabled": false
+      },
+      {
+        "text": "Enhance",
+        "aria": "",
+        "disabled": false
+      },
+      {
+        "text": "Generate\nFree",
+        "aria": "",
+        "disabled": false
+      },
+      {
+        "text": "All\n30",
+        "aria": "",
+        "disabled": false
+      },
+      {
+        "text": "From text\n7",
+        "aria": "",
+        "disabled": false
+      },
+      {
+        "text": "From photos\n9",
+        "aria": "",
+        "disabled": false
+      },
+      {
+        "text": "Edit a clip\n6",
+        "aria": "",
+        "disabled": false
+      },
+      {
+        "text": "Images\n8",
+        "aria": "",
+        "disabled": false
+      },
+      {
+        "text": "✦\nVIDEO\nWrite a scene\nFree\nDescribe a shot in words and get a video. Free on LTX.\nWORKS WITH 12 MODELS\nLTX 2.5\nMiniMax H",
+        "aria": "Open Write a scene",
+        "disabled": false
+      },
+      {
+        "text": "YOUR PHOTO\nSWAPPED\nCharacter swap\nSign in\nPut a character from your photo into a clip. Wan 3.0 Edit keeps the motion and",
+        "aria": "Open Character swap",
+        "disabled": false
+      },
+      {
+        "text": "MOTION CLIP\nMotion transfer\nSign in\nYour character copies the moves from a reference video.\nWORKS WITH 4 MODELS\nKling 4.",
+        "aria": "Open Motion transfer",
+        "disabled": false
+      },
+      {
+        "text": "YOUR CLIP\nANIME STYLE\nRestyle a clip\nSign in\nChange the look of your footage while keeping its motion.\nWORKS WITH 6 MODE",
+        "aria": "Open Restyle a clip",
+        "disabled": false
+      },
+      {
+        "text": "YOUR CLIP\n+ NEW SECONDS\nExtend a clip\nFree\nAdd seconds after the end of a video. Free on LTX.\nWORKS WITH 4 MODELS\nLTX 2.",
+        "aria": "Open Extend a clip",
+        "disabled": false
+      },
+      {
+        "text": "CAMERA REF\nCopy a camera move\nSign in\nReuse the camera motion or action from a clip in a brand-new scene.\nWORKS WITH 3 M",
+        "aria": "Open Copy a camera move",
+        "disabled": false
+      },
+      {
+        "text": "PHOTO\nVIDEO\nAnimate a photo\nFree\nBring a still image to life. Free on LTX and MiniMax.\nWORKS WITH 14 MODELS\nLTX 2.5\nMini",
+        "aria": "Open Animate a photo",
+        "disabled": false
+      },
+      {
+        "text": "FIRST\nLAST\nFirst & last frame\nSign in\nSet where the shot starts and ends; the model fills the middle.\nWORKS WITH 8 MODEL",
+        "aria": "Open First & last frame",
+        "disabled": false
+      },
+      {
+        "text": "Cast your characters\nSign in\nWrite a scene starring the people or objects in your photos.\nWORKS WITH 10 MODELS\nSeedance ",
+        "aria": "Open Cast your characters",
+        "disabled": false
+      },
+      {
+        "text": "Scene with dialogue\nSign in\nCharacters speak your lines, with voices and sound made with the video.\nWORKS WITH 6 MODELS\n",
+        "aria": "Open Scene with dialogue",
+        "disabled": false
+      },
+      {
+        "text": "Product showcase\nSign in\nTurn a product photo into a clean studio spin with moving light.\nWORKS WITH 7 MODELS\nKling 3.0 ",
+        "aria": "Open Product showcase",
+        "disabled": false
+      },
+      {
+        "text": "NO CUTS\n0s\n15s\n30s\nOne long take\nSign in\nA single continuous shot up to 30 seconds, with no cuts.\nWORKS WITH 5 MODELS\nWa",
+        "aria": "Open One long take",
+        "disabled": false
+      },
+      {
+        "text": "HD\n4K\n4K cinematic shot\nSign in\nTop-resolution footage for big screens and client work.\nWORKS WITH 4 MODELS\nKling 3.0 St",
+        "aria": "Open 4K cinematic shot",
+        "disabled": false
+      },
+      {
+        "text": "PHOTO\nEDITED\nEdit a photo\nSign in\nChange a photo with words; the subject stays the same.\nWORKS WITH 7 MODELS\nNano Banana",
+        "aria": "Open Edit a photo",
+        "disabled": false
+      },
+      {
+        "text": "TITLE\nLAYOUT\nREADY\nPoster or thumbnail\nSign in\nReadable titles and clean layouts for covers, thumbnails and ads.\nWORKS W",
+        "aria": "Open Poster or thumbnail",
+        "disabled": false
+      },
+      {
+        "text": "BLENDED\nBlend photos\nSign in\nCombine people, products and places from several photos into one image.\nWORKS WITH 7 MODELS",
+        "aria": "Open Blend photos",
+        "disabled": false
+      },
+      {
+        "text": "@IMAGE1\n@IMAGE2\n9:16\nProduct ad\nSign in\nA presenter shows off your product, phone-style, with a spoken line. Ready for T",
+        "aria": "Open Product ad",
+        "disabled": false
+      },
+      {
+        "text": "@IMAGE1\n@IMAGE2\nTRY-ON\nOutfit try-on\nSign in\nSee a person wearing clothes from your photos, turning and walking like a l",
+        "aria": "Open Outfit try-on",
+        "disabled": false
+      },
+      {
+        "text": "SHOT 1\nSHOT 2\nSHOT 3\n0s\n5s\n10s\n15s\nMulti-shot story\nSign in\nSeveral timed shots in one clip, like a mini trailer. Add ph",
+        "aria": "Open Multi-shot story",
+        "disabled": false
+      },
+      {
+        "text": "@IMAGE1 STYLE\nNEW SCENE\nCopy a look\nSign in\nUse any image as a style guide: its colours, texture and art style, on a bra",
+        "aria": "Open Copy a look",
+        "disabled": false
+      },
+      {
+        "text": "@VIDEO1\n@IMAGE1\nSWAPPED\nSwap an object\nSign in\nReplace a product, prop or logo in your clip with the one in your photo. ",
+        "aria": "Open Swap an object",
+        "disabled": false
+      },
+      {
+        "text": "PHOTO\nVOICE + LIP SYNC\nMake a photo talk\nSign in\nThe person or character in your photo speaks your line, with voice and ",
+        "aria": "Open Make a photo talk",
+        "disabled": false
+      },
+      {
+        "text": "@IMAGE1\nLogo reveal\nSign in\nTurn your logo into a short animated intro for videos, ads and socials.\nWORKS WITH 4 MODELS\n",
+        "aria": "Open Logo reveal",
+        "disabled": false
+      },
+      {
+        "text": "TIKTOK\nREELS\nSHORTS\n9:16\nVertical short\nFree\nEye-catching 9:16 clips for TikTok, Reels and Shorts. Free on LTX.\nWORKS WI",
+        "aria": "Open Vertical short",
+        "disabled": false
+      },
+      {
+        "text": "ANIME\nAnime scene\nSign in\nHand-drawn anime style: action, slice of life or fantasy, with sound.\nWORKS WITH 5 MODELS\nWan ",
+        "aria": "Open Anime scene",
+        "disabled": false
+      },
+      {
+        "text": "@IMAGE1\nFront\n3/4\nSide\nBack\nCharacter sheet\nSign in\nFront, side and back views of one character. Reuse it to keep them c",
+        "aria": "Open Character sheet",
+        "disabled": false
+      },
+      {
+        "text": "@IMAGE1\nSTUDIO\nProduct photo\nSign in\nTurn a phone snap of your product into a clean studio or lifestyle shot.\nWORKS WITH",
+        "aria": "Open Product photo",
+        "disabled": false
+      },
+      {
+        "text": "@IMAGE1\nHEADSHOT\nProfessional headshot\nSign in\nA polished profile photo from a casual selfie. Same face, better light.\nW",
+        "aria": "Open Professional headshot",
+        "disabled": false
+      },
+      {
+        "text": "@IMAGE1\nANIME ART\nPhoto to art\nSign in\nRedraw your photo as anime, a 3D cartoon, watercolour and more.\nWORKS WITH 5 MODE",
+        "aria": "Open Photo to art",
+        "disabled": false
+      },
+      {
+        "text": "OLD PHOTO\nRESTORED\nRestore an old photo\nSign in\nFix scratches, fading and blur, and add natural colour. Then animate it ",
+        "aria": "Open Restore an old photo",
+        "disabled": false
+      },
+      {
+        "text": "",
+        "aria": "Spin left",
+        "disabled": false
+      },
+      {
+        "text": "",
+        "aria": "Spin right",
+        "disabled": false
+      },
+      {
+        "text": "Write a scene",
+        "aria": "",
+        "disabled": false
+      },
+      {
+        "text": "Character swap",
+        "aria": "",
+        "disabled": false
+      },
+      {
+        "text": "Motion transfer",
+        "aria": "",
+        "disabled": false
+      },
+      {
+        "text": "Restyle a clip",
+        "aria": "",
+        "disabled": false
+      },
+      {
+        "text": "Extend a clip",
+        "aria": "",
+        "disabled": false
+      },
+      {
+        "text": "Copy a camera move",
+        "aria": "",
+        "disabled": false
+      },
+      {
+        "text": "Animate a photo",
+        "aria": "",
+        "disabled": false
+      },
+      {
+        "text": "First & last frame",
+        "aria": "",
+        "disabled": false
+      },
+      {
+        "text": "Cast your characters",
+        "aria": "",
+        "disabled": false
+      },
+      {
+        "text": "Scene with dialogue",
+        "aria": "",
+        "disabled": false
+      }
+    ],
+    "videos": [
+      {
+        "src": "https://loremotion.com/brand/wan3-promo.mp4",
+        "readyState": 0,
+        "duration": null
+      },
+      {
+        "src": "https://loremotion.com/brand/wan3-promo.mp4",
+        "readyState": 4,
+        "duration": 36.906
+      }
+    ],
+    "downloadLinks": [],
+    "verification": {
+      "cloudflareChallenge": false,
+      "turnstileResponsePresent": false
+    }
+  },
+  "steps": [
+    {
+      "index": 0,
+      "type": "wait",
+      "detail": {
+        "waitedFor": "#generate-prompt-dock"
+      },
+      "page": {
+        "url": "https://loremotion.com/generate/",
+        "title": "Free AI Video Generator — LTX 2.5 & MiniMax H3, No Watermark | LoreMotion"
+      }
+    },
+    {
+      "index": 1,
+      "type": "fill",
+      "detail": {
+        "filled": "#generate-prompt-dock",
+        "valueLength": 71
+      },
+      "page": {
+        "url": "https://loremotion.com/generate/",
+        "title": "Free AI Video Generator — LTX 2.5 & MiniMax H3, No Watermark | LoreMotion"
+      }
+    },
+    {
+      "index": 2,
+      "type": "inspect",
+      "detail": {
+        "state": {
+          "url": "https://loremotion.com/generate/",
+          "title": "Free AI Video Generator — LTX 2.5 & MiniMax H3, No Watermark | LoreMotion",
+          "text": "Skip to generator Create Editor Storyboard Discover Check-in Blog Plans 25 Queue SETTINGS MODEL Video Image MiniMax H3 Free · ad-supported · 480p up to 5s while more than 20 jobs are waiting · two at a time · Clean and Executive keep 720p Starts from text Animates a start image First & last frame Generates sound Faster now Best for free video Free Change What MiniMax H3 can do FORMAT LENGTH 5s 5s 1s 5s ASPECT 16:9 16:9 9:16 1:1 4:3 QUALITY 480p 480p 720p More than 20 H3 jobs are waiting. Free MiniMax H3 is 480p up to 5 seconds, and two can run at a time. MiniMax H3 5s · 16:9 · 480p Free One short ad No CSAM, weapons, or non-consensual deepfakes · prompts and IPs are logged for NCMEC reporting. LoreMotion Generator TEXT TO VIDEO · 16:9 Your video appears here Write a prompt, hit Generate — the short ad and your render start together. Text to Video Image to Video Video to Video Image Templates Prompt Timeline Presets History Attach image or video 71 / 2500 Enhance Generate Free [ AD ] [ AD ] [ AD ] [ AD ] Sign in to keep your videos for 48 hours Anonymous videos aren't saved. A free account gives you a history page and email notifications. Create free account [ TEMPLATES ] Start from a template. Pick a task, then any model that can do it. We set the mode and inputs; you add your files and tweak the prompt. The starred model is our pick. All 30 From text 7 From photos 9 Edit a clip 6 Images 8 ✦ VIDEO Write a scene Free Describe a shot in words and get a video. Free on LTX. WORKS WITH 12 MODELS LTX 2.5 MiniMax H3 Wan 3.0 Wan 3.0 Prime Seedance 2.5 Seedance 2 Mini Veo 3.1 Kling 3.0 Omni Flash Grok 3 Grok 1.5 Lite Muse YOUR PHOTO SWAPPED Character swap Sign in Put a character from your photo into a clip. Wan 3.0 Edit keeps the motion and camera of the clip. Kling 4.0 Motion keeps real faces. WORKS WITH 7 MODELS Wan 3.0 Edit Wan 3.0 Edit Wan 3.0 Prime Edit Kling 4.0 Motion Kling 4.0 Motion Seedance 2.5 Edit Seedance 2.5 Stable MOTION CLIP Motion transfer Sign in Your character copies the moves from a reference video. WORKS WITH 4 MODELS Kling 4.0 Motion Kling 4.0 Motion Kling 3 Motion Kling 3 Motion YOUR CLIP ANIME STYLE Restyle a clip Sign in Change the look of your footage while keeping its motion. WORKS WITH 6 MODELS Wan 3.0 Edit Wan 3.0 Prime Edit Seedance 2.5 Edit Seedance 2.5 Stable Kling O3 Edit Kling 3 Edit YOUR CLIP + NEW SECONDS Extend a clip Free Add seconds after the end of a video. Free on LTX. WORKS WITH 4 MODELS LTX 2.5 MiniMax H3 Seedance 2.5 Extend Seedance 2.5 Stable CAMERA REF Copy a camera move Sign in Reuse the camera motion or action from a clip in a brand-new scene. WORKS WITH 3 MODELS Seedance 2.5 Stable Wan 3.0 Kling O3 Video Ref PHOTO VIDEO Animate a photo Free Bring a still image to life. Free on LTX and MiniMax. WORKS WITH 14 MODELS LTX 2.5 MiniMax H3 Wan 3.0 Wan 3.0 Prime Seedance 2.5 Seedance 2 Mini Veo 3.1 Kling 3.0 Seedance 2 Omni Flash Grok 3 Grok 1.5 Lite Muse Kling 2.5 FIRST LAST First & last frame Sign in Set where the shot starts and ends; the model fills the middle. WORKS WITH 8 MODELS Wan 3.0 Wan 3.0 Prime Seedance 2.5 Veo 3.1 Kling 3.0 Kling O3 Seedance 2 Kling 2.5 Cast your characters Sign in Write a scene starring the people or objects in your photos. WORKS WITH 10 MODELS Seedance 2.5 Stable Wan 3.0 Wan 3.0 Prime Kling O3 Seedance 2.5 Seedance 2 Seedance 2 Fast Kling 3.0 Veo 3.1 Grok 3 Scene with dialogue Sign in Characters speak your lines, with voices and sound made with the video. WORKS WITH 6 MODELS Veo 3.1 Wan 3.0 Wan 3.0 Prime Seedance 2.5 Stable Kling 3.0 Stable Omni Flash Product showcase Sign in Turn a product photo into a clean studio spin with moving light. WORKS WITH 7 MODELS Kling 3.0 Stable Wan 3.0 Wan 3.0 Prime Seedance 2.5 Veo 3.1 Kling 3.0 LTX 2.5 NO CUTS 0s 15s 30s One long take Sign in A single continuous shot up to 30 seconds, with no cuts. WORKS WITH 5 MODELS Wan 3.0 Wan 3.0 Prime Seedance 2.5 Seedance 2.5 Stable Kling 3.0 Stable HD 4K 4K cinematic shot Sign in Top-resolution footage for big screens and client work. WORKS WITH 4 MODELS Kling 3.0 Stable Seedance 2.5 Seedance 2 Stable Veo 3.1 PHOTO EDITED Edit a photo Sign in Change a photo with words; the subject stays the same. WORKS WITH 7 MODELS Nano Banana 2 Nano Banana 2.1 Nano Banana Pro Seedream 5.0 GPT Image Affordable GPT Image Grok Image TITLE LAYOUT READY Poster or thumbnail Sign in Readable titles and clean layouts for covers, thumbnails and ads. WORKS WITH 5 MODELS GPT Image Affordable GPT Image Nano Banana 2.1 Nano Banana Pro Seedream Flash BLENDED Blend photos Sign in Combine people, products and places from several photos into one image. WORKS WITH 7 MODELS Nano Banana Pro Nano Banana 2 Nano Banana 2.1 Seedream 5.0 GPT Image Affordable GPT Image Grok Image @IMAGE1 @IMAGE2 9:16 Product ad Sign in A presenter shows off your product, phone-style, with a spoken line. Ready for TikTok and Reels. WORKS WITH 4 MODELS Wan 3.0 Kling O3 Veo 3.1 Seedance 2.5 @IMAGE1 @IMAGE2 TRY-ON Outfit try-on Sign in See a person wearing clothes from your photos, turning and walking like a lookbook. WORKS WITH 4 MODELS Wan 3.0 Kling O3 Veo 3.1 Seedance 2.5 SHOT 1 SHOT 2 SHOT 3 0s 5s 10s 15s Multi-shot story Sign in Several timed shots in one clip, like a mini trailer. Add photos to keep a character consistent. WORKS WITH 5 MODELS Wan 3.0 Seedance 2.5 Wan 3.0 Prime Seedance 2.5 Stable Veo 3.1 @IMAGE1 STYLE NEW SCENE Copy a look Sign in Use any image as a style guide: its colours, texture and art style, on a brand-new scene. WORKS WITH 4 MODELS Wan 3.0 Seedance 2.5 Kling O3 Seedance 2.5 Stable @VIDEO1 @IMAGE1 SWAPPED Swap an object Sign in Replace a product, prop or logo in your clip with the one in your photo. Motion stays. WORKS WITH 5 MODELS Seedance 2.5 Edit Wan 3.0 Edit Wan 3.0 Prime Edit Kling O3 Edit Kling 3 Edit PHOTO VOICE + LIP SYNC Make a photo talk Sign in The person or character in your photo speaks your line, with voice and lip sync. WORKS WITH 4 MODELS Veo 3.1 Wan 3.0 Seedance 2.5 Omni Flash @IMAGE1 Logo reveal Sign in Turn your logo into a short animated intro for videos, ads and socials. WORKS WITH 4 MODELS Wan 3.0 Seedance 2.5 Kling O3 Veo 3.1 TIKTOK REELS SHORTS 9:16 Vertical short Free Eye-catching 9:16 clips for TikTok, Reels and Shorts. Free on LTX. WORKS WITH 5 MODELS LTX 2.5 Seedance 2.5 Flash Wan 3.0 Seedance 2.5 Veo 3.1 ANIME Anime scene Sign in Hand-drawn anime style: action, slice of life or fantasy, with sound. WORKS WITH 5 MODELS Wan 3.0 Seedance 2.5 Flash",
+          "inputs": [
+            {
+              "tag": "textarea",
+              "type": "",
+              "id": "generate-prompt-dock",
+              "name": "",
+              "placeholder": "Describe the shot — camera, lighting, motion…",
+              "aria": "",
+              "valueLength": 71,
+              "disabled": false
+            }
+          ],
+          "buttons": [
+            {
+              "text": "",
+              "aria": "Notifications",
+              "disabled": false
+            },
+            {
+              "text": "Video",
+              "aria": "",
+              "disabled": false
+            },
+            {
+              "text": "Image",
+              "aria": "",
+              "disabled": false
+            },
+            {
+              "text": "MiniMax H3\nFree · ad-supported · 480p up to 5s while more than 20 jobs are waiting · two at a time · Clean and Executive",
+              "aria": "",
+              "disabled": false
+            },
+            {
+              "text": "",
+              "aria": "Shorter",
+              "disabled": false
+            },
+            {
+              "text": "",
+              "aria": "Longer",
+              "disabled": true
+            },
+            {
+              "text": "16:9",
+              "aria": "",
+              "disabled": false
+            },
+            {
+              "text": "9:16",
+              "aria": "",
+              "disabled": false
+            },
+            {
+              "text": "1:1",
+              "aria": "",
+              "disabled": false
+            },
+            {
+              "text": "4:3",
+              "aria": "",
+              "disabled": false
+            },
+            {
+              "text": "480p",
+              "aria": "",
+              "disabled": false
+            },
+            {
+              "text": "720p",
+              "aria": "",
+              "disabled": true
+            },
+            {
+              "text": "Text to Video",
+              "aria": "",
+              "disabled": false
+            },
+            {
+              "text": "Image to Video",
+              "aria": "",
+              "disabled": false
+            },
+            {
+              "text": "Video to Video",
+              "aria": "",
+              "disabled": false
+            },
+            {
+              "text": "Image",
+              "aria": "",
+              "disabled": false
+            },
+            {
+              "text": "Templates",
+              "aria": "",
+              "disabled": false
+            },
+            {
+              "text": "Timeline",
+              "aria": "",
+              "disabled": false
+            },
+            {
+              "text": "Presets",
+              "aria": "",
+              "disabled": false
+            },
+            {
+              "text": "History",
+              "aria": "",
+              "disabled": false
+            },
+            {
+              "text": "Attach image or video",
+              "aria": "",
+              "disabled": false
+            },
+            {
+              "text": "Enhance",
+              "aria": "",
+              "disabled": false
+            },
+            {
+              "text": "Generate\nFree",
+              "aria": "",
+              "disabled": false
+            },
+            {
+              "text": "All\n30",
+              "aria": "",
+              "disabled": false
+            },
+            {
+              "text": "From text\n7",
+              "aria": "",
+              "disabled": false
+            },
+            {
+              "text": "From photos\n9",
+              "aria": "",
+              "disabled": false
+            },
+            {
+              "text": "Edit a clip\n6",
+              "aria": "",
+              "disabled": false
+            },
+            {
+              "text": "Images\n8",
+              "aria": "",
+              "disabled": false
+            },
+            {
+              "text": "✦\nVIDEO\nWrite a scene\nFree\nDescribe a shot in words and get a video. Free on LTX.\nWORKS WITH 12 MODELS\nLTX 2.5\nMiniMax H",
+              "aria": "Open Write a scene",
+              "disabled": false
+            },
+            {
+              "text": "YOUR PHOTO\nSWAPPED\nCharacter swap\nSign in\nPut a character from your photo into a clip. Wan 3.0 Edit keeps the motion and",
+              "aria": "Open Character swap",
+              "disabled": false
+            },
+            {
+              "text": "MOTION CLIP\nMotion transfer\nSign in\nYour character copies the moves from a reference video.\nWORKS WITH 4 MODELS\nKling 4.",
+              "aria": "Open Motion transfer",
+              "disabled": false
+            },
+            {
+              "text": "YOUR CLIP\nANIME STYLE\nRestyle a clip\nSign in\nChange the look of your footage while keeping its motion.\nWORKS WITH 6 MODE",
+              "aria": "Open Restyle a clip",
+              "disabled": false
+            },
+            {
+              "text": "YOUR CLIP\n+ NEW SECONDS\nExtend a clip\nFree\nAdd seconds after the end of a video. Free on LTX.\nWORKS WITH 4 MODELS\nLTX 2.",
+              "aria": "Open Extend a clip",
+              "disabled": false
+            },
+            {
+              "text": "CAMERA REF\nCopy a camera move\nSign in\nReuse the camera motion or action from a clip in a brand-new scene.\nWORKS WITH 3 M",
+              "aria": "Open Copy a camera move",
+              "disabled": false
+            },
+            {
+              "text": "PHOTO\nVIDEO\nAnimate a photo\nFree\nBring a still image to life. Free on LTX and MiniMax.\nWORKS WITH 14 MODELS\nLTX 2.5\nMini",
+              "aria": "Open Animate a photo",
+              "disabled": false
+            },
+            {
+              "text": "FIRST\nLAST\nFirst & last frame\nSign in\nSet where the shot starts and ends; the model fills the middle.\nWORKS WITH 8 MODEL",
+              "aria": "Open First & last frame",
+              "disabled": false
+            },
+            {
+              "text": "Cast your characters\nSign in\nWrite a scene starring the people or objects in your photos.\nWORKS WITH 10 MODELS\nSeedance ",
+              "aria": "Open Cast your characters",
+              "disabled": false
+            },
+            {
+              "text": "Scene with dialogue\nSign in\nCharacters speak your lines, with voices and sound made with the video.\nWORKS WITH 6 MODELS\n",
+              "aria": "Open Scene with dialogue",
+              "disabled": false
+            },
+            {
+              "text": "Product showcase\nSign in\nTurn a product photo into a clean studio spin with moving light.\nWORKS WITH 7 MODELS\nKling 3.0 ",
+              "aria": "Open Product showcase",
+              "disabled": false
+            },
+            {
+              "text": "NO CUTS\n0s\n15s\n30s\nOne long take\nSign in\nA single continuous shot up to 30 seconds, with no cuts.\nWORKS WITH 5 MODELS\nWa",
+              "aria": "Open One long take",
+              "disabled": false
+            },
+            {
+              "text": "HD\n4K\n4K cinematic shot\nSign in\nTop-resolution footage for big screens and client work.\nWORKS WITH 4 MODELS\nKling 3.0 St",
+              "aria": "Open 4K cinematic shot",
+              "disabled": false
+            },
+            {
+              "text": "PHOTO\nEDITED\nEdit a photo\nSign in\nChange a photo with words; the subject stays the same.\nWORKS WITH 7 MODELS\nNano Banana",
+              "aria": "Open Edit a photo",
+              "disabled": false
+            },
+            {
+              "text": "TITLE\nLAYOUT\nREADY\nPoster or thumbnail\nSign in\nReadable titles and clean layouts for covers, thumbnails and ads.\nWORKS W",
+              "aria": "Open Poster or thumbnail",
+              "disabled": false
+            },
+            {
+              "text": "BLENDED\nBlend photos\nSign in\nCombine people, products and places from several photos into one image.\nWORKS WITH 7 MODELS",
+              "aria": "Open Blend photos",
+              "disabled": false
+            },
+            {
+              "text": "@IMAGE1\n@IMAGE2\n9:16\nProduct ad\nSign in\nA presenter shows off your product, phone-style, with a spoken line. Ready for T",
+              "aria": "Open Product ad",
+              "disabled": false
+            },
+            {
+              "text": "@IMAGE1\n@IMAGE2\nTRY-ON\nOutfit try-on\nSign in\nSee a person wearing clothes from your photos, turning and walking like a l",
+              "aria": "Open Outfit try-on",
+              "disabled": false
+            },
+            {
+              "text": "SHOT 1\nSHOT 2\nSHOT 3\n0s\n5s\n10s\n15s\nMulti-shot story\nSign in\nSeveral timed shots in one clip, like a mini trailer. Add ph",
+              "aria": "Open Multi-shot story",
+              "disabled": false
+            },
+            {
+              "text": "@IMAGE1 STYLE\nNEW SCENE\nCopy a look\nSign in\nUse any image as a style guide: its colours, texture and art style, on a bra",
+              "aria": "Open Copy a look",
+              "disabled": false
+            },
+            {
+              "text": "@VIDEO1\n@IMAGE1\nSWAPPED\nSwap an object\nSign in\nReplace a product, prop or logo in your clip with the one in your photo. ",
+              "aria": "Open Swap an object",
+              "disabled": false
+            },
+            {
+              "text": "PHOTO\nVOICE + LIP SYNC\nMake a photo talk\nSign in\nThe person or character in your photo speaks your line, with voice and ",
+              "aria": "Open Make a photo talk",
+              "disabled": false
+            },
+            {
+              "text": "@IMAGE1\nLogo reveal\nSign in\nTurn your logo into a short animated intro for videos, ads and socials.\nWORKS WITH 4 MODELS\n",
+              "aria": "Open Logo reveal",
+              "disabled": false
+            },
+            {
+              "text": "TIKTOK\nREELS\nSHORTS\n9:16\nVertical short\nFree\nEye-catching 9:16 clips for TikTok, Reels and Shorts. Free on LTX.\nWORKS WI",
+              "aria": "Open Vertical short",
+              "disabled": false
+            },
+            {
+              "text": "ANIME\nAnime scene\nSign in\nHand-drawn anime style: action, slice of life or fantasy, with sound.\nWORKS WITH 5 MODELS\nWan ",
+              "aria": "Open Anime scene",
+              "disabled": false
+            },
+            {
+              "text": "@IMAGE1\nFront\n3/4\nSide\nBack\nCharacter sheet\nSign in\nFront, side and back views of one character. Reuse it to keep them c",
+              "aria": "Open Character sheet",
+              "disabled": false
+            },
+            {
+              "text": "@IMAGE1\nSTUDIO\nProduct photo\nSign in\nTurn a phone snap of your product into a clean studio or lifestyle shot.\nWORKS WITH",
+              "aria": "Open Product photo",
+              "disabled": false
+            },
+            {
+              "text": "@IMAGE1\nHEADSHOT\nProfessional headshot\nSign in\nA polished profile photo from a casual selfie. Same face, better light.\nW",
+              "aria": "Open Professional headshot",
+              "disabled": false
+            },
+            {
+              "text": "@IMAGE1\nANIME ART\nPhoto to art\nSign in\nRedraw your photo as anime, a 3D cartoon, watercolour and more.\nWORKS WITH 5 MODE",
+              "aria": "Open Photo to art",
+              "disabled": false
+            },
+            {
+              "text": "OLD PHOTO\nRESTORED\nRestore an old photo\nSign in\nFix scratches, fading and blur, and add natural colour. Then animate it ",
+              "aria": "Open Restore an old photo",
+              "disabled": false
+            },
+            {
+              "text": "",
+              "aria": "Spin left",
+              "disabled": false
+            },
+            {
+              "text": "",
+              "aria": "Spin right",
+              "disabled": false
+            },
+            {
+              "text": "Write a scene",
+              "aria": "",
+              "disabled": false
+            },
+            {
+              "text": "Character swap",
+              "aria": "",
+              "disabled": false
+            },
+            {
+              "text": "Motion transfer",
+              "aria": "",
+              "disabled": false
+            },
+            {
+              "text": "Restyle a clip",
+              "aria": "",
+              "disabled": false
+            },
+            {
+              "text": "Extend a clip",
+              "aria": "",
+              "disabled": false
+            },
+            {
+              "text": "Copy a camera move",
+              "aria": "",
+              "disabled": false
+            },
+            {
+              "text": "Animate a photo",
+              "aria": "",
+              "disabled": false
+            },
+            {
+              "text": "First & last frame",
+              "aria": "",
+              "disabled": false
+            },
+            {
+              "text": "Cast your characters",
+              "aria": "",
+              "disabled": false
+            },
+            {
+              "text": "Scene with dialogue",
+              "aria": "",
+              "disabled": false
+            }
+          ],
+          "videos": [
+            {
+              "src": "https://loremotion.com/brand/wan3-promo.mp4",
+              "readyState": 0,
+              "duration": null
+            }
+          ],
+          "downloadLinks": [],
+          "verification": {
+            "cloudflareChallenge": false,
+            "turnstileResponsePresent": false
+          }
+        }
+      },
+      "page": {
+        "url": "https://loremotion.com/generate/",
+        "title": "Free AI Video Generator — LTX 2.5 & MiniMax H3, No Watermark | LoreMotion"
+      }
+    },
+    {
+      "index": 3,
+      "type": "screenshot",
+      "detail": {
+        "file": "jvb-loremotion-ui-fill-test.png"
+      },
+      "page": {
+        "url": "https://loremotion.com/generate/",
+        "title": "Free AI Video Generator — LTX 2.5 & MiniMax H3, No Watermark | LoreMotion"
+      }
+    }
+  ],
+  "downloads": [],
+  "network": [
+    {
+      "url": "https://loremotion.com/generate/",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "url": "https://fonts.googleapis.com/css2",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "url": "https://loremotion.com/assets/probe-video-duration-Dsv0TiJL.js",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "url": "https://loremotion.com/assets/GenerateNav-CaM3Htbf.js",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "url": "https://loremotion-production.up.railway.app/api/queue/stats",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "url": "https://loremotion-production.up.railway.app/api/config",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "url": "https://challenges.cloudflare.com/turnstile/v0/api.js",
+      "method": "GET",
+      "status": 302
+    },
+    {
+      "url": "https://challenges.cloudflare.com/turnstile/v0/b/f8df4d4a0cd6/api.js",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "url": "https://loremotion-production.up.railway.app/api/queue/stats",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "url": "https://fonts.googleapis.com/css",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "url": "https://cm.g.doubleclick.net/partnerpixels",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "url": "https://loremotion-production.up.railway.app/api/discover",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "url": "https://challenges.cloudflare.com/cdn-cgi/challenge-platform/h/b/turnstile/f/av0/rch/bos2b/0x4AAAAAADIzrtDqSXzYbVx5/dark/fbE/new/flexible",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "url": "https://id.a-mx.com/sync/",
+      "method": "GET",
+      "status": 302
+    },
+    {
+      "url": "https://api.country.is/",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "url": "https://www.google-analytics.com/g/collect",
+      "method": "POST",
+      "status": 204
+    },
+    {
+      "url": "https://id5-sync.com/api/config/prebid",
+      "method": "POST",
+      "status": 200
+    },
+    {
+      "url": "https://securepubads.g.doubleclick.net/gampad/ads",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "url": "https://www.google.com/recaptcha/api2/aframe",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "url": "https://exchange.postrelease.com/prebid",
+      "method": "POST",
+      "status": 204
+    },
+    {
+      "url": "https://mweb-hb.presage.io/api/header-bidding-request",
+      "method": "POST",
+      "status": 204
+    },
+    {
+      "url": "https://mweb-hb.presage.io/api/header-bidding-request",
+      "method": "POST",
+      "status": 204
+    }
+  ],
+  "completedAt": "2026-11-20T23:33:26.042Z",
+  "note": "Browser actions were limited to the video-site allowlist. Login, passwords, payments, subscription changes, and account deletion are blocked. Cloudflare checks are not bypassed."
+}
