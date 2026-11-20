@@ -32,7 +32,19 @@ const ROOT = path.dirname(fileURLToPath(import.meta.url));
 const UI_DIR = path.join(ROOT, "ui");
 const DOWNLOAD_DIR = process.env.DOWNLOAD_DIR || path.join(process.env.DATA_DIR || path.join(ROOT, "data"), "downloads");
 const UPLOAD_DIR = process.env.UPLOAD_DIR || path.join(os.tmpdir(), "joyverse-agent-uploads");
-const VIEWPORT = { width: 1365, height: 900 };
+const VIEWPORT = { width: 1280, height: 720 };
+const CHROMIUM_ARGS = [
+  "--disable-dev-shm-usage",
+  "--disable-gpu",
+  "--disable-extensions",
+  "--disable-background-networking",
+  "--disable-sync",
+  "--disable-default-apps",
+  "--no-first-run",
+  "--metrics-recording-only",
+  "--renderer-process-limit=2",
+  "--disable-features=BackForwardCache,MediaRouter,OptimizationHints"
+];
 let browser;
 let context;
 let page;
@@ -158,11 +170,16 @@ function isPrivateHost(rawHost) {
   }
   return false;
 }
+function isRestrictedDestination(url) {
+  const target = `${url.hostname}${url.pathname}`.toLowerCase();
+  return /casino|sportsbook|poker|gambling|wager|binary[-.]?options?|bet(?:ting)?|prediction[-.]?market/.test(target);
+}
 function assertSafeUrl(value) {
   let url;
   try { url = new URL(value); } catch { throw new Error("أدخل رابطاً صحيحاً يبدأ بـ https:// أو http://"); }
   if (!["http:", "https:"].includes(url.protocol)) throw new Error("Only HTTP and HTTPS destinations are allowed.");
   if (isPrivateHost(url.hostname)) throw new Error("Local and private network destinations are blocked.");
+  if (isRestrictedDestination(url)) throw new Error("هذا النوع من المواقع غير مدعوم في JVB.");
   return url;
 }
 function hostAllowed(urlValue, site) {
@@ -218,11 +235,18 @@ function browserRequired() {
   if (!page || !context || !currentSiteId) throw new Error("افتح أحد المواقع أولاً.");
 }
 async function ensureBrowser() {
-  if (browser) return browser;
+  if (browser?.isConnected()) return browser;
+  if (browser) {
+    browser = null;
+    context = null;
+    page = null;
+    currentSiteId = null;
+  }
   const generation = browserGeneration;
   const launched = await chromium.launch({
     headless: true,
-    args: ["--disable-dev-shm-usage"]
+    timeout: 30000,
+    args: CHROMIUM_ARGS
   });
   if (generation !== browserGeneration) {
     await launched.close().catch(() => {});
@@ -281,7 +305,7 @@ async function openSite(site, targetUrl = null) {
     try {
       const requested = new URL(route.request().url());
       if (["blob:", "data:", "about:"].includes(requested.protocol)) return route.continue();
-      if (!["http:", "https:", "ws:", "wss:"].includes(requested.protocol) || isPrivateHost(requested.hostname)) {
+      if (!["http:", "https:", "ws:", "wss:"].includes(requested.protocol) || isPrivateHost(requested.hostname) || isRestrictedDestination(requested)) {
         return route.abort("blockedbyclient");
       }
       return route.continue();
@@ -303,6 +327,11 @@ async function openSite(site, targetUrl = null) {
   page.setDefaultTimeout(20000);
   const mainPage = page;
   page.on("popup", popup => {
+    if ((context?.pages().length || 0) > 4) {
+      addPageIssue("popup-limit", "An extra popup was closed to protect the free instance memory budget.");
+      void popup.close().catch(() => {});
+      return;
+    }
     page = popup;
     observePage(popup);
     popup.setDefaultTimeout(20000);
@@ -330,11 +359,24 @@ function withBrowser(fn) {
     finally { operationGate.release(lease); }
   };
 }
-app.get("/health", (_req, res) => res.json({
-  ok: true, service: "joyverse-free-browser-agent", browserStarted: Boolean(browser),
-  persistence: process.env.DATABASE_URL ? "postgres-encrypted" : "local-encrypted",
-  activeSite: currentSiteId ? "open" : null
-}));
+app.get("/health", (_req, res) => {
+  const memory = process.memoryUsage();
+  res.set("Cache-Control", "no-store");
+  res.json({
+    ok: true,
+    service: "joyverse-free-browser-agent",
+    browserStarted: Boolean(browser),
+    browserConnected: Boolean(browser?.isConnected()),
+    activePages: context?.pages().filter(item => !item.isClosed()).length || 0,
+    persistence: process.env.DATABASE_URL ? "postgres-encrypted" : "local-encrypted",
+    memoryMiB: {
+      rss: Math.round(memory.rss / 1048576),
+      heapUsed: Math.round(memory.heapUsed / 1048576),
+      external: Math.round(memory.external / 1048576)
+    },
+    activeSite: currentSiteId ? "open" : null
+  });
+});
 app.use("/api", auth);
 
 app.get("/api/sites", async (_req, res) => {
@@ -593,14 +635,21 @@ app.get("/api/downloads/:id", async (req, res) => {
     res.download(path.join(DOWNLOAD_DIR, match), match.slice(req.params.id.length + 1));
   } catch (error) { res.status(404).json({ error: String(error?.message || error) }); }
 });
-app.get("/api/browser/status", (_req, res) => res.json({
-  ok: true,
-  busy: operationGate.busy,
-  operation: operationGate.snapshot(),
-  recovering,
-  browserStarted: Boolean(browser),
-  activeSite: currentSiteId
-}));
+app.get("/api/browser/status", (_req, res) => {
+  const memory = process.memoryUsage();
+  res.set("Cache-Control", "no-store");
+  res.json({
+    ok: true,
+    busy: operationGate.busy,
+    operation: operationGate.snapshot(),
+    recovering,
+    browserStarted: Boolean(browser),
+    browserConnected: Boolean(browser?.isConnected()),
+    activePages: context?.pages().filter(item => !item.isClosed()).length || 0,
+    memoryMiB: { rss: Math.round(memory.rss / 1048576), heapUsed: Math.round(memory.heapUsed / 1048576) },
+    activeSite: currentSiteId
+  });
+});
 app.post("/api/browser/recover", async (_req, res) => {
   if (recovering) return res.status(409).json({ error: "إعادة تهيئة المتصفح جارية بالفعل." });
   recovering = true;
@@ -638,9 +687,12 @@ app.post("/api/browser/close", async (_req, res) => {
   if (operationGate.busy || recovering) return res.status(409).json({ error: "المتصفح مشغول." });
   try {
     await persistCurrentSession().catch(() => {});
-    await context?.close().catch(() => {});
-    context = page = null; currentSiteId = null;
-    res.json({ ok: true });
+    const oldBrowser = browser;
+    browser = null;
+    context = page = null;
+    currentSiteId = null;
+    await oldBrowser?.close().catch(() => {});
+    res.json({ ok: true, message: "أُغلق Chromium بالكامل وحُفظت الجلسة المشفّرة." });
   } catch (error) { res.status(400).json({ error: String(error?.message || error) }); }
 });
 
