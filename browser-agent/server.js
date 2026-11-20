@@ -46,7 +46,7 @@ const CHROMIUM_ARGS = [
   "--disable-default-apps",
   "--no-first-run",
   "--metrics-recording-only",
-  "--renderer-process-limit=2",
+  "--renderer-process-limit=1",
   "--disable-features=BackForwardCache,MediaRouter,OptimizationHints"
 ];
 let browser;
@@ -303,9 +303,15 @@ async function openSite(site, targetUrl = null) {
   context = newContext;
   await context.route("**/*", async route => {
     try {
-      const requested = new URL(route.request().url());
+      const request = route.request();
+      const requested = new URL(request.url());
       if (["blob:", "data:", "about:"].includes(requested.protocol)) return route.continue();
       if (!["http:", "https:", "ws:", "wss:"].includes(requested.protocol) || isPrivateHost(requested.hostname) || isRestrictedDestination(requested)) {
+        return route.abort("blockedbyclient");
+      }
+      // Keep the 512 MiB free instance usable: video-site artwork and media
+      // are not needed for DOM inspection or text entry.
+      if (["image", "media", "font"].includes(request.resourceType())) {
         return route.abort("blockedbyclient");
       }
       return route.continue();
@@ -498,34 +504,88 @@ function createMcpServer() {
       try {
         const snapshot = await withMcpOperation("page snapshot", async () => {
           browserRequired();
-          const text = await page.locator("body").innerText({ timeout: 4000 }).catch(() => "");
-          const controls = await page.locator("input,textarea,select,a").evaluateAll(nodes =>
-            nodes.slice(0, 120).map((el, index) => {
-              const tag = el.tagName.toLowerCase();
-              const type = String(el.getAttribute("type") || "").toLowerCase();
-              const label = String(el.getAttribute("aria-label") || el.getAttribute("placeholder") || el.innerText || "").trim().replace(/\s+/g, " ").slice(0, 120);
-              let selector = tag;
-              if (el.id) selector = "#" + CSS.escape(el.id);
-              else if (el.getAttribute("name")) selector += '[name="' + el.getAttribute("name").replace(/"/g, '\\"') + '"]';
-              else if (el.getAttribute("placeholder") && ["input", "textarea"].includes(tag)) selector += '[placeholder="' + el.getAttribute("placeholder").replace(/"/g, '\\"') + '"]';
-              return {
-                index, tag, type, label, selector,
-                disabled: Boolean(el.disabled),
-                readOnly: Boolean(el.readOnly),
-                href: tag === "a" ? (el.href || "") : ""
-              };
-            })
-          );
-          return {
-            url: safeDiagnosticUrl(page.url()),
-            title: await page.title().catch(() => ""),
-            text: text.slice(0, 12000),
-            controls: controls.map(control => control.href ? { ...control, href: safeDiagnosticUrl(control.href) } : control),
-            verification: findVerificationHints(page.frames().map(frame => frame.url()), text),
-            navigation: pageDiagnostics.navigation
-          };
+          const targetPage = page;
+          const extraction = targetPage.evaluate(() => {
+            const bodyText = document.body?.innerText || "";
+            const controls = Array.from(document.querySelectorAll("input,textarea,select,a"))
+              .slice(0, 80)
+              .map((el, index) => {
+                const tag = el.tagName.toLowerCase();
+                const type = String(el.getAttribute("type") || "").toLowerCase();
+                const name = el.getAttribute("name") || "";
+                const placeholder = el.getAttribute("placeholder") || "";
+                const label = String(el.getAttribute("aria-label") || placeholder || el.innerText || "")
+                  .trim().replace(/\\s+/g, " ").slice(0, 100);
+                let selector = tag;
+                if (el.id) selector = "#" + CSS.escape(el.id);
+                else if (name) selector += '[name="' + name.replace(/"/g, '\\"') + '"]';
+                else if (placeholder && ["input", "textarea"].includes(tag)) {
+                  selector += '[placeholder="' + placeholder.replace(/"/g, '\\"') + '"]';
+                }
+                return {
+                  index, tag, type, label, selector,
+                  disabled: Boolean(el.disabled),
+                  readOnly: Boolean(el.readOnly),
+                  href: tag === "a" ? (el.href || "") : ""
+                };
+              });
+            return {
+              url: location.href,
+              title: document.title || "",
+              text: bodyText.slice(0, 12000),
+              controls
+            };
+          });
+          let timer;
+          try {
+            const result = await Promise.race([
+              extraction,
+              new Promise((_, reject) => {
+                timer = setTimeout(() => reject(new Error("استخراج الصفحة تجاوز 10 ثوانٍ؛ أُوقف المتصفح لحماية الخدمة من التعليق.")), 10000);
+              })
+            ]);
+            const frameUrls = targetPage.frames().map(frame => frame.url());
+            return {
+              url: safeDiagnosticUrl(result.url),
+              title: result.title,
+              text: result.text,
+              controls: result.controls.map(control => control.href
+                ? { ...control, href: safeDiagnosticUrl(control.href) }
+                : control),
+              verification: findVerificationHints(frameUrls, result.text),
+              navigation: pageDiagnostics.navigation
+            };
+          } catch (error) {
+            if (String(error?.message || error).includes("تجاوز 10 ثوانٍ")) {
+              // A wedged renderer can leave Playwright promises pending and
+              // exhaust the free instance. Tear down Chromium before releasing
+              // the operation lock so the next open starts from a clean state.
+              recovering = true;
+              const oldContext = context;
+              const oldBrowser = browser;
+              browserGeneration += 1;
+              context = null;
+              page = null;
+              currentSiteId = null;
+              browser = null;
+              try {
+                await Promise.race([
+                  Promise.allSettled([
+                    oldContext?.close().catch(() => {}),
+                    oldBrowser?.close().catch(() => {})
+                  ]),
+                  new Promise(resolve => setTimeout(resolve, 2500))
+                ]);
+              } finally {
+                recovering = false;
+              }
+            }
+            throw error;
+          } finally {
+            if (timer) clearTimeout(timer);
+          }
         });
-        return mcpText(snapshot);
+
       } catch (error) { return mcpError(error); }
     }
   );
