@@ -260,6 +260,26 @@ async function performStep(page, context, task, step, index, downloads) {
     await locator.click({ timeout });
     detail.clicked = selector;
     detail.label = label;
+  } else if (step.type === "clickIfVisible") {
+    const selector = safeSelector(step.selector);
+    const locator = page.locator(selector).first();
+    const count = await locator.count();
+    const visible = count > 0 && await locator.isVisible().catch(() => false);
+    if (!visible) {
+      detail.skipped = "not-visible";
+    } else {
+      const label = await locator.evaluate(node => (
+        (node.innerText || node.textContent || "") + " " +
+        (node.getAttribute("aria-label") || "") + " " +
+        (node.getAttribute("title") || "")
+      ).trim().slice(0, 250));
+      if (/login|log in|sign in|password|checkout|payment|purchase|buy credits|subscribe|upgrade|delete account|sign out|logout/i.test(label)) {
+        throw new Error("This action requires login, payment, subscription, or a destructive account change and is blocked.");
+      }
+      await locator.click({ timeout });
+      detail.clicked = selector;
+      detail.label = label;
+    }
   } else if (step.type === "upload") {
     const selector = safeSelector(step.selector);
     if (typeof step.fileBase64 !== "string" || step.fileBase64.length < 16 ||
