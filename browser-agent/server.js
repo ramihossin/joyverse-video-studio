@@ -515,7 +515,7 @@ function createMcpServer() {
                 const name = el.getAttribute("name") || "";
                 const placeholder = el.getAttribute("placeholder") || "";
                 const label = String(el.getAttribute("aria-label") || placeholder || el.innerText || "")
-                  .trim().replace(/\\s+/g, " ").slice(0, 100);
+                  .trim().replace(/\s+/g, " ").slice(0, 100);
                 let selector = tag;
                 if (el.id) selector = "#" + CSS.escape(el.id);
                 else if (name) selector += '[name="' + name.replace(/"/g, '\\"') + '"]';
@@ -585,7 +585,7 @@ function createMcpServer() {
             if (timer) clearTimeout(timer);
           }
         });
-
+        return mcpText(snapshot);
       } catch (error) { return mcpError(error); }
     }
   );
