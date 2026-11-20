@@ -1,0 +1,6 @@
+{
+  "taskId": "jvb-loremotion-aspect-test-20261121",
+  "ok": false,
+  "error": "locator.click: Timeout 15000ms exceeded.\nCall log:\n  - waiting for locator('button:has-text(\\'9:16\\')').first()\n    - locator resolved to <button type=\"button\" title=\"9:16 · Tall\" class=\"flex flex-col items-center gap-1 rounded-xl px-1 py-2 text-[11px] font-medium transition-colors text-ink-3 hover:bg-white/5 hover:text-white\">…</button>\n  - attempting click action\n    2 × waiting for element to be visible, enabled and stable\n      - element is visible, enabled and stable\n      - scrolling into view if needed\n      - done scrolling\n      - <div data-state=\"open\" aria-hidden=\"true\" data-aria-hidden=\"true\" class=\"fixed inset-0 z-[10000] bg-black/75 backdrop-blur-sm\"></div> intercepts pointer events\n    - retrying click action\n    - waiting 20ms\n    - waiting for element to be visible, enabled and stable\n    - element is visible, enabled and stable\n    - scrolling into view if needed\n    - done scrolling\n    - <div data-state=\"open\" aria-hidden=\"true\" data-aria-hidden=\"true\" class=\"fixed ",
+  "completedAt": "2026-11-20T23:42:08.750Z"
+}
