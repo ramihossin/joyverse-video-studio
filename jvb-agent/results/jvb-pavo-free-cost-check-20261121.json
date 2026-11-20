@@ -1,0 +1,1062 @@
+{
+  "taskId": "jvb-pavo-free-cost-check-20261121",
+  "ok": true,
+  "operation": "sequence",
+  "url": "https://pavoai.app/",
+  "httpStatus": 200,
+  "state": {
+    "url": "https://pavoai.app/",
+    "title": "Pavo AI: AI Video Generator & Image to Video Maker",
+    "text": "Pavo AI Home Generate Favorites History Pricing New Blog Models All models Seedance 2.5 Nano Banana GPT Image Categories All prompts Food & drink Illustration & 3D Photography Poster design Product & brand UI & graphic User Guest Not signed in Pavo AI is live. Start free and render your first scene today. Toggle Sidebar 0 Pavo AI · AI Video Generator & Image to Video Maker Pavo AI Video Generator: Turn a Sentence into a Scene Write the shot, keep your characters consistent, and render it in minutes. No crew, no studio, no timeline. Start free with the Pavo AI video generator. Start free See pricing Mode Image Video Video model Seedance 2.5 Draft Generation mode Text to video 116 Image to video 116 First & last frame 116 Reference to video 116 Reference images 0/30 Add History Upload one image, or leave this empty to generate from text Reference audio 0/10 Upload audio as a rhythm/voice reference (optional) Reference video 0/10 Upload a video as a camera/motion reference (optional) History Prompt Click a reference asset to insert it into your prompt, like @image1. 107 / 20,480 Aspect ratio Adaptive 16:9 9:16 1:1 3:4 4:3 21:9 AI audio generation Generates sound matched to the video. Output format MP4 MOV Resolution 480p Duration 5s 4s 30s Not enough credits. Sign in to get free credits. 116 credits used · 0 credits left Generate Credits are automatically refunded if generation fails. History Examples Support support@pavoai.app",
+    "inputs": [
+      {
+        "tag": "textarea",
+        "type": "",
+        "id": "generate-prompt",
+        "name": "",
+        "placeholder": "The character from @image1 walks toward the camera like in @video1, bright indoor lighting.",
+        "aria": "",
+        "valueLength": 107,
+        "disabled": false
+      },
+      {
+        "tag": "input",
+        "type": "checkbox",
+        "id": "base-ui-_R_4kuc56qaoqH1_",
+        "name": "",
+        "placeholder": "",
+        "aria": "",
+        "valueLength": 2,
+        "disabled": false
+      },
+      {
+        "tag": "input",
+        "type": "range",
+        "id": "",
+        "name": "",
+        "placeholder": "",
+        "aria": "Video duration",
+        "valueLength": 1,
+        "disabled": false
+      },
+      {
+        "tag": "input",
+        "type": "",
+        "id": "base-ui-_R_l58gqaoq_-hidden-input",
+        "name": "",
+        "placeholder": "",
+        "aria": "",
+        "valueLength": 3,
+        "disabled": false
+      },
+      {
+        "tag": "input",
+        "type": "",
+        "id": "base-ui-_R_2ep8gqaoq_-hidden-input",
+        "name": "",
+        "placeholder": "",
+        "aria": "",
+        "valueLength": 4,
+        "disabled": false
+      },
+      {
+        "tag": "input",
+        "type": "",
+        "id": "base-ui-_R_4ep8gqaoq_-hidden-input",
+        "name": "",
+        "placeholder": "",
+        "aria": "",
+        "valueLength": 17,
+        "disabled": false
+      },
+      {
+        "tag": "input",
+        "type": "",
+        "id": "base-ui-_R_6ep8gqaoq_-hidden-input",
+        "name": "",
+        "placeholder": "",
+        "aria": "",
+        "valueLength": 1,
+        "disabled": false
+      },
+      {
+        "tag": "input",
+        "type": "",
+        "id": "base-ui-_R_2f98gqaoq_-hidden-input",
+        "name": "",
+        "placeholder": "",
+        "aria": "",
+        "valueLength": 4,
+        "disabled": false
+      },
+      {
+        "tag": "input",
+        "type": "",
+        "id": "base-ui-_R_4f98gqaoq_-hidden-input",
+        "name": "",
+        "placeholder": "",
+        "aria": "",
+        "valueLength": 17,
+        "disabled": false
+      },
+      {
+        "tag": "input",
+        "type": "",
+        "id": "base-ui-_R_6f98gqaoq_-hidden-input",
+        "name": "",
+        "placeholder": "",
+        "aria": "",
+        "valueLength": 1,
+        "disabled": false
+      },
+      {
+        "tag": "input",
+        "type": "",
+        "id": "base-ui-_R_2fp8gqaoq_-hidden-input",
+        "name": "",
+        "placeholder": "",
+        "aria": "",
+        "valueLength": 4,
+        "disabled": false
+      },
+      {
+        "tag": "input",
+        "type": "",
+        "id": "base-ui-_R_4fp8gqaoq_-hidden-input",
+        "name": "",
+        "placeholder": "",
+        "aria": "",
+        "valueLength": 17,
+        "disabled": false
+      },
+      {
+        "tag": "input",
+        "type": "",
+        "id": "base-ui-_R_6fp8gqaoq_-hidden-input",
+        "name": "",
+        "placeholder": "",
+        "aria": "",
+        "valueLength": 1,
+        "disabled": false
+      }
+    ],
+    "buttons": [
+      {
+        "text": "Models",
+        "aria": "",
+        "disabled": false
+      },
+      {
+        "text": "Categories",
+        "aria": "",
+        "disabled": false
+      },
+      {
+        "text": "User\nGuest\nNot signed in",
+        "aria": "",
+        "disabled": false
+      },
+      {
+        "text": "",
+        "aria": "Close",
+        "disabled": false
+      },
+      {
+        "text": "Toggle Sidebar",
+        "aria": "",
+        "disabled": false
+      },
+      {
+        "text": "",
+        "aria": "Report a bug, get free credits",
+        "disabled": false
+      },
+      {
+        "text": "0",
+        "aria": "",
+        "disabled": false
+      },
+      {
+        "text": "",
+        "aria": "Toggle theme",
+        "disabled": false
+      },
+      {
+        "text": "Start free",
+        "aria": "",
+        "disabled": false
+      },
+      {
+        "text": "Image",
+        "aria": "",
+        "disabled": false
+      },
+      {
+        "text": "Video",
+        "aria": "",
+        "disabled": false
+      },
+      {
+        "text": "Seedance 2.5 Draft",
+        "aria": "Video model",
+        "disabled": false
+      },
+      {
+        "text": "Text to video\n116",
+        "aria": "",
+        "disabled": false
+      },
+      {
+        "text": "Image to video\n116",
+        "aria": "",
+        "disabled": false
+      },
+      {
+        "text": "First & last frame\n116",
+        "aria": "",
+        "disabled": false
+      },
+      {
+        "text": "Reference to video\n116",
+        "aria": "",
+        "disabled": false
+      },
+      {
+        "text": "Add",
+        "aria": "Add reference image",
+        "disabled": false
+      },
+      {
+        "text": "History",
+        "aria": "Choose image from history",
+        "disabled": false
+      },
+      {
+        "text": "Upload audio as a rhythm/voice reference (optional)",
+        "aria": "",
+        "disabled": false
+      },
+      {
+        "text": "Upload a video as a camera/motion reference (optional)",
+        "aria": "",
+        "disabled": false
+      },
+      {
+        "text": "History",
+        "aria": "Choose video from history",
+        "disabled": false
+      },
+      {
+        "text": "Adaptive",
+        "aria": "",
+        "disabled": false
+      },
+      {
+        "text": "16:9",
+        "aria": "",
+        "disabled": false
+      },
+      {
+        "text": "9:16",
+        "aria": "",
+        "disabled": false
+      },
+      {
+        "text": "1:1",
+        "aria": "",
+        "disabled": false
+      },
+      {
+        "text": "3:4",
+        "aria": "",
+        "disabled": false
+      },
+      {
+        "text": "4:3",
+        "aria": "",
+        "disabled": false
+      },
+      {
+        "text": "21:9",
+        "aria": "",
+        "disabled": false
+      },
+      {
+        "text": "MP4",
+        "aria": "",
+        "disabled": false
+      },
+      {
+        "text": "MOV",
+        "aria": "",
+        "disabled": false
+      },
+      {
+        "text": "480p",
+        "aria": "",
+        "disabled": false
+      },
+      {
+        "text": "Not enough credits. Sign in to get free credits.",
+        "aria": "",
+        "disabled": false
+      },
+      {
+        "text": "Generate",
+        "aria": "",
+        "disabled": false
+      },
+      {
+        "text": "History",
+        "aria": "",
+        "disabled": false
+      },
+      {
+        "text": "Examples",
+        "aria": "",
+        "disabled": false
+      },
+      {
+        "text": "",
+        "aria": "",
+        "disabled": false
+      },
+      {
+        "text": "",
+        "aria": "Previous video templates",
+        "disabled": false
+      },
+      {
+        "text": "",
+        "aria": "Next video templates",
+        "disabled": false
+      },
+      {
+        "text": "",
+        "aria": "Preview Freeze a bullet-time fall",
+        "disabled": false
+      },
+      {
+        "text": "",
+        "aria": "Make this video: Freeze a bullet-time fall",
+        "disabled": false
+      },
+      {
+        "text": "",
+        "aria": "Preview Shoot a drink commercial",
+        "disabled": false
+      },
+      {
+        "text": "",
+        "aria": "Make this video: Shoot a drink commercial",
+        "disabled": false
+      },
+      {
+        "text": "",
+        "aria": "Preview Animate a slapstick chase",
+        "disabled": false
+      },
+      {
+        "text": "",
+        "aria": "Make this video: Animate a slapstick chase",
+        "disabled": false
+      },
+      {
+        "text": "",
+        "aria": "Preview Stage a glacier collapse",
+        "disabled": false
+      },
+      {
+        "text": "",
+        "aria": "Make this video: Stage a glacier collapse",
+        "disabled": false
+      },
+      {
+        "text": "",
+        "aria": "Preview Ride a POV downhill run",
+        "disabled": false
+      },
+      {
+        "text": "",
+        "aria": "Make this video: Ride a POV downhill run",
+        "disabled": false
+      },
+      {
+        "text": "",
+        "aria": "Preview Spiral through planet rings",
+        "disabled": false
+      },
+      {
+        "text": "",
+        "aria": "Make this video: Spiral through planet rings",
+        "disabled": false
+      },
+      {
+        "text": "",
+        "aria": "Pause model scrolling",
+        "disabled": false
+      },
+      {
+        "text": "",
+        "aria": "Preview Rocket Surf",
+        "disabled": false
+      },
+      {
+        "text": "",
+        "aria": "Preview Jet Wing Walk",
+        "disabled": false
+      },
+      {
+        "text": "",
+        "aria": "Preview Cat POV Chase",
+        "disabled": false
+      },
+      {
+        "text": "",
+        "aria": "Preview Snack Thief",
+        "disabled": false
+      },
+      {
+        "text": "",
+        "aria": "Preview Fluffy Hello",
+        "disabled": false
+      },
+      {
+        "text": "",
+        "aria": "Preview Tech Ninja",
+        "disabled": false
+      },
+      {
+        "text": "",
+        "aria": "Preview Dark POV",
+        "disabled": false
+      },
+      {
+        "text": "Start free",
+        "aria": "",
+        "disabled": false
+      },
+      {
+        "text": "AI Short Drama Video Creation",
+        "aria": "",
+        "disabled": false
+      },
+      {
+        "text": "AI Video Maker for Social Media",
+        "aria": "",
+        "disabled": false
+      },
+      {
+        "text": "Image to Video for Product Ads",
+        "aria": "",
+        "disabled": false
+      },
+      {
+        "text": "AI Storyboard Generator for Video Pitches",
+        "aria": "",
+        "disabled": false
+      },
+      {
+        "text": "Start free",
+        "aria": "",
+        "disabled": false
+      },
+      {
+        "text": "Monthly",
+        "aria": "",
+        "disabled": false
+      },
+      {
+        "text": "Yearly🔥 Save 50% yearly",
+        "aria": "",
+        "disabled": false
+      },
+      {
+        "text": "One-timeOne-time credits",
+        "aria": "",
+        "disabled": false
+      },
+      {
+        "text": "Subscription",
+        "aria": "",
+        "disabled": false
+      },
+      {
+        "text": "🇺🇸🇺🇸 USD▼",
+        "aria": "Payment currency",
+        "disabled": false
+      },
+      {
+        "text": "480p▼",
+        "aria": "Video resolution",
+        "disabled": false
+      }
+    ],
+    "videos": [
+      {
+        "src": "https://pavoai.app/videos/home/racing.mp4",
+        "readyState": 4,
+        "duration": 10.14712
+      }
+    ],
+    "downloadLinks": [],
+    "verification": {
+      "cloudflareChallenge": false,
+      "turnstileResponsePresent": false
+    }
+  },
+  "steps": [
+    {
+      "index": 0,
+      "type": "inspect",
+      "detail": {
+        "state": {
+          "url": "https://pavoai.app/",
+          "title": "Pavo AI: AI Video Generator & Image to Video Maker",
+          "text": "Pavo AI Home Generate Favorites History Pricing New Blog Models All models Seedance 2.5 Nano Banana GPT Image Categories All prompts Food & drink Illustration & 3D Photography Poster design Product & brand UI & graphic User Guest Not signed in Pavo AI is live. Start free and render your first scene today. Toggle Sidebar 0 Pavo AI · AI Video Generator & Image to Video Maker Pavo AI Video Generator: Turn a Sentence into a Scene Write the shot, keep your characters consistent, and render it in minutes. No crew, no studio, no timeline. Start free with the Pavo AI video generator. Start free See pricing Mode Image Video Video model Seedance 2.5 Draft Generation mode Text to video 116 Image to video 116 First & last frame 116 Reference to video 116 Reference images 0/30 Add History Upload one image, or leave this empty to generate from text Reference audio 0/10 Upload audio as a rhythm/voice reference (optional) Reference video 0/10 Upload a video as a camera/motion reference (optional) History Prompt Click a reference asset to insert it into your prompt, like @image1. 107 / 20,480 Aspect ratio Adaptive 16:9 9:16 1:1 3:4 4:3 21:9 AI audio generation Generates sound matched to the video. Output format MP4 MOV Resolution 480p Duration 5s 4s 30s Not enough credits. Sign in to get free credits. 116 credits used · 0 credits left Generate Credits are automatically refunded if generation fails. History Examples Support support@pavoai.app",
+          "inputs": [
+            {
+              "tag": "textarea",
+              "type": "",
+              "id": "generate-prompt",
+              "name": "",
+              "placeholder": "The character from @image1 walks toward the camera like in @video1, bright indoor lighting.",
+              "aria": "",
+              "valueLength": 107,
+              "disabled": false
+            },
+            {
+              "tag": "input",
+              "type": "checkbox",
+              "id": "base-ui-_R_4kuc56qaoqH1_",
+              "name": "",
+              "placeholder": "",
+              "aria": "",
+              "valueLength": 2,
+              "disabled": false
+            },
+            {
+              "tag": "input",
+              "type": "range",
+              "id": "",
+              "name": "",
+              "placeholder": "",
+              "aria": "Video duration",
+              "valueLength": 1,
+              "disabled": false
+            },
+            {
+              "tag": "input",
+              "type": "",
+              "id": "base-ui-_R_l58gqaoq_-hidden-input",
+              "name": "",
+              "placeholder": "",
+              "aria": "",
+              "valueLength": 3,
+              "disabled": false
+            },
+            {
+              "tag": "input",
+              "type": "",
+              "id": "base-ui-_R_2ep8gqaoq_-hidden-input",
+              "name": "",
+              "placeholder": "",
+              "aria": "",
+              "valueLength": 4,
+              "disabled": false
+            },
+            {
+              "tag": "input",
+              "type": "",
+              "id": "base-ui-_R_4ep8gqaoq_-hidden-input",
+              "name": "",
+              "placeholder": "",
+              "aria": "",
+              "valueLength": 17,
+              "disabled": false
+            },
+            {
+              "tag": "input",
+              "type": "",
+              "id": "base-ui-_R_6ep8gqaoq_-hidden-input",
+              "name": "",
+              "placeholder": "",
+              "aria": "",
+              "valueLength": 1,
+              "disabled": false
+            },
+            {
+              "tag": "input",
+              "type": "",
+              "id": "base-ui-_R_2f98gqaoq_-hidden-input",
+              "name": "",
+              "placeholder": "",
+              "aria": "",
+              "valueLength": 4,
+              "disabled": false
+            },
+            {
+              "tag": "input",
+              "type": "",
+              "id": "base-ui-_R_4f98gqaoq_-hidden-input",
+              "name": "",
+              "placeholder": "",
+              "aria": "",
+              "valueLength": 17,
+              "disabled": false
+            },
+            {
+              "tag": "input",
+              "type": "",
+              "id": "base-ui-_R_6f98gqaoq_-hidden-input",
+              "name": "",
+              "placeholder": "",
+              "aria": "",
+              "valueLength": 1,
+              "disabled": false
+            },
+            {
+              "tag": "input",
+              "type": "",
+              "id": "base-ui-_R_2fp8gqaoq_-hidden-input",
+              "name": "",
+              "placeholder": "",
+              "aria": "",
+              "valueLength": 4,
+              "disabled": false
+            },
+            {
+              "tag": "input",
+              "type": "",
+              "id": "base-ui-_R_4fp8gqaoq_-hidden-input",
+              "name": "",
+              "placeholder": "",
+              "aria": "",
+              "valueLength": 17,
+              "disabled": false
+            },
+            {
+              "tag": "input",
+              "type": "",
+              "id": "base-ui-_R_6fp8gqaoq_-hidden-input",
+              "name": "",
+              "placeholder": "",
+              "aria": "",
+              "valueLength": 1,
+              "disabled": false
+            }
+          ],
+          "buttons": [
+            {
+              "text": "Models",
+              "aria": "",
+              "disabled": false
+            },
+            {
+              "text": "Categories",
+              "aria": "",
+              "disabled": false
+            },
+            {
+              "text": "User\nGuest\nNot signed in",
+              "aria": "",
+              "disabled": false
+            },
+            {
+              "text": "",
+              "aria": "Close",
+              "disabled": false
+            },
+            {
+              "text": "Toggle Sidebar",
+              "aria": "",
+              "disabled": false
+            },
+            {
+              "text": "",
+              "aria": "Report a bug, get free credits",
+              "disabled": false
+            },
+            {
+              "text": "0",
+              "aria": "",
+              "disabled": false
+            },
+            {
+              "text": "",
+              "aria": "Toggle theme",
+              "disabled": false
+            },
+            {
+              "text": "Start free",
+              "aria": "",
+              "disabled": false
+            },
+            {
+              "text": "Image",
+              "aria": "",
+              "disabled": false
+            },
+            {
+              "text": "Video",
+              "aria": "",
+              "disabled": false
+            },
+            {
+              "text": "Seedance 2.5 Draft",
+              "aria": "Video model",
+              "disabled": false
+            },
+            {
+              "text": "Text to video\n116",
+              "aria": "",
+              "disabled": false
+            },
+            {
+              "text": "Image to video\n116",
+              "aria": "",
+              "disabled": false
+            },
+            {
+              "text": "First & last frame\n116",
+              "aria": "",
+              "disabled": false
+            },
+            {
+              "text": "Reference to video\n116",
+              "aria": "",
+              "disabled": false
+            },
+            {
+              "text": "Add",
+              "aria": "Add reference image",
+              "disabled": false
+            },
+            {
+              "text": "History",
+              "aria": "Choose image from history",
+              "disabled": false
+            },
+            {
+              "text": "Upload audio as a rhythm/voice reference (optional)",
+              "aria": "",
+              "disabled": false
+            },
+            {
+              "text": "Upload a video as a camera/motion reference (optional)",
+              "aria": "",
+              "disabled": false
+            },
+            {
+              "text": "History",
+              "aria": "Choose video from history",
+              "disabled": false
+            },
+            {
+              "text": "Adaptive",
+              "aria": "",
+              "disabled": false
+            },
+            {
+              "text": "16:9",
+              "aria": "",
+              "disabled": false
+            },
+            {
+              "text": "9:16",
+              "aria": "",
+              "disabled": false
+            },
+            {
+              "text": "1:1",
+              "aria": "",
+              "disabled": false
+            },
+            {
+              "text": "3:4",
+              "aria": "",
+              "disabled": false
+            },
+            {
+              "text": "4:3",
+              "aria": "",
+              "disabled": false
+            },
+            {
+              "text": "21:9",
+              "aria": "",
+              "disabled": false
+            },
+            {
+              "text": "MP4",
+              "aria": "",
+              "disabled": false
+            },
+            {
+              "text": "MOV",
+              "aria": "",
+              "disabled": false
+            },
+            {
+              "text": "480p",
+              "aria": "",
+              "disabled": false
+            },
+            {
+              "text": "Not enough credits. Sign in to get free credits.",
+              "aria": "",
+              "disabled": false
+            },
+            {
+              "text": "Generate",
+              "aria": "",
+              "disabled": false
+            },
+            {
+              "text": "History",
+              "aria": "",
+              "disabled": false
+            },
+            {
+              "text": "Examples",
+              "aria": "",
+              "disabled": false
+            },
+            {
+              "text": "",
+              "aria": "",
+              "disabled": false
+            },
+            {
+              "text": "",
+              "aria": "Previous video templates",
+              "disabled": false
+            },
+            {
+              "text": "",
+              "aria": "Next video templates",
+              "disabled": false
+            },
+            {
+              "text": "",
+              "aria": "Preview Freeze a bullet-time fall",
+              "disabled": false
+            },
+            {
+              "text": "",
+              "aria": "Make this video: Freeze a bullet-time fall",
+              "disabled": false
+            },
+            {
+              "text": "",
+              "aria": "Preview Shoot a drink commercial",
+              "disabled": false
+            },
+            {
+              "text": "",
+              "aria": "Make this video: Shoot a drink commercial",
+              "disabled": false
+            },
+            {
+              "text": "",
+              "aria": "Preview Animate a slapstick chase",
+              "disabled": false
+            },
+            {
+              "text": "",
+              "aria": "Make this video: Animate a slapstick chase",
+              "disabled": false
+            },
+            {
+              "text": "",
+              "aria": "Preview Stage a glacier collapse",
+              "disabled": false
+            },
+            {
+              "text": "",
+              "aria": "Make this video: Stage a glacier collapse",
+              "disabled": false
+            },
+            {
+              "text": "",
+              "aria": "Preview Ride a POV downhill run",
+              "disabled": false
+            },
+            {
+              "text": "",
+              "aria": "Make this video: Ride a POV downhill run",
+              "disabled": false
+            },
+            {
+              "text": "",
+              "aria": "Preview Spiral through planet rings",
+              "disabled": false
+            },
+            {
+              "text": "",
+              "aria": "Make this video: Spiral through planet rings",
+              "disabled": false
+            },
+            {
+              "text": "",
+              "aria": "Pause model scrolling",
+              "disabled": false
+            },
+            {
+              "text": "",
+              "aria": "Preview Rocket Surf",
+              "disabled": false
+            },
+            {
+              "text": "",
+              "aria": "Preview Jet Wing Walk",
+              "disabled": false
+            },
+            {
+              "text": "",
+              "aria": "Preview Cat POV Chase",
+              "disabled": false
+            },
+            {
+              "text": "",
+              "aria": "Preview Snack Thief",
+              "disabled": false
+            },
+            {
+              "text": "",
+              "aria": "Preview Fluffy Hello",
+              "disabled": false
+            },
+            {
+              "text": "",
+              "aria": "Preview Tech Ninja",
+              "disabled": false
+            },
+            {
+              "text": "",
+              "aria": "Preview Dark POV",
+              "disabled": false
+            },
+            {
+              "text": "Start free",
+              "aria": "",
+              "disabled": false
+            },
+            {
+              "text": "AI Short Drama Video Creation",
+              "aria": "",
+              "disabled": false
+            },
+            {
+              "text": "AI Video Maker for Social Media",
+              "aria": "",
+              "disabled": false
+            },
+            {
+              "text": "Image to Video for Product Ads",
+              "aria": "",
+              "disabled": false
+            },
+            {
+              "text": "AI Storyboard Generator for Video Pitches",
+              "aria": "",
+              "disabled": false
+            },
+            {
+              "text": "Start free",
+              "aria": "",
+              "disabled": false
+            },
+            {
+              "text": "Monthly",
+              "aria": "",
+              "disabled": false
+            },
+            {
+              "text": "Yearly🔥 Save 50% yearly",
+              "aria": "",
+              "disabled": false
+            },
+            {
+              "text": "One-timeOne-time credits",
+              "aria": "",
+              "disabled": false
+            },
+            {
+              "text": "Subscription",
+              "aria": "",
+              "disabled": false
+            },
+            {
+              "text": "🇺🇸🇺🇸 USD▼",
+              "aria": "Payment currency",
+              "disabled": false
+            },
+            {
+              "text": "480p▼",
+              "aria": "Video resolution",
+              "disabled": false
+            }
+          ],
+          "videos": [
+            {
+              "src": "https://pavoai.app/videos/home/racing.mp4",
+              "readyState": 4,
+              "duration": 10.14712
+            }
+          ],
+          "downloadLinks": [],
+          "verification": {
+            "cloudflareChallenge": false,
+            "turnstileResponsePresent": false
+          }
+        }
+      },
+      "page": {
+        "url": "https://pavoai.app/",
+        "title": "Pavo AI: AI Video Generator & Image to Video Maker"
+      }
+    },
+    {
+      "index": 1,
+      "type": "screenshot",
+      "detail": {
+        "file": "jvb-pavo-free-cost-check.png"
+      },
+      "page": {
+        "url": "https://pavoai.app/",
+        "title": "Pavo AI: AI Video Generator & Image to Video Maker"
+      }
+    }
+  ],
+  "downloads": [],
+  "network": [
+    {
+      "url": "https://pavoai.app/assets/admin_tasks_columns_model-9J3kdMXD.js",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "url": "https://pavoai.app/assets/admin_tasks_columns_resolution-DnUsbhTZ.js",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "url": "https://pavoai.app/assets/turnstile-widget-CHj6Dm_G.js",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "url": "https://pavoai.app/videos/home/racing.mp4",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "url": "https://www.google-analytics.com/g/collect",
+      "method": "POST",
+      "status": 204
+    }
+  ],
+  "completedAt": "2026-11-20T23:46:42.945Z",
+  "note": "Navigation is limited to Pavo AI and LoreMotion. Login, passwords, payments, subscriptions, destructive account changes, and Cloudflare bypasses are blocked. Free generation requires an explicit task flag and a visible Free-labeled button."
+}
