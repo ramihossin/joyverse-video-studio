@@ -1,0 +1,15 @@
+{
+  "taskId": "jvb-pavo-free-cost-check-20261121",
+  "operation": "sequence",
+  "url": "https://pavoai.app/",
+  "steps": [
+    {
+      "type": "inspect"
+    },
+    {
+      "type": "screenshot",
+      "fileName": "jvb-pavo-free-cost-check.png",
+      "fullPage": true
+    }
+  ]
+}
