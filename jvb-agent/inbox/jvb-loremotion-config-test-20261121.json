@@ -1,0 +1,34 @@
+{
+  "taskId": "jvb-loremotion-config-test-20261121",
+  "operation": "sequence",
+  "url": "https://loremotion.com/generate/",
+  "steps": [
+    {
+      "type": "upload",
+      "selector": "input[type=file]",
+      "fileName": "jvb-test-reference.png",
+      "fileBase64": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGP4//8/AAX+Av4N70a4AAAAAElFTkSuQmCC"
+    },
+    {
+      "type": "wait",
+      "milliseconds": 5000
+    },
+    {
+      "type": "fill",
+      "selector": "#generate-prompt-dock",
+      "value": "A cheerful turquoise dragon gently waves its golden wings in a bright flower garden. Polished 3D animation, smooth natural motion, warm daylight, colorful friendly environment."
+    },
+    {
+      "type": "click",
+      "selector": "button:has-text('9:16')"
+    },
+    {
+      "type": "inspect"
+    },
+    {
+      "type": "screenshot",
+      "fileName": "jvb-loremotion-config-test.png",
+      "fullPage": false
+    }
+  ]
+}
