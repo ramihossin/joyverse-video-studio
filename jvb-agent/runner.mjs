@@ -78,7 +78,7 @@ try {
         await page.waitForTimeout(1500);
         pageTitle = await page.title();
         textPreview = (await page.locator("body").innerText({ timeout: 10000 }).catch(() => ""))
-          .replace(/\\s+/g, " ")
+          .replace(/\s+/g, " ")
           .slice(0, 1800);
       } finally {
         await context.close();
