@@ -24,6 +24,12 @@ Pavo's terms require users aged 13–17 to have parent/legal-guardian consent, a
 
 Each site has its own profile and encrypted browser session. The dashboard does not ask you to paste your website password into a separate form; you operate the remote browser directly. The agent does not log typed values or expose session tokens through its API responses.
 
+## Free-host resource profile
+
+The browser runtime is tuned for a small free web-service instance: one active browser context, a 1280×720 viewport, reduced background Chromium processes, a four-page popup cap, and explicit browser-process shutdown when the session is closed. The health endpoint reports process memory in MiB without exposing secrets.
+
+Free web-service instances can sleep after inactivity and may restart. Complex video-generation pages can still exceed a 512 MiB memory limit; no launch flag can guarantee that every third-party site will fit within a free instance. Close the browser session when finished to release Chromium memory.
+
 ## Persistence and encryption
 
 - Saved browser sessions are encrypted with AES-256-GCM before storage. The encryption key is never written to the repository.
