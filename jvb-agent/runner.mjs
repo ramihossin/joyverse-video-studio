@@ -121,6 +121,14 @@ async function pageState(page) {
         readyState: node.readyState,
         duration: Number.isFinite(node.duration) ? node.duration : null,
       })),
+      links: [...document.querySelectorAll("a[href]")].filter(node => {
+        const r = node.getBoundingClientRect();
+        return r.width > 0 && r.height > 0;
+      }).slice(0, 80).map(node => ({
+        text: txt(node).replace(/\\s+/g, " ").slice(0, 120),
+        href: node.href,
+        aria: node.getAttribute("aria-label") || "",
+      })),
       downloadLinks: [...document.querySelectorAll("a[href]")]
         .filter(node => /download|\.mp4|\.webm/i.test(txt(node) + " " + node.href))
         .slice(0, 20)
@@ -263,9 +271,9 @@ async function performStep(page, context, task, step, index, downloads) {
       if (!explicitZeroCost && !explicitlyFree) {
         throw new Error("No explicit zero-cost or free indicator is visible beside the generation flow; submission is blocked.");
       }
-      if ((!explicitZeroCost && /not enough credits|credits required|لا يوجد رصيد كاف/.test(pageText)) ||
+      if (/not enough credits|credits required|sign in to get free credits|sign in to earn credits|لا يوجد رصيد كاف/.test(pageText) ||
           /buy credits|payment required|subscribe to generate|upgrade to generate|daily limit reached|اشتر رصيد/.test(pageText)) {
-        throw new Error("The site indicates that generation requires credits, payment, or an upgrade; no generation was submitted.");
+        throw new Error("The site indicates that generation requires credits, authentication, payment, or an upgrade; no generation was submitted.");
       }
     }
     await locator.click({ timeout });
