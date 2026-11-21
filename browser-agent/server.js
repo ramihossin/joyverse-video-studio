@@ -164,20 +164,19 @@ function auth(req, res, next) {
   if (role === "bridge") {
     const route = req.path || "";
     const method = req.method;
-    const allowed =
-      (method === "GET" && (
-        route === "/sites" ||
-        route === "/browser/status" ||
-        route === "/browser/snapshot" ||
-        route === "/browser/screenshot" ||
-        /^\\/jobs\\/[A-Za-z0-9-]{20,80}$/.test(route) ||
-        /^\\/downloads\\/[A-Za-z0-9-]{20,80}$/.test(route)
-      )) ||
-      (method === "POST" && (
-        /^\\/sites\\/[A-Za-z0-9_-]{3,80}\\/open$/.test(route) ||
-        ["/browser/navigate","/browser/click","/browser/type","/browser/key","/browser/scroll","/browser/fill","/browser/save-session","/browser/close","/generate"].includes(route)
-      ));
-    if (!allowed) return res.status(403).json({ error: "This JVB bridge token is not permitted to perform administrative operations." });
+    const segments = route.split("/").filter(Boolean);
+    const jobRoute = segments.length === 2 && segments[0] === "jobs" && /^[A-Za-z0-9-]{20,80}$/.test(segments[1]);
+    const downloadRoute = segments.length === 2 && segments[0] === "downloads" && /^[A-Za-z0-9-]{20,80}$/.test(segments[1]);
+    const siteOpenRoute = segments.length === 3 && segments[0] === "sites" && /^[A-Za-z0-9_-]{3,80}$/.test(segments[1]) && segments[2] === "open";
+    const allowedGet = method === "GET" && (
+      ["/sites","/browser/status","/browser/snapshot","/browser/screenshot"].includes(route) ||
+      jobRoute || downloadRoute
+    );
+    const allowedPost = method === "POST" && (
+      siteOpenRoute ||
+      ["/browser/navigate","/browser/click","/browser/type","/browser/key","/browser/scroll","/browser/fill","/browser/save-session","/browser/close","/generate"].includes(route)
+    );
+    if (!allowedGet && !allowedPost) return res.status(403).json({ error: "This JVB bridge token is not permitted to perform administrative operations." });
   }
   req.jvbAuthRole = role;
   next();
