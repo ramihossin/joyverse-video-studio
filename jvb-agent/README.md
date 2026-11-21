@@ -9,7 +9,7 @@ This branch provides a browser-control path that does not run Chromium inside th
 3. GitHub Actions launches a fresh Playwright/Chromium browser, executes the task, writes its JSON result under `jvb-agent/results/`, and uploads screenshots/downloaded files as a short-lived workflow artifact.
 4. The assistant reads the result and returns the outcome in the chat.
 
-The standard GitHub-hosted runner is free and unlimited for public repositories. This workflow uses the standard `ubuntu-latest` runner, not a paid larger runner.
+The standard GitHub-hosted runner used here is free for public repositories. This workflow uses `ubuntu-latest`, not a paid larger runner. GitHub's terms, usage policies, availability limits, and artifact/storage limits still apply; free runner time does not make third-party video generation free.
 
 ## Approved websites
 
@@ -39,7 +39,7 @@ Supported sequence step types:
 - `saveVideo`: save a video element's current source; 80 MB maximum.
 - `screenshot`: capture the current page.
 
-Video generation is disabled by default. A task must explicitly set `allowFreeGeneration: true`; the selected button must itself be labeled Free, and obvious credit/payment/upgrade blockers stop submission. The runner never solves or bypasses CAPTCHA, Turnstile, login, or other site verification.
+Video generation is disabled by default. A task must explicitly set `allowFreeGeneration: true`; the page must explicitly show a zero-cost/free state, and visible credit, sign-in-for-free-credits, payment, subscription, upgrade, or limit blockers stop submission. The runner never solves or bypasses CAPTCHA, Turnstile, login, or other site verification.
 
 ## Example task
 
