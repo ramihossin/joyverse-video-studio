@@ -1,0 +1,15 @@
+{
+  "taskId": "jvb-loremotion-free-check-20261121",
+  "operation": "sequence",
+  "url": "https://loremotion.com/",
+  "steps": [
+    {
+      "type": "inspect"
+    },
+    {
+      "type": "screenshot",
+      "fileName": "jvb-loremotion-free-check.png",
+      "fullPage": true
+    }
+  ]
+}
