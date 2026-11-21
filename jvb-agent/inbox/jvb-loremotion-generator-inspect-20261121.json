@@ -1,0 +1,23 @@
+{
+  "taskId": "jvb-loremotion-generator-inspect-20261121",
+  "operation": "sequence",
+  "url": "https://loremotion.com/generate?mode=t2v",
+  "steps": [
+    {
+      "type": "clickIfVisible",
+      "selector": "button:has-text('Reject non-essential')"
+    },
+    {
+      "type": "wait",
+      "milliseconds": 1800
+    },
+    {
+      "type": "inspect"
+    },
+    {
+      "type": "screenshot",
+      "fileName": "jvb-loremotion-generator-inspect.png",
+      "fullPage": true
+    }
+  ]
+}
