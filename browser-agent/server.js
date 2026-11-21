@@ -142,19 +142,44 @@ async function navigatePage(targetPage, destination) {
 if (TOKEN.length < 32) throw new Error("BROWSER_AGENT_TOKEN must be at least 32 characters.");
 if (BRIDGE_TOKEN && BRIDGE_TOKEN.length < 32) throw new Error("JVB_N8N_TOKEN must be at least 32 characters when configured.");
 
-function authorized(req) {
+function tokenRole(req) {
   const header = req.get("authorization") || "";
   const match = /^Bearer ([A-Za-z0-9._~+\\/-]+=*)$/.exec(header);
-  if (!match) return false;
+  if (!match) return null;
   const candidate = Buffer.from(match[1]);
-  const accepted = [TOKEN, BRIDGE_TOKEN].filter(value => value.length >= 32);
-  return accepted.some(value => {
-    const expected = Buffer.from(value);
-    return candidate.length === expected.length && timingSafeEqual(candidate, expected);
-  });
+  const primary = Buffer.from(TOKEN);
+  if (candidate.length === primary.length && timingSafeEqual(candidate, primary)) return "primary";
+  if (BRIDGE_TOKEN.length >= 32) {
+    const bridge = Buffer.from(BRIDGE_TOKEN);
+    if (candidate.length === bridge.length && timingSafeEqual(candidate, bridge)) return "bridge";
+  }
+  return null;
+}
+function authorized(req) {
+  return tokenRole(req) !== null;
 }
 function auth(req, res, next) {
-  if (!authorized(req)) return res.status(401).json({ error: "Unauthorized" });
+  const role = tokenRole(req);
+  if (!role) return res.status(401).json({ error: "Unauthorized" });
+  if (role === "bridge") {
+    const route = req.path || "";
+    const method = req.method;
+    const allowed =
+      (method === "GET" && (
+        route === "/sites" ||
+        route === "/browser/status" ||
+        route === "/browser/snapshot" ||
+        route === "/browser/screenshot" ||
+        /^\\/jobs\\/[A-Za-z0-9-]{20,80}$/.test(route) ||
+        /^\\/downloads\\/[A-Za-z0-9-]{20,80}$/.test(route)
+      )) ||
+      (method === "POST" && (
+        /^\\/sites\\/[A-Za-z0-9_-]{3,80}\\/open$/.test(route) ||
+        ["/browser/navigate","/browser/click","/browser/type","/browser/key","/browser/scroll","/browser/fill","/browser/save-session","/browser/close","/generate"].includes(route)
+      ));
+    if (!allowed) return res.status(403).json({ error: "This JVB bridge token is not permitted to perform administrative operations." });
+  }
+  req.jvbAuthRole = role;
   next();
 }
 function isPrivateHost(rawHost) {
@@ -782,7 +807,7 @@ async function handleMcpRequest(req, res) {
 }
 
 app.post("/mcp", async (req, res) => {
-  if (!authorized(req)) return res.status(401).json({ error: "unauthorized" });
+  if (tokenRole(req) !== "primary") return res.status(401).json({ error: "unauthorized" });
   return handleMcpRequest(req, res);
 });
 app.all("/mcp", (_req, res) => res.status(405).json({ error: "Use POST for Streamable HTTP MCP." }));
