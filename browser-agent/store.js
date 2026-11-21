@@ -73,8 +73,6 @@ function migrateLegacySite(site) {
     next.loginUrl = "";
     changed = true;
   }
-  let host = "";
-  try { host = new URL(next.baseUrl).hostname.toLowerCase(); } catch {}
   if (next.id === "pavo-ai-video") {
     const canonicalBase = "https://app.pavo-ai.work/";
     const canonicalHosts = ["app.pavo-ai.work"];
