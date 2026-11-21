@@ -10,6 +10,8 @@ const ALLOWED_HOSTS = new Set([
   "www.pavoai.app",
   "loremotion.com",
   "www.loremotion.com",
+  "theresanaiforthat.com",
+  "www.theresanaiforthat.com",
 ]);
 const MAX_STEPS = 16;
 const MAX_TEXT = 5000;
@@ -133,11 +135,27 @@ async function pageState(page) {
         .filter(node => /download|\.mp4|\.webm/i.test(txt(node) + " " + node.href))
         .slice(0, 20)
         .map(node => ({ text: txt(node).slice(0, 100), href: node.href })),
-      verification: {
-        cloudflareChallenge: document.querySelectorAll('iframe[src*="challenges.cloudflare.com"]').length > 0,
-        turnstileResponsePresent: [...document.querySelectorAll('input[name="cf-turnstile-response"], textarea[name="cf-turnstile-response"]')]
-          .some(node => Boolean((node.value || "").trim())),
-      },
+      verification: (() => {
+        const bodyText = (document.body?.innerText || "").toLowerCase();
+        const cloudflareChallenge = document.querySelectorAll('iframe[src*="challenges.cloudflare.com"]').length > 0;
+        const recaptcha = document.querySelectorAll('iframe[src*="recaptcha"], .g-recaptcha, [data-sitekey]').length > 0;
+        const challengeText = /verify you are human|checking your browser|complete the captcha|human verification|security check|are you a robot|confirm you are not a robot|تحقق أنك إنسان|أثبت أنك لست روبوت|التحقق البشري/i.test(bodyText);
+        return {
+          cloudflareChallenge,
+          recaptcha,
+          challengeText,
+          humanVerificationRequired: cloudflareChallenge || recaptcha || challengeText,
+          turnstileResponsePresent: [...document.querySelectorAll('input[name="cf-turnstile-response"], textarea[name="cf-turnstile-response"]')]
+            .some(node => Boolean((node.value || "").trim())),
+        };
+      })(),
+      auth: (() => {
+        const bodyText = (document.body?.innerText || "").toLowerCase();
+        return {
+          signInVisible: /sign in|log in|تسجيل الدخول/i.test(bodyText),
+          anonymousModeLikely: /anonymous|without an account|no account needed|continue as guest|دون تسجيل/i.test(bodyText),
+        };
+      })(),
     };
   });
 }
@@ -301,6 +319,15 @@ async function performStep(page, context, task, step, index, downloads) {
         throw new Error("This action requires login, payment, subscription, or a destructive account change and is blocked.");
       }
       const privacyReject = /reject non-essential/i.test(label.trim());
+    if (!privacyReject) {
+      const verification = await page.evaluate(() => ({
+        challengeFrame: document.querySelectorAll('iframe[src*="challenges.cloudflare.com"], iframe[src*="recaptcha"], .g-recaptcha, [data-sitekey]').length > 0,
+        text: (document.body?.innerText || "").slice(0, 8000),
+      }));
+      if (verification.challengeFrame || /verify you are human|checking your browser|complete the captcha|human verification|security check|are you a robot|confirm you are not a robot|تحقق أنك إنسان|أثبت أنك لست روبوت|التحقق البشري/i.test(verification.text)) {
+        throw new Error("Human verification detected. The task stopped safely; complete the provider's challenge manually in its official interface, then resume with the authenticated session. CAPTCHA is not bypassed.");
+      }
+    }
       if (privacyReject) {
         await locator.evaluate(node => node.click());
       } else {
