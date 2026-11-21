@@ -17,8 +17,16 @@ The browser is deliberately restricted to:
 
 - `https://loremotion.com/`
 - `https://pavoai.app/`
+- `https://theresanaiforthat.com/` (public discovery and search only)
 
 The workflow blocks top-level navigation outside those hosts. Add another site only after reviewing its purpose and safety.
+
+## Official account and verification handling
+
+- LoreMotion states that its free LTX/H3 models can be used anonymously; an account is for history/library and additional account features. The runner should try the anonymous free path first.
+- TAAFT public search and browsing do not require an account; login is only needed for saved or account-specific features.
+- Pavo account requirements depend on the selected workflow and model. Use the page's explicit zero-cost quote; never infer zero cost from the account having zero credits.
+- The runner never bypasses CAPTCHA, Turnstile, anti-bot checks, or identity verification. When one appears it records `humanVerificationRequired` and stops. A person must complete the provider's official challenge; credentials or one-time codes must not be placed in this public repository.
 
 ## Operations
 
