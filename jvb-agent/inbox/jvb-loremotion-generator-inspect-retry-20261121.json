@@ -1,0 +1,23 @@
+{
+  "taskId": "jvb-loremotion-generator-inspect-retry-20261121",
+  "operation": "sequence",
+  "url": "https://loremotion.com/generate?mode=t2v",
+  "steps": [
+    {
+      "type": "clickIfVisible",
+      "selector": "button:has-text('Reject non-essential')"
+    },
+    {
+      "type": "wait",
+      "milliseconds": 1000
+    },
+    {
+      "type": "inspect"
+    },
+    {
+      "type": "screenshot",
+      "fileName": "jvb-loremotion-generator-inspect-retry.png",
+      "fullPage": false
+    }
+  ]
+}
