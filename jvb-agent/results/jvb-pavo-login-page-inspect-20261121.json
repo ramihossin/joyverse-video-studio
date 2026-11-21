@@ -1,0 +1,220 @@
+{
+  "taskId": "jvb-pavo-login-page-inspect-20261121",
+  "ok": true,
+  "operation": "sequence",
+  "url": "https://pavoai.app/auth/login",
+  "httpStatus": 200,
+  "state": {
+    "url": "https://pavoai.app/auth/login",
+    "title": "Log in",
+    "text": "Welcome back Email Password Forgot your password? Show password Log in Or continue with Sign in with Google Don't have an account? Sign up By clicking continue, you agree to our Terms of Service and Privacy Policy",
+    "fileInputs": [],
+    "inputs": [
+      {
+        "tag": "input",
+        "type": "email",
+        "id": "_R_2bapaoq_-form-item",
+        "name": "email",
+        "placeholder": "name@example.com",
+        "aria": "",
+        "valueLength": 0,
+        "disabled": false
+      },
+      {
+        "tag": "input",
+        "type": "password",
+        "id": "_R_4bapaoq_-form-item",
+        "name": "password",
+        "placeholder": "******",
+        "aria": "",
+        "valueLength": 0,
+        "disabled": false
+      }
+    ],
+    "buttons": [
+      {
+        "text": "",
+        "aria": "Go back",
+        "disabled": false
+      },
+      {
+        "text": "Show password",
+        "aria": "",
+        "disabled": false
+      },
+      {
+        "text": "Log in",
+        "aria": "",
+        "disabled": false
+      },
+      {
+        "text": "Sign in with Google",
+        "aria": "",
+        "disabled": false
+      }
+    ],
+    "videos": [],
+    "links": [
+      {
+        "text": "",
+        "href": "https://pavoai.app/",
+        "aria": ""
+      },
+      {
+        "text": "Forgot your password?",
+        "href": "https://pavoai.app/auth/forgot-password",
+        "aria": ""
+      },
+      {
+        "text": "Don't have an account? Sign up",
+        "href": "https://pavoai.app/auth/register",
+        "aria": ""
+      },
+      {
+        "text": "Terms of Service",
+        "href": "https://pavoai.app/terms",
+        "aria": ""
+      },
+      {
+        "text": "Privacy Policy",
+        "href": "https://pavoai.app/privacy",
+        "aria": ""
+      }
+    ],
+    "downloadLinks": [],
+    "verification": {
+      "cloudflareChallenge": false,
+      "recaptcha": false,
+      "challengeText": false,
+      "humanVerificationRequired": false,
+      "turnstileResponsePresent": false
+    },
+    "auth": {
+      "signInVisible": true,
+      "anonymousModeLikely": false
+    }
+  },
+  "steps": [
+    {
+      "index": 0,
+      "type": "inspect",
+      "detail": {
+        "state": {
+          "url": "https://pavoai.app/auth/login",
+          "title": "Log in",
+          "text": "Welcome back Email Password Forgot your password? Show password Log in Or continue with Sign in with Google Don't have an account? Sign up By clicking continue, you agree to our Terms of Service and Privacy Policy",
+          "fileInputs": [],
+          "inputs": [
+            {
+              "tag": "input",
+              "type": "email",
+              "id": "_R_2bapaoq_-form-item",
+              "name": "email",
+              "placeholder": "name@example.com",
+              "aria": "",
+              "valueLength": 0,
+              "disabled": false
+            },
+            {
+              "tag": "input",
+              "type": "password",
+              "id": "_R_4bapaoq_-form-item",
+              "name": "password",
+              "placeholder": "******",
+              "aria": "",
+              "valueLength": 0,
+              "disabled": false
+            }
+          ],
+          "buttons": [
+            {
+              "text": "",
+              "aria": "Go back",
+              "disabled": false
+            },
+            {
+              "text": "Show password",
+              "aria": "",
+              "disabled": false
+            },
+            {
+              "text": "Log in",
+              "aria": "",
+              "disabled": false
+            },
+            {
+              "text": "Sign in with Google",
+              "aria": "",
+              "disabled": false
+            }
+          ],
+          "videos": [],
+          "links": [
+            {
+              "text": "",
+              "href": "https://pavoai.app/",
+              "aria": ""
+            },
+            {
+              "text": "Forgot your password?",
+              "href": "https://pavoai.app/auth/forgot-password",
+              "aria": ""
+            },
+            {
+              "text": "Don't have an account? Sign up",
+              "href": "https://pavoai.app/auth/register",
+              "aria": ""
+            },
+            {
+              "text": "Terms of Service",
+              "href": "https://pavoai.app/terms",
+              "aria": ""
+            },
+            {
+              "text": "Privacy Policy",
+              "href": "https://pavoai.app/privacy",
+              "aria": ""
+            }
+          ],
+          "downloadLinks": [],
+          "verification": {
+            "cloudflareChallenge": false,
+            "recaptcha": false,
+            "challengeText": false,
+            "humanVerificationRequired": false,
+            "turnstileResponsePresent": false
+          },
+          "auth": {
+            "signInVisible": true,
+            "anonymousModeLikely": false
+          }
+        }
+      },
+      "page": {
+        "url": "https://pavoai.app/auth/login",
+        "title": "Log in"
+      }
+    },
+    {
+      "index": 1,
+      "type": "screenshot",
+      "detail": {
+        "file": "jvb-pavo-login-page.png"
+      },
+      "page": {
+        "url": "https://pavoai.app/auth/login",
+        "title": "Log in"
+      }
+    }
+  ],
+  "downloads": [],
+  "network": [
+    {
+      "url": "https://www.google-analytics.com/g/collect",
+      "method": "POST",
+      "status": 204
+    }
+  ],
+  "completedAt": "2026-11-21T01:07:06.813Z",
+  "note": "Navigation is limited to Pavo AI and LoreMotion. Login, passwords, payments, subscriptions, destructive account changes, and Cloudflare bypasses are blocked. Free generation requires an explicit task flag and a visible zero-cost/free indicator; credit and sign-in gates stop submission."
+}
