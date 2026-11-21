@@ -37,7 +37,7 @@ const ROOT = path.dirname(fileURLToPath(import.meta.url));
 const UI_DIR = path.join(ROOT, "ui");
 const DOWNLOAD_DIR = process.env.DOWNLOAD_DIR || path.join(process.env.DATA_DIR || path.join(ROOT, "data"), "downloads");
 const UPLOAD_DIR = process.env.UPLOAD_DIR || path.join(os.tmpdir(), "joyverse-agent-uploads");
-const VIEWPORT = { width: 1280, height: 720 };
+const VIEWPORT = { width: 960, height: 540 };
 const CHROMIUM_ARGS = [
   "--disable-dev-shm-usage",
   "--disable-gpu",
@@ -379,8 +379,8 @@ async function openSite(site, targetUrl = null) {
   page.setDefaultTimeout(20000);
   const mainPage = page;
   page.on("popup", popup => {
-    if ((context?.pages().length || 0) > 4) {
-      addPageIssue("popup-limit", "An extra popup was closed to protect the free instance memory budget.");
+    if ((context?.pages().length || 0) > 2) {
+      addPageIssue("popup-limit", "An extra popup was closed to protect the 512 MiB instance memory budget.");
       void popup.close().catch(() => {});
       return;
     }
