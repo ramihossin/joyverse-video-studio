@@ -263,6 +263,21 @@ function validateSiteInput(body, existing = null) {
 function browserRequired() {
   if (!page || !context || !currentSiteId) throw new Error("افتح أحد المواقع أولاً.");
 }
+async function capturePreview(targetPage = page) {
+  if (!targetPage || targetPage.isClosed()) throw new Error("صفحة المتصفح غير متاحة حالياً.");
+  const image = await targetPage.screenshot({
+    type: "jpeg",
+    quality: 60,
+    fullPage: false,
+    animations: "disabled",
+    caret: "hide"
+  });
+  return {
+    width: VIEWPORT.width,
+    height: VIEWPORT.height,
+    imageBase64: image.toString("base64")
+  };
+}
 async function ensureBrowser() {
   if (browser?.isConnected()) return browser;
   if (browser) {
@@ -323,7 +338,9 @@ async function openSite(site, targetUrl = null) {
   const newContext = await activeBrowser.newContext({
     ...(saved?.storageState ? { storageState: saved.storageState } : {}),
     acceptDownloads: true,
-    viewport: VIEWPORT
+    viewport: VIEWPORT,
+    hasTouch: true,
+    deviceScaleFactor: 1
   });
   if (generation !== browserGeneration || browser !== activeBrowser) {
     await newContext.close().catch(() => {});
@@ -899,17 +916,83 @@ app.get("/api/browser/snapshot", withBrowser(async (_req, res) => {
 }));
 app.get("/api/browser/screenshot", withBrowser(async (_req, res) => {
   browserRequired();
-  const image = await page.screenshot({ type: "jpeg", quality: 72, fullPage: false });
-  res.json({ ok: true, width: VIEWPORT.width, height: VIEWPORT.height, imageBase64: image.toString("base64") });
+  res.set("Cache-Control", "no-store");
+  res.json({ ok: true, ...await capturePreview() });
 }));
+
+// Compatibility endpoint for existing clients. Use a genuine touch tap.
 app.post("/api/browser/click", withBrowser(async (req, res) => {
   browserRequired();
   const x = Number(req.body?.x), y = Number(req.body?.y);
-  if (!Number.isFinite(x) || !Number.isFinite(y) || x < 0 || y < 0 || x > VIEWPORT.width || y > VIEWPORT.height) throw new Error("نقطة النقر خارج مساحة المتصفح.");
-  await page.mouse.click(x, y);
-  // Session persistence is explicit or performed when switching/closing sites;
-  // doing it after every click blocks the next screenshot and keyboard action.
+  if (!Number.isFinite(x) || !Number.isFinite(y) || x < 0 || y < 0 || x > VIEWPORT.width || y > VIEWPORT.height) {
+    throw new Error("نقطة النقر خارج مساحة المتصفح.");
+  }
+  await page.touchscreen.tap(Math.round(x), Math.round(y));
   res.json({ ok: true, url: page.url() });
+}));
+
+// One request handles the complete tap/swipe and returns the updated preview.
+// This avoids the old click-then-wait-700ms-then-screenshot round trip.
+app.post("/api/browser/gesture", withBrowser(async (req, res) => {
+  browserRequired();
+  const action = String(req.body?.action || "tap");
+  const validPoint = point => point && Number.isFinite(Number(point.x)) &&
+    Number.isFinite(Number(point.y)) &&
+    Number(point.x) >= 0 && Number(point.y) >= 0 &&
+    Number(point.x) <= VIEWPORT.width && Number(point.y) <= VIEWPORT.height;
+
+  if (action === "tap") {
+    const point = { x: Number(req.body?.x), y: Number(req.body?.y) };
+    if (!validPoint(point)) throw new Error("نقطة اللمس خارج مساحة المتصفح.");
+    await page.touchscreen.tap(Math.round(point.x), Math.round(point.y));
+  } else if (action === "swipe" || action === "drag") {
+    const points = Array.isArray(req.body?.points) ? req.body.points : [];
+    if (points.length < 2 || points.length > 32 || points.some(point => !validPoint(point))) {
+      throw new Error("مسار السحب غير صالح أو خارج مساحة المتصفح.");
+    }
+    const session = await context.newCDPSession(page);
+    let touchStarted = false;
+    const touchPoint = point => ({
+      x: Math.round(Number(point.x)),
+      y: Math.round(Number(point.y)),
+      id: 0,
+      radiusX: 1,
+      radiusY: 1,
+      force: 1
+    });
+    try {
+      await session.send("Input.dispatchTouchEvent", {
+        type: "touchStart",
+        touchPoints: [touchPoint(points[0])]
+      });
+      touchStarted = true;
+      for (const point of points.slice(1)) {
+        await session.send("Input.dispatchTouchEvent", {
+          type: "touchMove",
+          touchPoints: [touchPoint(point)]
+        });
+      }
+      await session.send("Input.dispatchTouchEvent", {
+        type: "touchEnd",
+        touchPoints: []
+      });
+      touchStarted = false;
+      await new Promise(resolve => setTimeout(resolve, 70));
+    } finally {
+      if (touchStarted) {
+        await session.send("Input.dispatchTouchEvent", {
+          type: "touchEnd",
+          touchPoints: []
+        }).catch(() => {});
+      }
+      await session.detach().catch(() => {});
+    }
+  } else {
+    throw new Error("نوع التفاعل غير مدعوم.");
+  }
+
+  res.set("Cache-Control", "no-store");
+  res.json({ ok: true, action, url: page.url(), ...await capturePreview() });
 }));
 app.post("/api/browser/type", withBrowser(async (req, res) => {
   browserRequired();
@@ -940,10 +1023,12 @@ app.post("/api/browser/type", withBrowser(async (req, res) => {
   }
 
   await page.keyboard.insertText(value);
+  res.set("Cache-Control", "no-store");
   res.json({
     ok: true,
     focusedElement: focusedEditor.focus.tagName,
-    frameUrl: safeDiagnosticUrl(focusedEditor.url)
+    frameUrl: safeDiagnosticUrl(focusedEditor.url),
+    ...await capturePreview()
   });
 }));
 app.post("/api/browser/key", withBrowser(async (req, res) => {
@@ -952,13 +1037,15 @@ app.post("/api/browser/key", withBrowser(async (req, res) => {
   const key = String(req.body?.key || "");
   if (!allowed.has(key)) throw new Error("مفتاح لوحة المفاتيح غير مسموح.");
   await page.keyboard.press(key);
-  res.json({ ok: true });
+  res.set("Cache-Control", "no-store");
+  res.json({ ok: true, ...await capturePreview() });
 }));
 app.post("/api/browser/scroll", withBrowser(async (req, res) => {
   browserRequired();
   const deltaY = Math.max(-1200, Math.min(1200, Number(req.body?.deltaY || 0)));
   await page.mouse.wheel(0, deltaY);
-  res.json({ ok: true });
+  res.set("Cache-Control", "no-store");
+  res.json({ ok: true, ...await capturePreview() });
 }));
 app.post("/api/browser/fill", withBrowser(async (req, res) => {
   browserRequired();

@@ -2,6 +2,10 @@ const $ = id => document.getElementById(id);
 let activeSite = null;
 let sites = [];
 let remoteViewport = { width: 1280, height: 720 };
+let screenInteractionQueue = Promise.resolve();
+let screenPointer = null;
+let screenRefreshPromise = null;
+const screenStage = $("screenStage");
 const tokenKey = "joyverse_browser_agent_token";
 $("token").value = sessionStorage.getItem(tokenKey) || "";
 function setStatus(id, text, kind) { $(id).textContent = text; $(id).className = "status " + (kind || ""); }
@@ -101,13 +105,105 @@ $("deleteSite").onclick = async () => {
     activeSite=null; $("siteSelect").value=""; fillSite(null); await loadSites();
   } catch(e) { setStatus("sessionStatus",e.message,"bad"); }
 };
-async function refreshScreen() {
-  const d = await api("/api/browser/screenshot", { method:"GET" });
+function renderScreen(d) {
   remoteViewport = {
     width: Number(d.width) > 0 ? Number(d.width) : 1280,
     height: Number(d.height) > 0 ? Number(d.height) : 720
   };
-  $("screen").src = "data:image/jpeg;base64," + d.imageBase64;
+  if (d.imageBase64) $("screen").src = "data:image/jpeg;base64," + d.imageBase64;
+}
+async function refreshScreen() {
+  if (screenRefreshPromise) return screenRefreshPromise;
+  screenRefreshPromise = (async () => {
+    const d = await api("/api/browser/screenshot", { method:"GET" });
+    renderScreen(d);
+    return d;
+  })();
+  try { return await screenRefreshPromise; }
+  finally { screenRefreshPromise = null; }
+}
+function mapScreenPoint(clientX, clientY) {
+  const rect = screenStage.getBoundingClientRect();
+  if (!rect.width || !rect.height) return null;
+  const scale = Math.min(rect.width / remoteViewport.width, rect.height / remoteViewport.height);
+  const shownWidth = remoteViewport.width * scale;
+  const shownHeight = remoteViewport.height * scale;
+  const offsetX = (rect.width - shownWidth) / 2;
+  const offsetY = (rect.height - shownHeight) / 2;
+  const localX = clientX - rect.left;
+  const localY = clientY - rect.top;
+  if (localX < offsetX || localY < offsetY ||
+      localX > offsetX + shownWidth || localY > offsetY + shownHeight) return null;
+  return {
+    x: Math.max(0, Math.min(remoteViewport.width, Math.round((localX - offsetX) / scale))),
+    y: Math.max(0, Math.min(remoteViewport.height, Math.round((localY - offsetY) / scale)))
+  };
+}
+function queueScreenInteraction(payload) {
+  const task = screenInteractionQueue.then(async () => {
+    const d = await api("/api/browser/gesture", {
+      method:"POST",
+      body:JSON.stringify(payload)
+    });
+    renderScreen(d);
+  });
+  screenInteractionQueue = task.catch(error => {
+    setStatus("sessionStatus", error.message, "bad");
+  });
+  return task;
+}
+if (screenStage) {
+  screenStage.addEventListener("contextmenu", event => event.preventDefault());
+  screenStage.addEventListener("dragstart", event => event.preventDefault());
+  screenStage.addEventListener("pointerdown", event => {
+    if (event.pointerType === "mouse" && event.button !== 0) return;
+    const point = mapScreenPoint(event.clientX, event.clientY);
+    if (!point) return;
+    event.preventDefault();
+    screenPointer = {
+      pointerId: event.pointerId,
+      start: point,
+      last: point,
+      points: [point],
+      moved: false
+    };
+    try { screenStage.setPointerCapture(event.pointerId); } catch {}
+  });
+  screenStage.addEventListener("pointermove", event => {
+    if (!screenPointer || screenPointer.pointerId !== event.pointerId) return;
+    const point = mapScreenPoint(event.clientX, event.clientY);
+    if (!point) return;
+    const distanceFromStart = Math.hypot(point.x - screenPointer.start.x, point.y - screenPointer.start.y);
+    if (distanceFromStart > 9) screenPointer.moved = true;
+    const last = screenPointer.points[screenPointer.points.length - 1];
+    if (Math.hypot(point.x - last.x, point.y - last.y) >= 5 && screenPointer.points.length < 31) {
+      screenPointer.points.push(point);
+    }
+    screenPointer.last = point;
+  });
+  screenStage.addEventListener("pointerup", event => {
+    if (!screenPointer || screenPointer.pointerId !== event.pointerId) return;
+    const state = screenPointer;
+    screenPointer = null;
+    try { screenStage.releasePointerCapture(event.pointerId); } catch {}
+    const end = mapScreenPoint(event.clientX, event.clientY) || state.last;
+    const distance = Math.hypot(end.x - state.start.x, end.y - state.start.y);
+    if (state.moved && distance > 9) {
+      const points = state.points.slice(0, 31);
+      const last = points[points.length - 1];
+      if (last.x !== end.x || last.y !== end.y) points.push(end);
+      void queueScreenInteraction({ action:"swipe", points }).catch(() => {});
+    } else {
+      void queueScreenInteraction({ action:"tap", x:end.x, y:end.y }).catch(() => {});
+    }
+  });
+  screenStage.addEventListener("pointercancel", () => { screenPointer = null; });
+}
+async function actAndRender(path, body) {
+  const d = await api(path, { method:"POST", body:JSON.stringify(body) });
+  if (d.imageBase64) renderScreen(d);
+  else await refreshScreen();
+  return d;
 }
 $("openSite").onclick = async () => {
   try {
@@ -157,23 +253,17 @@ $("recoverBrowser").onclick = async () => {
     setStatus("sessionStatus",result.message,"good");
   } catch(e) { setStatus("sessionStatus",e.message,"bad"); }
 };
-$("screen").onclick = async event => {
+$("scrollUp").onclick = () => actAndRender("/api/browser/scroll",{deltaY:-650}).catch(e=>setStatus("sessionStatus",e.message,"bad"));
+$("scrollDown").onclick = () => actAndRender("/api/browser/scroll",{deltaY:650}).catch(e=>setStatus("sessionStatus",e.message,"bad"));
+$("sendText").onclick = async () => {
   try {
-    const rect = event.currentTarget.getBoundingClientRect();
-    const x = (event.clientX - rect.left) * remoteViewport.width / rect.width;
-    const y = (event.clientY - rect.top) * remoteViewport.height / rect.height;
-    await api("/api/browser/click",{method:"POST",body:JSON.stringify({x,y})});
-    setTimeout(()=>refreshScreen().catch(()=>{}),700);
+    const text=$("typing").value;
+    await actAndRender("/api/browser/type",{text});
+    $("typing").value="";
   } catch(e) { setStatus("sessionStatus",e.message,"bad"); }
 };
-$("scrollUp").onclick = () => api("/api/browser/scroll",{method:"POST",body:JSON.stringify({deltaY:-650})}).then(refreshScreen).catch(e=>setStatus("sessionStatus",e.message,"bad"));
-$("scrollDown").onclick = () => api("/api/browser/scroll",{method:"POST",body:JSON.stringify({deltaY:650})}).then(refreshScreen).catch(e=>setStatus("sessionStatus",e.message,"bad"));
-$("sendText").onclick = async () => {
-  try { const text=$("typing").value; await api("/api/browser/type",{method:"POST",body:JSON.stringify({text})}); $("typing").value=""; setTimeout(()=>refreshScreen().catch(()=>{}),250); }
-  catch(e) { setStatus("sessionStatus",e.message,"bad"); }
-};
-$("pressEnter").onclick = () => api("/api/browser/key",{method:"POST",body:JSON.stringify({key:"Enter"})}).then(refreshScreen).catch(e=>setStatus("sessionStatus",e.message,"bad"));
-$("pressTab").onclick = () => api("/api/browser/key",{method:"POST",body:JSON.stringify({key:"Tab"})}).then(refreshScreen).catch(e=>setStatus("sessionStatus",e.message,"bad"));
+$("pressEnter").onclick = () => actAndRender("/api/browser/key",{key:"Enter"}).catch(e=>setStatus("sessionStatus",e.message,"bad"));
+$("pressTab").onclick = () => actAndRender("/api/browser/key",{key:"Tab"}).catch(e=>setStatus("sessionStatus",e.message,"bad"));
 $("inspect").onclick = async () => {
   try {
     const d = await api("/api/browser/snapshot");

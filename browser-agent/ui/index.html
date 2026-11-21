@@ -27,7 +27,9 @@ button:disabled{opacity:.45;cursor:not-allowed}
 .row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .status{font-size:13px;color:#b9c8da;padding:8px 10px;border-radius:9px;background:#0b1524;white-space:pre-wrap}
 .good{color:#72dfa7}.bad{color:#ff9e9e}
-#screen{width:100%;display:block;border-radius:12px;background:#070b12;min-height:180px;object-fit:contain;cursor:crosshair;touch-action:manipulation}
+#screenStage{width:100%;aspect-ratio:16/9;position:relative;overflow:hidden;border-radius:12px;background:#070b12;touch-action:none;user-select:none;-webkit-user-select:none;overscroll-behavior:contain}
+#screen{width:100%;height:100%;display:block;border-radius:12px;background:#070b12;object-fit:contain;cursor:crosshair;touch-action:none;pointer-events:none;user-select:none;-webkit-user-drag:none}
+#screenStage.interacting{cursor:grabbing}
 #controlsList{max-height:240px;overflow:auto;display:grid;gap:6px}
 .control{font-size:12px;background:#0b1524;border:1px solid #263950;padding:8px;border-radius:8px;display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center}
 .control code{direction:ltr;overflow-wrap:anywhere;color:#a8c8ff}
@@ -83,7 +85,10 @@ hr{border:0;border-top:1px solid #28384e;margin:14px 0}
     <button id="recoverBrowser" class="danger">إصلاح تعليق المتصفح</button>
   </div>
   <p class="small">افتح الموقع، وسجّل الدخول بنفسك من الشاشة أدناه. احفظ جلستك بعد تسجيل الدخول. إذا علقت الأوامر استخدم «إصلاح تعليق المتصفح»؛ قد تفقد التغييرات غير المحفوظة. لا يتجاوز الوكيل CAPTCHA أو وسائل الحماية.</p>
-  <img id="screen" alt="شاشة المتصفح البعيد — انقر داخل الصورة للتفاعل" />
+  <div id="screenStage" aria-label="شاشة المتصفح البعيد — المس أو اسحب للتفاعل">
+    <img id="screen" alt="شاشة المتصفح البعيد" draggable="false" />
+  </div>
+  <p class="small">المس موضع العنصر مباشرة. اسحب داخل المعاينة للتمرير أو لتحريك العناصر؛ وسيتم تحديث الصورة بعد التفاعل.</p>
   <div class="grid" style="margin-top:10px">
     <div><label for="typing">كتابة في الحقل النشط</label><input id="typing" placeholder="اكتب ثم اضغط إرسال"></div>
     <div class="row" style="align-self:end"><button id="sendText">إرسال النص</button><button id="pressEnter" class="secondary">Enter</button><button id="pressTab" class="secondary">Tab</button></div>
