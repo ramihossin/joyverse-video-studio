@@ -1,0 +1,19 @@
+{
+  "taskId": "jvb-pavo-auth-entry-inspect-retry-20261121",
+  "operation": "sequence",
+  "url": "https://pavoai.app/",
+  "steps": [
+    {
+      "type": "authEntry",
+      "selector": "button:has-text(\"Guest\")"
+    },
+    {
+      "type": "inspect"
+    },
+    {
+      "type": "screenshot",
+      "fileName": "jvb-pavo-auth-entry-retry.png",
+      "fullPage": true
+    }
+  ]
+}
