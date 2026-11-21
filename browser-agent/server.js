@@ -60,6 +60,7 @@ const operationGate = createOperationGate();
 const jobs = new Map();
 
 let pageDiagnostics = { navigation: null, issues: [] };
+let previewCapturePromise = null;
 
 function addPageIssue(type, message, url = null, status = null) {
   const issue = {
@@ -264,20 +265,46 @@ function browserRequired() {
   if (!page || !context || !currentSiteId) throw new Error("افتح أحد المواقع أولاً.");
 }
 async function capturePreview(targetPage = page) {
-  if (!targetPage || targetPage.isClosed()) throw new Error("صفحة المتصفح غير متاحة حالياً.");
-  const image = await targetPage.screenshot({
-    type: "jpeg",
-    quality: 38,
-    fullPage: false,
-    caret: "hide",
-    scale: "css",
-    timeout: 15000
-  });
-  return {
-    width: VIEWPORT.width,
-    height: VIEWPORT.height,
-    imageBase64: image.toString("base64")
-  };
+  if (!targetPage || targetPage.isClosed() || !context) throw new Error("صفحة المتصفح غير متاحة حالياً.");
+  // Coalesce overlapping refreshes: a slow renderer must not receive a queue
+  // of screenshot requests while the user continues interacting.
+  if (previewCapturePromise) return previewCapturePromise;
+  const activeContext = context;
+  const capture = (async () => {
+    const session = await activeContext.newCDPSession(targetPage);
+    let timeoutId;
+    try {
+      // Capture directly through CDP. Unlike Playwright's screenshot helper,
+      // this avoids waiting for document.fonts.ready and uses Chromium's
+      // speed-optimized compositor path.
+      const result = await Promise.race([
+        session.send("Page.captureScreenshot", {
+          format: "jpeg",
+          quality: 34,
+          fromSurface: true,
+          captureBeyondViewport: false,
+          optimizeForSpeed: true
+        }),
+        new Promise((_, reject) => {
+          timeoutId = setTimeout(() => reject(new Error("انتهت مهلة التقاط المعاينة بعد 9 ثوانٍ.")), 9000);
+        })
+      ]);
+      return {
+        width: VIEWPORT.width,
+        height: VIEWPORT.height,
+        imageBase64: result.data
+      };
+    } finally {
+      if (timeoutId) clearTimeout(timeoutId);
+      await session.detach().catch(() => {});
+    }
+  })();
+  previewCapturePromise = capture;
+  try {
+    return await capture;
+  } finally {
+    if (previewCapturePromise === capture) previewCapturePromise = null;
+  }
 }
 async function ensureBrowser() {
   if (browser?.isConnected()) return browser;
@@ -916,15 +943,20 @@ app.get("/api/browser/snapshot", withBrowser(async (_req, res) => {
   });
 }));
 app.get("/api/browser/screenshot", async (_req, res) => {
+  const started = Date.now();
   try {
     if (recovering) return res.status(409).json({ error: "تجري إعادة تهيئة المتصفح الآن. أعد المحاولة بعد انتهائها." });
     browserRequired();
     res.set("Cache-Control", "no-store");
-    const started = Date.now();
     const preview = await capturePreview();
     console.info(JSON.stringify({ event: "browser_preview", elapsedMs: Date.now() - started }));
     res.json({ ok: true, ...preview });
   } catch (error) {
+    console.warn(JSON.stringify({
+      event: "browser_preview_failed",
+      elapsedMs: Date.now() - started,
+      error: String(error?.message || error).slice(0, 180)
+    }));
     if (!res.headersSent) res.status(503).json({ error: String(error?.message || error).slice(0, 300) });
   }
 });
