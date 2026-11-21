@@ -267,6 +267,24 @@ async function performStep(page, context, task, step, index, downloads) {
     }
     await page.locator(selector).first().selectOption(step.value, { timeout });
     detail.selected = selector;
+  } else if (step.type === "authEntry") {
+    const selector = safeSelector(step.selector);
+    const locator = page.locator(selector).first();
+    const label = await locator.evaluate(node => (
+      (node.innerText || node.textContent || "") + " " +
+      (node.getAttribute("aria-label") || "") + " " +
+      (node.getAttribute("title") || "")
+    ).trim().slice(0, 250));
+    if (!/login|log in|sign in|account|user|guest|register|start free|continue with/i.test(label)) {
+      throw new Error("authEntry may only open a provider's official sign-in or account-entry UI.");
+    }
+    if (/logout|sign out|delete|payment|checkout|purchase|subscribe|upgrade|buy credits/i.test(label)) {
+      throw new Error("This is not a permitted sign-in entry control.");
+    }
+    await locator.click({ timeout });
+    await page.waitForTimeout(700);
+    detail.authEntryOpened = true;
+    detail.label = label;
   } else if (step.type === "click") {
     const selector = safeSelector(step.selector);
     const locator = page.locator(selector).first();
