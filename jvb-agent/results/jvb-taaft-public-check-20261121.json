@@ -1,0 +1,56 @@
+{
+  "taskId": "jvb-taaft-public-check-20261121",
+  "ok": true,
+  "operation": "inspect",
+  "url": "https://theresanaiforthat.com/",
+  "httpStatus": 403,
+  "state": {
+    "url": "https://theresanaiforthat.com/",
+    "title": "Just a moment...",
+    "text": "theresanaiforthat.com Performing security verification This website uses a security service to protect against malicious bots. This page is displayed while the website verifies you are not a bot. Ray ID: a5db93ab1c2215fd Performance and Security by Cloudflare Privacy",
+    "fileInputs": [],
+    "inputs": [],
+    "buttons": [],
+    "videos": [],
+    "links": [
+      {
+        "text": "Cloudflare",
+        "href": "https://www.cloudflare.com/?utm_source=challenge&utm_campaign=m",
+        "aria": "Cloudflare, opens in a new tab"
+      },
+      {
+        "text": "Privacy",
+        "href": "https://www.cloudflare.com/privacypolicy/",
+        "aria": "Privacy, opens in a new tab"
+      }
+    ],
+    "downloadLinks": [],
+    "verification": {
+      "cloudflareChallenge": false,
+      "recaptcha": false,
+      "challengeText": false,
+      "humanVerificationRequired": false,
+      "turnstileResponsePresent": false
+    },
+    "auth": {
+      "signInVisible": false,
+      "anonymousModeLikely": false
+    }
+  },
+  "steps": [],
+  "downloads": [],
+  "network": [
+    {
+      "url": "https://challenges.cloudflare.com/turnstile/v0/b/f8df4d4a0cd6/api.js",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "url": "https://challenges.cloudflare.com/cdn-cgi/challenge-platform/h/b/turnstile/f/av0/rch/a0czu/0x4AAAAAAADnPIDROrmt1Wwj/light/fbE/new/normal",
+      "method": "GET",
+      "status": 200
+    }
+  ],
+  "completedAt": "2026-11-21T00:28:53.612Z",
+  "note": "Navigation is limited to Pavo AI and LoreMotion. Login, passwords, payments, subscriptions, destructive account changes, and Cloudflare bypasses are blocked. Free generation requires an explicit task flag and a visible zero-cost/free indicator; credit and sign-in gates stop submission."
+}
