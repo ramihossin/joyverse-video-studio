@@ -145,7 +145,11 @@ function queueScreenInteraction(payload) {
       method:"POST",
       body:JSON.stringify(payload)
     });
-    renderScreen(d);
+    setStatus("sessionStatus", "تم تنفيذ التفاعل؛ جارٍ تحديث المعاينة...", "good");
+    // Refresh independently: slow screenshots must never delay the next tap.
+    setTimeout(() => refreshScreen().catch(error => {
+      setStatus("sessionStatus", "تم التفاعل، لكن تعذّر تحديث المعاينة: " + error.message, "bad");
+    }), 120);
   });
   screenInteractionQueue = task.catch(error => {
     setStatus("sessionStatus", error.message, "bad");

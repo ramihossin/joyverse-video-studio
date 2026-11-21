@@ -267,10 +267,10 @@ async function capturePreview(targetPage = page) {
   if (!targetPage || targetPage.isClosed()) throw new Error("صفحة المتصفح غير متاحة حالياً.");
   const image = await targetPage.screenshot({
     type: "jpeg",
-    quality: 60,
+    quality: 38,
     fullPage: false,
-    animations: "disabled",
-    caret: "hide"
+    caret: "hide",
+    timeout: 5000
   });
   return {
     width: VIEWPORT.width,
@@ -917,7 +917,10 @@ app.get("/api/browser/snapshot", withBrowser(async (_req, res) => {
 app.get("/api/browser/screenshot", withBrowser(async (_req, res) => {
   browserRequired();
   res.set("Cache-Control", "no-store");
-  res.json({ ok: true, ...await capturePreview() });
+  const started = Date.now();
+  const preview = await capturePreview();
+  console.info(JSON.stringify({ event: "browser_preview", elapsedMs: Date.now() - started }));
+  res.json({ ok: true, ...preview });
 }));
 
 // Compatibility endpoint for existing clients. Use a genuine touch tap.
@@ -944,7 +947,9 @@ app.post("/api/browser/gesture", withBrowser(async (req, res) => {
   if (action === "tap") {
     const point = { x: Number(req.body?.x), y: Number(req.body?.y) };
     if (!validPoint(point)) throw new Error("نقطة اللمس خارج مساحة المتصفح.");
-    await page.touchscreen.tap(Math.round(point.x), Math.round(point.y));
+    const clickStarted = Date.now();
+  await page.mouse.click(Math.round(point.x), Math.round(point.y), { delay: 0 });
+  console.info(JSON.stringify({ event: "browser_tap", elapsedMs: Date.now() - clickStarted }));
   } else if (action === "swipe" || action === "drag") {
     const points = Array.isArray(req.body?.points) ? req.body.points : [];
     if (points.length < 2 || points.length > 32 || points.some(point => !validPoint(point))) {
@@ -977,7 +982,7 @@ app.post("/api/browser/gesture", withBrowser(async (req, res) => {
         touchPoints: []
       });
       touchStarted = false;
-      await new Promise(resolve => setTimeout(resolve, 70));
+      // Keep the input path short; the preview is fetched separately by the UI.
     } finally {
       if (touchStarted) {
         await session.send("Input.dispatchTouchEvent", {
@@ -991,8 +996,10 @@ app.post("/api/browser/gesture", withBrowser(async (req, res) => {
     throw new Error("نوع التفاعل غير مدعوم.");
   }
 
+  // Acknowledge the interaction immediately. Screenshot capture is a separate request
+  // so a slow renderer screenshot cannot hold the input operation open.
   res.set("Cache-Control", "no-store");
-  res.json({ ok: true, action, url: page.url(), ...await capturePreview() });
+  res.json({ ok: true, action, url: safeDiagnosticUrl(page.url()) });
 }));
 app.post("/api/browser/type", withBrowser(async (req, res) => {
   browserRequired();
