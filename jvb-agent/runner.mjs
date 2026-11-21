@@ -260,6 +260,11 @@ async function performStep(page, context, task, step, index, downloads) {
     if (/login|log in|sign in|password|checkout|payment|purchase|buy credits|subscribe|upgrade|delete account|sign out|logout/i.test(label)) {
       throw new Error("This action requires login, payment, subscription, or a destructive account change and is blocked.");
     }
+    if (/generate|create video|render video/i.test(label) &&
+        new URL(page.url()).hostname.endsWith("loremotion.com") &&
+        task.euAgeAtLeast16Confirmed !== true) {
+      throw new Error("LoreMotion free models require users to be at least 16 in the EU/UK; age eligibility has not been confirmed, so generation is blocked.");
+    }
     if (/generate|create video|render video/i.test(label) && task.allowFreeGeneration !== true) {
       throw new Error("Video generation is disabled unless allowFreeGeneration is explicitly true for this task.");
     }
@@ -295,11 +300,15 @@ async function performStep(page, context, task, step, index, downloads) {
       if (/login|log in|sign in|password|checkout|payment|purchase|buy credits|subscribe|upgrade|delete account|sign out|logout/i.test(label)) {
         throw new Error("This action requires login, payment, subscription, or a destructive account change and is blocked.");
       }
-      const privacyReject = /^reject non-essential$/i.test(label.trim());
-      await locator.click({ timeout, force: privacyReject });
+      const privacyReject = /reject non-essential/i.test(label.trim());
+      if (privacyReject) {
+        await locator.evaluate(node => node.click());
+      } else {
+        await locator.click({ timeout });
+      }
       detail.clicked = selector;
       detail.label = label;
-      detail.forcedPrivacyChoice = privacyReject;
+      detail.privacyChoice = privacyReject ? "rejected-non-essential" : undefined;
     }
   } else if (step.type === "upload") {
     const selector = safeSelector(step.selector);
