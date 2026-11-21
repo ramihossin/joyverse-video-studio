@@ -1,0 +1,23 @@
+{
+  "taskId": "jvb-loremotion-anonymous-check-20261121",
+  "operation": "sequence",
+  "url": "https://loremotion.com/generate/",
+  "steps": [
+    {
+      "type": "clickIfVisible",
+      "selector": "button:has-text('Reject non-essential')"
+    },
+    {
+      "type": "wait",
+      "milliseconds": 1200
+    },
+    {
+      "type": "inspect"
+    },
+    {
+      "type": "screenshot",
+      "fileName": "jvb-loremotion-anonymous-check.png",
+      "fullPage": false
+    }
+  ]
+}
