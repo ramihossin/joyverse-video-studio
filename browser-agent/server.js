@@ -915,14 +915,19 @@ app.get("/api/browser/snapshot", withBrowser(async (_req, res) => {
     issues: pageDiagnostics.issues.slice(-25)
   });
 }));
-app.get("/api/browser/screenshot", withBrowser(async (_req, res) => {
-  browserRequired();
-  res.set("Cache-Control", "no-store");
-  const started = Date.now();
-  const preview = await capturePreview();
-  console.info(JSON.stringify({ event: "browser_preview", elapsedMs: Date.now() - started }));
-  res.json({ ok: true, ...preview });
-}));
+app.get("/api/browser/screenshot", async (_req, res) => {
+  try {
+    if (recovering) return res.status(409).json({ error: "تجري إعادة تهيئة المتصفح الآن. أعد المحاولة بعد انتهائها." });
+    browserRequired();
+    res.set("Cache-Control", "no-store");
+    const started = Date.now();
+    const preview = await capturePreview();
+    console.info(JSON.stringify({ event: "browser_preview", elapsedMs: Date.now() - started }));
+    res.json({ ok: true, ...preview });
+  } catch (error) {
+    if (!res.headersSent) res.status(503).json({ error: String(error?.message || error).slice(0, 300) });
+  }
+});
 
 // Compatibility endpoint for existing clients. Use a genuine touch tap.
 app.post("/api/browser/click", withBrowser(async (req, res) => {
@@ -949,8 +954,20 @@ app.post("/api/browser/gesture", withBrowser(async (req, res) => {
     const point = { x: Number(req.body?.x), y: Number(req.body?.y) };
     if (!validPoint(point)) throw new Error("نقطة اللمس خارج مساحة المتصفح.");
     const clickStarted = Date.now();
-  await page.mouse.click(Math.round(point.x), Math.round(point.y), { delay: 0 });
-  console.info(JSON.stringify({ event: "browser_tap", elapsedMs: Date.now() - clickStarted }));
+    const activePage = page;
+    const session = await context.newCDPSession(activePage);
+    try {
+      const x = Math.round(point.x), y = Math.round(point.y);
+      await session.send("Input.dispatchMouseEvent", {
+        type: "mousePressed", x, y, button: "left", buttons: 1, clickCount: 1
+      });
+      await session.send("Input.dispatchMouseEvent", {
+        type: "mouseReleased", x, y, button: "left", buttons: 0, clickCount: 1
+      });
+    } finally {
+      await session.detach().catch(() => {});
+    }
+    console.info(JSON.stringify({ event: "browser_tap", elapsedMs: Date.now() - clickStarted }));
   } else if (action === "swipe" || action === "drag") {
     const points = Array.isArray(req.body?.points) ? req.body.points : [];
     if (points.length < 2 || points.length > 32 || points.some(point => !validPoint(point))) {
