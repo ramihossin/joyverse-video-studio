@@ -270,7 +270,8 @@ async function capturePreview(targetPage = page) {
     quality: 38,
     fullPage: false,
     caret: "hide",
-    timeout: 5000
+    scale: "css",
+    timeout: 15000
   });
   return {
     width: VIEWPORT.width,
