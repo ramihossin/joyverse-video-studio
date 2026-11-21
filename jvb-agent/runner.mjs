@@ -295,9 +295,11 @@ async function performStep(page, context, task, step, index, downloads) {
       if (/login|log in|sign in|password|checkout|payment|purchase|buy credits|subscribe|upgrade|delete account|sign out|logout/i.test(label)) {
         throw new Error("This action requires login, payment, subscription, or a destructive account change and is blocked.");
       }
-      await locator.click({ timeout });
+      const privacyReject = /^reject non-essential$/i.test(label.trim());
+      await locator.click({ timeout, force: privacyReject });
       detail.clicked = selector;
       detail.label = label;
+      detail.forcedPrivacyChoice = privacyReject;
     }
   } else if (step.type === "upload") {
     const selector = safeSelector(step.selector);
@@ -455,7 +457,7 @@ try {
           downloads,
           network: network.slice(-35),
           completedAt: new Date().toISOString(),
-          note: "Navigation is limited to Pavo AI and LoreMotion. Login, passwords, payments, subscriptions, destructive account changes, and Cloudflare bypasses are blocked. Free generation requires an explicit task flag and a visible Free-labeled button.",
+          note: "Navigation is limited to Pavo AI and LoreMotion. Login, passwords, payments, subscriptions, destructive account changes, and Cloudflare bypasses are blocked. Free generation requires an explicit task flag and a visible zero-cost/free indicator; credit and sign-in gates stop submission.",
         };
         await fs.writeFile(finalResultPath, JSON.stringify(report, null, 2) + "\n");
         console.log("Completed " + taskId + ": " + state.title);
