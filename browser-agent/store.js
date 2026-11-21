@@ -54,9 +54,9 @@ const DEFAULT_SITES = [
   {
     id: "pavo-ai-video",
     name: "Pavo AI — توليد الفيديو",
-    baseUrl: "https://pavoai.app/",
+    baseUrl: "https://app.pavo-ai.work/",
     loginUrl: "",
-    allowedHosts: ["pavoai.app", "www.pavoai.app"],
+    allowedHosts: ["app.pavo-ai.work"],
     purpose: "video",
     selectors: { promptSelector: "", uploadSelector: "", generateSelector: "", readySelector: "", downloadSelector: "" },
     waitSeconds: 360,
@@ -75,11 +75,16 @@ function migrateLegacySite(site) {
   }
   let host = "";
   try { host = new URL(next.baseUrl).hostname.toLowerCase(); } catch {}
-  if (next.id === "pavo-ai-video" && ["app.pavo-ai.work", "pavo-ai.work", "www.pavo-ai.work"].includes(host)) {
-    next.baseUrl = "https://pavoai.app/";
-    next.loginUrl = "";
-    next.allowedHosts = ["pavoai.app", "www.pavoai.app"];
-    changed = true;
+  if (next.id === "pavo-ai-video") {
+    const canonicalBase = "https://app.pavo-ai.work/";
+    const canonicalHosts = ["app.pavo-ai.work"];
+    if (next.baseUrl !== canonicalBase || next.loginUrl !== "" ||
+        JSON.stringify(next.allowedHosts || []) !== JSON.stringify(canonicalHosts)) {
+      next.baseUrl = canonicalBase;
+      next.loginUrl = "";
+      next.allowedHosts = canonicalHosts;
+      changed = true;
+    }
   }
   if (!changed) return null;
   next.updatedAt = new Date().toISOString();
