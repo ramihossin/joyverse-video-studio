@@ -32,6 +32,7 @@ app.use((_req, res, next) => {
 
 const PORT = Number(process.env.PORT || 8080);
 const TOKEN = process.env.BROWSER_AGENT_TOKEN || "";
+const BRIDGE_TOKEN = process.env.JVB_N8N_TOKEN || "";
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
 const UI_DIR = path.join(ROOT, "ui");
 const DOWNLOAD_DIR = process.env.DOWNLOAD_DIR || path.join(process.env.DATA_DIR || path.join(ROOT, "data"), "downloads");
@@ -139,14 +140,18 @@ async function navigatePage(targetPage, destination) {
 
 
 if (TOKEN.length < 32) throw new Error("BROWSER_AGENT_TOKEN must be at least 32 characters.");
+if (BRIDGE_TOKEN && BRIDGE_TOKEN.length < 32) throw new Error("JVB_N8N_TOKEN must be at least 32 characters when configured.");
 
 function authorized(req) {
   const header = req.get("authorization") || "";
   const match = /^Bearer ([A-Za-z0-9._~+\\/-]+=*)$/.exec(header);
   if (!match) return false;
-  const a = Buffer.from(match[1]);
-  const b = Buffer.from(TOKEN);
-  return a.length === b.length && timingSafeEqual(a, b);
+  const candidate = Buffer.from(match[1]);
+  const accepted = [TOKEN, BRIDGE_TOKEN].filter(value => value.length >= 32);
+  return accepted.some(value => {
+    const expected = Buffer.from(value);
+    return candidate.length === expected.length && timingSafeEqual(candidate, expected);
+  });
 }
 function auth(req, res, next) {
   if (!authorized(req)) return res.status(401).json({ error: "Unauthorized" });
