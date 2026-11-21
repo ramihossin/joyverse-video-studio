@@ -1,0 +1,6 @@
+{
+  "taskId": "jvb-loremotion-generator-inspect-20261121",
+  "ok": false,
+  "error": "locator.click: Timeout 15000ms exceeded.\nCall log:\n  - waiting for locator('button:has-text(\\'Reject non-essential\\')').first()\n    - locator resolved to <button type=\"button\" class=\"rounded-md border border-white/20 px-4 py-2 text-sm font-medium text-white/90 transition hover:bg-white/5\">Reject non-essential</button>\n  - attempting click action\n    2 × waiting for element to be visible, enabled and stable\n      - element is visible, enabled and stable\n      - scrolling into view if needed\n      - done scrolling\n      - <div class=\"fc-dialog-overlay\"></div> from <div aria-hidden=\"true\" class=\"fc-consent-root\" data-aria-hidden=\"true\">…</div> subtree intercepts pointer events\n    - retrying click action\n    - waiting 20ms\n    2 × waiting for element to be visible, enabled and stable\n      - element is visible, enabled and stable\n      - scrolling into view if needed\n      - done scrolling\n      - <div class=\"fc-dialog-overlay\"></div> from <div aria-hidden=\"true\" class=\"fc-consent-root\" d",
+  "completedAt": "2026-11-21T00:13:35.290Z"
+}
