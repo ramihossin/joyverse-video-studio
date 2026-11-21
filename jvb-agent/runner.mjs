@@ -6,8 +6,7 @@ const INBOX = path.resolve("jvb-agent/inbox");
 const RESULTS = path.resolve("jvb-agent/results");
 const OUTPUT = path.resolve("jvb-agent/output");
 const ALLOWED_HOSTS = new Set([
-  "pavoai.app",
-  "www.pavoai.app",
+  "app.pavo-ai.com",
   "loremotion.com",
   "www.loremotion.com",
   "theresanaiforthat.com",
