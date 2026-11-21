@@ -1,0 +1,60 @@
+{
+  "taskId": "jvb-loremotion-joyverse-smoke-retry-20261121",
+  "operation": "sequence",
+  "url": "https://loremotion.com/generate/",
+  "allowFreeGeneration": true,
+  "steps": [
+    {
+      "type": "clickIfVisible",
+      "selector": "button:has-text('Reject non-essential')"
+    },
+    {
+      "type": "wait",
+      "milliseconds": 500
+    },
+    {
+      "type": "fill",
+      "selector": "#generate-prompt-dock",
+      "value": "High-quality cheerful 3D animated short for preschool viewers, vertical 9:16. Adam, with neat brown hair and a bright blue outfit, and Lina, with long brown hair, a pink outfit, and a pink flower, stand together in a sunny flower garden. Zeno, a tiny turquoise dragon with a cream belly, large amber eyes, small golden horns, and golden wings, flutters down and gently lands between them. They all smile and wave toward the camera. Simple readable action, consistent character designs, rounded friendly shapes, vibrant colors, soft daylight, smooth animation, upbeat playful mood, no text, no logos."
+    },
+    {
+      "type": "click",
+      "selector": "button:has-text('9:16')"
+    },
+    {
+      "type": "inspect"
+    },
+    {
+      "type": "click",
+      "selector": "button:has-text('Generate Free')"
+    },
+    {
+      "type": "wait",
+      "milliseconds": 10000
+    },
+    {
+      "type": "wait",
+      "milliseconds": 10000
+    },
+    {
+      "type": "wait",
+      "milliseconds": 10000
+    },
+    {
+      "type": "wait",
+      "milliseconds": 10000
+    },
+    {
+      "type": "wait",
+      "milliseconds": 10000
+    },
+    {
+      "type": "inspect"
+    },
+    {
+      "type": "screenshot",
+      "fileName": "jvb-loremotion-joyverse-smoke-retry.png",
+      "fullPage": false
+    }
+  ]
+}
