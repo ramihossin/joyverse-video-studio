@@ -1,0 +1,299 @@
+{
+  "taskId": "jvb-loremotion-auth-page-inspect-20261121",
+  "ok": true,
+  "operation": "inspect",
+  "url": "https://loremotion.com/auth",
+  "httpStatus": 200,
+  "state": {
+    "url": "https://loremotion.com/auth",
+    "title": "Sign In — LoreMotion",
+    "text": "loremotion 16:9 · 10s [ LOREMOTION ] Bring your lore to motion Type a scene, get a cinematic clip. Free models stay free, and premium ones are a click away. Back to the generator [ FREE ACCOUNT ] Create free account Save every video to your library — takes 10 seconds. Sign up Sign in Continue with Google OR USE EMAIL EMAIL PASSWORD SUMMIT CODE (optional) From your summit leaflet. 100 credits each. Up to 5 codes, entered one at a time. Create account By creating an account you agree to our Terms and Privacy Policy. Prefer email sign-in? 100% free, forever No watermark No credit card required Unlimited LTX generations We use cookies for analytics and to support free generations with ads. You can accept all, or reject non-essential cookies. See our Privacy Policy. Reject non-essential Accept all Home Generate a video Discover community videos Sign up free Bring your lore to motion Free AI Video Generator — No Watermark, No Sign-Up Required LoreMotion is a free AI video generator that turns text prompts and reference images into high-quality 720p MP4 clips with synced audio. No credit card, no watermark, no monthly plan — describe what you want and hit Generate. Powered by LTX-Video 2.5 and MiniMax H3 — open models we host on our own GPUs. Unlike Runway, Higgsfield, or Pika, LoreMotion requires no account for your first video and adds no watermark to any output. It is the only free AI video generator no watermark no signup that also gives you access to Google Veo 3.1, xAI Grok 3, and Kuaishou Kling — all in one place, starting at 0 dollars. How LoreMotion works Open the generator, type a description of the video you want — or upload a reference image for image-to-video — then choose your aspect ratio and clip length. LoreMotion queues your job on a GPU cluster, renders a 720p MP4 using LTX-Video 2.5 or MiniMax H3, and notifies you when it's ready. Most clips finish in under 90 seconds. When it's done, you get a direct download link with no watermark. Enter a text prompt or upload a reference image for image-to-video Choose aspect ratio: 16:9 landscape, 9:16 portrait, 1:1 square, or 4:3 classic Optionally use the AI Enhance button to improve your prompt automatically Click Generate — the AI renders your video on a cloud GPU in the background Download the 720p MP4 for free — no watermark, no attribution required LoreMotion vs Higgsfield vs InVideo vs OpenArt vs Runway — Honest Comparison Every other free AI video generator either watermarks your output, locks you behind a paywall after one clip, or requires a credit card to sign up. Here is how LoreMotion compares: Tool Free tier Watermark No sign-up Price to unlock LoreMotion Unlimited (LTX) None Yes Free / $5 credits Higgsfield 0 credits Yes No $19/mo InVideo AI Weekly credits Yes No $20/mo OpenArt Trial credits None No $14/mo Runway 125 credits, once Yes No $15/mo Kling AI (direct) Daily credits Yes No $10/mo Pika 80 credits/mo Yes No $10/mo Free AI Video Generator for TikTok, Reels, and YouTube Shorts LoreMotion supports 9:16 vertical aspect ratio natively — the correct format for TikTok videos, Instagram Reels, and YouTube Shorts. Generate a 5-second or 8-second vertical clip from a text prompt, download the unwatermarked MP4, and post it directly. No editing software required. For horizontal content — YouTube videos, presentations, ads — switch to 16:9 widescreen. Square 1:1 works for Twitter/X and LinkedIn. All aspect ratios are available on the free tier with no watermark. Free Image to Video AI — Animate Any Photo Upload any image — a product photo, a portrait, a landscape, or AI-generated artwork — and LoreMotion will animate it into a fluid MP4 clip. This free image to video AI feature works with all models: LTX-Video 2.5 (free), MiniMax H3 (free), Alibaba Wan 3.0 (premium), Google Veo 3.1 (premium), xAI Grok 3 and Grok Affordable (premium), Kling 2.5/3/4.0 (premium), and Seedance 2 & 2.5 (premium). No separate tool required — just switch to Image-to-Video mode on the generator page. Common use cases: animating product photos for e-commerce ads, bringing portraits to life, turning architectural renders into walkthroughs, or adding motion to Midjourney / DALL-E / Stable Diffusion outputs. The image becomes the first frame; the model generates natural motion forward in time. Features Text to video — describe any scene and the AI renders it as a fluid 720p clip with motion and audio Image to video — upload a photo or illustration and animate it with natural, physics-aware motion 720p MP4 output — full HD clips with H.264 encoding and synced ambient audio, ready to post anywhere Multiple aspect ratios — 16:9 widescreen, 9:16 vertical (Reels / TikTok / Shorts), 1:1 square, 4:3 classic No watermark — the video is entirely yours, including for commercial use No signup for the first video — anonymous users get one free generation instantly Unlimited generations with a free account — sign up to unlock your personal 48-hour video library Community Discover feed — browse videos from other creators for inspiration and style references AI prompt enhancement — one click rewrites your prompt to be more cinematic, descriptive, and LTX-optimised Public sharing — share a direct video link or publish your clip to the community gallery Free models — LTX-Video 2.5 and MiniMax H3 LoreMotion's free tier runs LTX-Video 2.5 from Lightricks and MiniMax H3 on our own GPUs. LTX-Video 2.5 uses a 22-billion-parameter diffusion transformer that produces temporally coherent, high-fidelity 720p clips with realistic motion, accurate lighting, and consistent subjects across frames. Unlike older models that struggled with flickering and subject drift, LTX-Video 2.5's distilled architecture runs efficiently on consumer-grade GPUs while matching the quality of much larger proprietary systems. MiniMax H3 is a second free model on its own queue — 480p up to 15 seconds or 720p up to 5 seconds. When more than 15 jobs are waiting, free 720p and a 480p clip over 10 seconds each run one at a time; under 15 they run two at a time — also with synced audio. Both text-to-video (t2v) and image-to-video (i2v) modes are supported. In i2v mode, you supply a reference frame and the model generates a clip that starts from that image and evolves it naturally forward in time — ideal for animating product photos, portraits, landscapes, and artwork. Premium models — Wan 3.0, Seedance 2.5, Kling 4.0, Veo 3.1 The newest proprietary video models sit next to the free ones and run on c",
+    "fileInputs": [],
+    "inputs": [
+      {
+        "tag": "input",
+        "type": "email",
+        "id": "auth-email",
+        "name": "",
+        "placeholder": "you@example.com",
+        "aria": "",
+        "valueLength": 0,
+        "disabled": false
+      },
+      {
+        "tag": "input",
+        "type": "password",
+        "id": "auth-password",
+        "name": "",
+        "placeholder": "At least 6 characters",
+        "aria": "",
+        "valueLength": 0,
+        "disabled": false
+      },
+      {
+        "tag": "input",
+        "type": "text",
+        "id": "auth-promo",
+        "name": "",
+        "placeholder": "K7M-R4P",
+        "aria": "",
+        "valueLength": 0,
+        "disabled": false
+      }
+    ],
+    "buttons": [
+      {
+        "text": "Sign up",
+        "aria": "",
+        "disabled": false
+      },
+      {
+        "text": "Sign in",
+        "aria": "",
+        "disabled": false
+      },
+      {
+        "text": "Continue with Google",
+        "aria": "",
+        "disabled": false
+      },
+      {
+        "text": "Create account",
+        "aria": "",
+        "disabled": true
+      },
+      {
+        "text": "Prefer email sign-in?",
+        "aria": "",
+        "disabled": false
+      },
+      {
+        "text": "Reject non-essential",
+        "aria": "",
+        "disabled": false
+      },
+      {
+        "text": "Accept all",
+        "aria": "",
+        "disabled": false
+      }
+    ],
+    "videos": [
+      {
+        "src": "https://loremotion.com/videos/auth-reel.mp4",
+        "readyState": 4,
+        "duration": 10.117467
+      }
+    ],
+    "links": [
+      {
+        "text": "loremotion",
+        "href": "https://loremotion.com/",
+        "aria": "LoreMotion home"
+      },
+      {
+        "text": "Back to the generator",
+        "href": "https://loremotion.com/generate",
+        "aria": ""
+      },
+      {
+        "text": "Terms",
+        "href": "https://loremotion.com/terms",
+        "aria": ""
+      },
+      {
+        "text": "Privacy Policy",
+        "href": "https://loremotion.com/privacy",
+        "aria": ""
+      },
+      {
+        "text": "Privacy Policy",
+        "href": "https://loremotion.com/privacy",
+        "aria": ""
+      },
+      {
+        "text": "Home",
+        "href": "https://loremotion.com/",
+        "aria": ""
+      },
+      {
+        "text": "Generate a video",
+        "href": "https://loremotion.com/generate",
+        "aria": ""
+      },
+      {
+        "text": "Discover community videos",
+        "href": "https://loremotion.com/discover",
+        "aria": ""
+      },
+      {
+        "text": "Sign up free",
+        "href": "https://loremotion.com/auth",
+        "aria": ""
+      },
+      {
+        "text": "Open the generator",
+        "href": "https://loremotion.com/generate",
+        "aria": ""
+      },
+      {
+        "text": "generator page",
+        "href": "https://loremotion.com/generate",
+        "aria": ""
+      },
+      {
+        "text": "sign up",
+        "href": "https://loremotion.com/auth",
+        "aria": ""
+      },
+      {
+        "text": "browse videos from other creators",
+        "href": "https://loremotion.com/discover",
+        "aria": ""
+      },
+      {
+        "text": "pricing page",
+        "href": "https://loremotion.com/pricing/",
+        "aria": ""
+      },
+      {
+        "text": "Create a free account",
+        "href": "https://loremotion.com/auth",
+        "aria": ""
+      },
+      {
+        "text": "generator page",
+        "href": "https://loremotion.com/generate",
+        "aria": ""
+      },
+      {
+        "text": "generator",
+        "href": "https://loremotion.com/generate",
+        "aria": ""
+      },
+      {
+        "text": "community Discover feed",
+        "href": "https://loremotion.com/discover",
+        "aria": ""
+      },
+      {
+        "text": "Discover feed",
+        "href": "https://loremotion.com/discover",
+        "aria": ""
+      },
+      {
+        "text": "Home",
+        "href": "https://loremotion.com/",
+        "aria": ""
+      },
+      {
+        "text": "Generate",
+        "href": "https://loremotion.com/generate",
+        "aria": ""
+      },
+      {
+        "text": "Discover",
+        "href": "https://loremotion.com/discover",
+        "aria": ""
+      },
+      {
+        "text": "Sign up free",
+        "href": "https://loremotion.com/auth",
+        "aria": ""
+      }
+    ],
+    "downloadLinks": [],
+    "verification": {
+      "cloudflareChallenge": false,
+      "recaptcha": false,
+      "challengeText": false,
+      "humanVerificationRequired": false,
+      "turnstileResponsePresent": false
+    },
+    "auth": {
+      "signInVisible": true,
+      "anonymousModeLikely": true
+    }
+  },
+  "steps": [],
+  "downloads": [],
+  "network": [
+    {
+      "url": "https://fonts.googleapis.com/css2",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "url": "https://loremotion.com/videos/auth-reel.jpg",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "url": "https://loremotion.com/videos/auth-reel.mp4",
+      "method": "GET",
+      "status": 206
+    },
+    {
+      "url": "https://loremotion.com/videos/auth-reel.mp4",
+      "method": "GET",
+      "status": 206
+    },
+    {
+      "url": "https://loremotion.com/videos/auth-reel.mp4",
+      "method": "GET",
+      "status": 206
+    },
+    {
+      "url": "https://loremotion.com/videos/auth-reel.mp4",
+      "method": "GET",
+      "status": 206
+    },
+    {
+      "url": "https://loremotion.com/videos/auth-reel.mp4",
+      "method": "GET",
+      "status": 206
+    },
+    {
+      "url": "https://loremotion-production.up.railway.app/api/queue/stats",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "url": "https://loremotion-production.up.railway.app/api/config",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "url": "https://loremotion.com/videos/auth-reel.mp4",
+      "method": "GET",
+      "status": 206
+    },
+    {
+      "url": "https://loremotion.com/videos/auth-reel.mp4",
+      "method": "GET",
+      "status": 206
+    },
+    {
+      "url": "https://www.google-analytics.com/g/collect",
+      "method": "POST",
+      "status": 204
+    },
+    {
+      "url": "https://challenges.cloudflare.com/turnstile/v0/api.js",
+      "method": "GET",
+      "status": 302
+    },
+    {
+      "url": "https://challenges.cloudflare.com/turnstile/v0/b/f8df4d4a0cd6/api.js",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "url": "https://challenges.cloudflare.com/cdn-cgi/challenge-platform/h/b/turnstile/f/av0/rch/lse9d/0x4AAAAAADIzrtDqSXzYbVx5/dark/fbE/new/flexible",
+      "method": "GET",
+      "status": 200
+    }
+  ],
+  "completedAt": "2026-11-21T01:08:32.898Z",
+  "note": "Navigation is limited to Pavo AI and LoreMotion. Login, passwords, payments, subscriptions, destructive account changes, and Cloudflare bypasses are blocked. Free generation requires an explicit task flag and a visible zero-cost/free indicator; credit and sign-in gates stop submission."
+}
