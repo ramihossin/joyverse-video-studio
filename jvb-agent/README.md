@@ -39,7 +39,7 @@ Supported sequence step types:
 - `saveVideo`: save a video element's current source; 80 MB maximum.
 - `screenshot`: capture the current page.
 
-Video generation is disabled by default. A task must explicitly set `allowFreeGeneration: true`; the page must explicitly show a zero-cost/free state, and visible credit, sign-in-for-free-credits, payment, subscription, upgrade, or limit blockers stop submission. The runner never solves or bypasses CAPTCHA, Turnstile, login, or other site verification.
+Video generation is disabled by default. A task must explicitly set `allowFreeGeneration: true`; the page must explicitly show a zero-cost/free state, and visible credit, sign-in-for-free-credits, payment, subscription, upgrade, or limit blockers stop submission. For LoreMotion, generation additionally requires explicit confirmation that the operator is at least 16 years old when in the EU/UK, as required by LoreMotion's Terms. Premium models and paid features are not used. The runner never solves or bypasses CAPTCHA, Turnstile, login, or other site verification.
 
 ## Example task
 
