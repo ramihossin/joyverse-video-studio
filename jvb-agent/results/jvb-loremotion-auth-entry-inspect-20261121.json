@@ -1,0 +1,838 @@
+{
+  "taskId": "jvb-loremotion-auth-entry-inspect-20261121",
+  "ok": true,
+  "operation": "inspect",
+  "url": "https://loremotion.com/",
+  "httpStatus": 200,
+  "state": {
+    "url": "https://loremotion.com/",
+    "title": "Free AI Video Generator — No Watermark, No Sign-Up | LoreMotion",
+    "text": "loremotion DISCOVER BLOG PRICING Generate free H3: 15 or fewer H3 jobs are waiting. Free 720p and a 480p clip over 10s can run two at a time. [ FREE AI VIDEO GENERATOR ] Bring your lore lore to motion. motion. Text, images or clips in. A finished video out. Free 720p with synced audio — no signup, no watermark. Generate free See what you can make SCROLL [ SO FAR ] UPDATED OCT 2026 148K+ ACCOUNTS CREATED +16K in the last 7 days 180+ COUNTRIES 01 India 1M+ VIDEOS GENERATED Rendered on our own GPUs WATERMARK 0 WATERMARKS On every video, free ones too Growing every day. Free LTX 2.5 and MiniMax H3 — 720p, up to 10 seconds when capacity allows. [ WHAT YOU CAN MAKE ] Six ways in. One studio. Start from words, a picture, or footage you already shot. Everything opens in the same generator. lone walker green aurora snow drifting Describe a shot… Text → Video LTX-2.5 720p · 5s Generate 01 Text to video FREE Describe a shot. Get a clip with synced audio. Write a prompt Drop an image lab-keyframe.png Subject Light Depth Describe the motion… Image → Video LTX-2.5 Animate 02 Image to video FREE Drop in a still and give it depth and motion. Animate an image REFERENCE YOUR FOOTAGE Swap the driver Video → Video Omni Flash Edit Edit 03 Video to video Swap a subject or restyle footage you already have, guided by a photo. Edit a clip TIMELINE 15s / 30s Auto-add on Export Shot 1 Shot 2 Shot 3 04 Video editing FREE Stack your renders on a timeline and export one film. Open the timeline CHARACTER Astronaut kid Shot 1 · Launch Shot 2 · Glide Shot 3 · Arrive SCENE 05 Storyboard Lay out a character and its shots on one board, then stitch them into a scene. Open a storyboard YOUR CLIP What happens next… Original +5s Continue 06 Continue a clip FREE Pick up from the last frame and keep the story going. Extend a video [ AI DIRECTOR ] NEW One idea in. A finished short out. Describe a video in a few lines. The Director writes the script and voiceover, draws a sheet for every character, place and prop, renders keyframes and shots, then cuts it together with captions. Both films here were made that way. CHARACTER Arthur PLACE Hallway mail drop PROP Gravity mail chute Made with AI Director Hear the voiceover KEYFRAME Shot 1 KEYFRAME Shot 5 The Lost Letters 25s · voiceover · captions Water in your ear? 25s · voiceover · captions THE BRIEF A Pixar-style office worker drops an envelope into a vintage brass mail chute. Show why old chutes jam, and the lost letters found years later. 3 reference sheets 6 shots planned 1 final cut Nano Banana 2 · Gemini Omni Flash · 9:16 · energetic voice Try the AI Director Included with paid plans. Planning a video costs 5 credits; each change after that is 1. [ TEMPLATES ] Pick a template. Hit generate. Character swaps, motion transfer, product spins, posters and more. Each one sets the model, mode and inputs for you. Or hand a whole idea to the AI Director. Try the AI Director Open the studio ✦ VIDEO Write a scene Free Describe a shot in words and get a video. Free on LTX. +5 Use template SCRIPT 4 shots · 24s Shot 1 Shot 2 Shot 3 Final cut AI Director Storyboard One idea in. It writes the script, keeps your characters consistent, renders every shot and cuts the video. Script · Cast · Shots · Final cut Try the Director MOTION CLIP Motion transfer Premium Your character copies the moves from a reference video. Use template YOUR CLIP + NEW SECONDS Extend a clip Free Add seconds after the end of a video. Free on LTX. Use template PHOTO VIDEO Animate a photo Free Bring a still image to life. Free on LTX and MiniMax. +5 Use template Cast your characters Premium Write a scene starring the people or objects in your photos. +1 Use template Product showcase Free Turn a product photo into a clean studio spin with moving light. +1 Use template HD 4K 4K cinematic shot Premium Top-resolution footage for big screens and client work. Use template TITLE LAYOUT READY Poster or thumbnail Free Readable titles and clean layouts for covers, thumbnails and ads. Use template @IMAGE1 @IMAGE2 9:16 Product ad Premium A presenter shows off your product, phone-style, with a spoken line. Ready for TikTok and Reels. Use template SHOT 1 SHOT 2 SHOT 3 0s 5s 10s 15s Multi-shot story Premium Several timed shots in one clip, like a mini trailer. Add photos to keep a character consistent. Use template @VIDEO1 @IMAGE1 SWAPPED Swap an object Premium Replace a product, prop or logo in your clip with the one in your photo. Motion stays. Use template @IMAGE1 Logo reveal Premium Turn your logo into a short animated intro for videos, ads and socials. Use template ANIME Anime scene Free Hand-drawn anime style: action, slice of life or fantasy, with sound. +1 Use template @IMAGE1 STUDIO Product photo Premium Turn a phone snap of your product into a clean studio or lifestyle shot. Use template @IMAGE1 ANIME ART Photo to art Premium Redraw your photo as anime, a 3D cartoon, watercolour and more. Use template ✦ VIDEO Write a scene Free Describe a shot in words and get a video. Free on LTX. +5 Use template SCRIPT 4 shots · 24s Shot 1 Shot 2 Shot 3 Final cut AI Director Storyboard One idea in. It writes the script, keeps your characters consistent, renders every shot and cuts the video. Script · Cast · Shots · Final cut Try the Director MOTION CLIP Motion transfer Premium Your character copies the moves from a reference video. Use template YOUR CLIP + NEW SECONDS Extend a clip Free Add seconds after the end of a video. Free on LTX. Use template PHOTO VIDEO Animate a photo Free Bring a still image to life. Free on LTX and MiniMax. +5 Use template Cast your characters Premium Write a scene starring the people or objects in your photos. +1 Use template Product showcase Free Turn a product photo into a clean studio spin with moving light. +1 Use template HD 4K 4K cinematic shot Premium Top-resolution footage for big screens and client work. Use template TITLE LAYOUT READY Poster or thumbnail Free Readable titles and clean layouts for covers, thumbnails and ads. Use template @IMAGE1 @IMAGE2 9:16 Product ad Premium A presenter shows off your product, phone-style, with a spoken line. Ready for TikTok and Reels. Use template SHOT 1 SHOT 2 SHOT 3 0s 5s 10s 15s Multi-shot story Premium Several timed shots in one clip, like a mini trailer. Add photos to keep a character consistent. Use template @VIDEO1 @IMAGE1 SWAPPED Swap an object Premium Replace a product, prop or logo in your clip with the one in your photo. Motion stays. Use template @",
+    "fileInputs": [],
+    "inputs": [],
+    "buttons": [
+      {
+        "text": "",
+        "aria": "Play",
+        "disabled": false
+      },
+      {
+        "text": "Hear the voiceover",
+        "aria": "",
+        "disabled": false
+      },
+      {
+        "text": "The Lost Letters\n25s · voiceover · captions",
+        "aria": "",
+        "disabled": false
+      },
+      {
+        "text": "Water in your ear?\n25s · voiceover · captions",
+        "aria": "",
+        "disabled": false
+      },
+      {
+        "text": "01\nLTX",
+        "aria": "Play 01: Night water. A sky that detonates. (LTX-Video 2.5)",
+        "disabled": false
+      },
+      {
+        "text": "02\nLTX",
+        "aria": "Play 02: One walker. A whole sky. (LTX-Video 2.5)",
+        "disabled": false
+      },
+      {
+        "text": "03\nH3",
+        "aria": "Play 03: Hard light. Dense interiors. (MiniMax H3)",
+        "disabled": false
+      },
+      {
+        "text": "04\nH3",
+        "aria": "Play 04: Stylized character. Own queue. (MiniMax H3)",
+        "disabled": false
+      },
+      {
+        "text": "05\nLTX",
+        "aria": "Play 05: One drop of crimson. A galaxy of ink. (LTX-Video 2.5)",
+        "disabled": false
+      },
+      {
+        "text": "06\nLTX",
+        "aria": "Play 06: Salt, rope and a captain's back. (LTX-Video 2.5)",
+        "disabled": false
+      },
+      {
+        "text": "07\nH3",
+        "aria": "Play 07: Neon tunnel. Arcade speed. (MiniMax H3)",
+        "disabled": false
+      },
+      {
+        "text": "08\nLTX",
+        "aria": "Play 08: Full throttle on the oval. (LTX-Video 2.5)",
+        "disabled": false
+      },
+      {
+        "text": "09\nH3",
+        "aria": "Play 09: Wingsuit through the Alps. (MiniMax H3)",
+        "disabled": false
+      },
+      {
+        "text": "10\nH3",
+        "aria": "Play 10: The view from the tee. (MiniMax H3)",
+        "disabled": false
+      },
+      {
+        "text": "11\nLTX",
+        "aria": "Play 11: Liftoff at dawn. (LTX-Video 2.5)",
+        "disabled": false
+      },
+      {
+        "text": "12\nLTX",
+        "aria": "Play 12: Every fibre of an iris. (LTX-Video 2.5)",
+        "disabled": false
+      },
+      {
+        "text": "13\nLTX",
+        "aria": "Play 13: A mirror lake under the cosmos. (LTX-Video 2.5)",
+        "disabled": false
+      },
+      {
+        "text": "Is LoreMotion really free?",
+        "aria": "",
+        "disabled": false
+      },
+      {
+        "text": "Do I need an account?",
+        "aria": "",
+        "disabled": false
+      },
+      {
+        "text": "Which models do you offer?",
+        "aria": "",
+        "disabled": false
+      },
+      {
+        "text": "How does the credit system work?",
+        "aria": "",
+        "disabled": false
+      },
+      {
+        "text": "Can I remove the ads?",
+        "aria": "",
+        "disabled": false
+      },
+      {
+        "text": "Can I animate my own images?",
+        "aria": "",
+        "disabled": false
+      },
+      {
+        "text": "What about audio?",
+        "aria": "",
+        "disabled": false
+      },
+      {
+        "text": "Can I share my videos?",
+        "aria": "",
+        "disabled": false
+      },
+      {
+        "text": "Can I edit my videos?",
+        "aria": "",
+        "disabled": false
+      },
+      {
+        "text": "What is the AI Director?",
+        "aria": "",
+        "disabled": false
+      },
+      {
+        "text": "Do you watermark videos?",
+        "aria": "",
+        "disabled": false
+      },
+      {
+        "text": "How long does generation take?",
+        "aria": "",
+        "disabled": false
+      },
+      {
+        "text": "Can I use videos commercially?",
+        "aria": "",
+        "disabled": false
+      },
+      {
+        "text": "What about my prompts and data?",
+        "aria": "",
+        "disabled": false
+      },
+      {
+        "text": "Reject non-essential",
+        "aria": "",
+        "disabled": false
+      },
+      {
+        "text": "Accept all",
+        "aria": "",
+        "disabled": false
+      }
+    ],
+    "videos": [
+      {
+        "src": "",
+        "readyState": 0,
+        "duration": null
+      },
+      {
+        "src": "",
+        "readyState": 0,
+        "duration": null
+      },
+      {
+        "src": "https://loremotion.com/videos/promo-01.mp4",
+        "readyState": 4,
+        "duration": 10.041667
+      },
+      {
+        "src": "https://loremotion.com/videos/promo-02.mp4",
+        "readyState": 4,
+        "duration": 5.166667
+      },
+      {
+        "src": "https://loremotion.com/videos/v2v-source.mp4",
+        "readyState": 4,
+        "duration": 10
+      },
+      {
+        "src": "https://loremotion.com/videos/v2v-edit.mp4",
+        "readyState": 4,
+        "duration": 6.506
+      },
+      {
+        "src": "https://loremotion.com/videos/promo-04.mp4",
+        "readyState": 4,
+        "duration": 5.041667
+      },
+      {
+        "src": "https://loremotion.com/videos/promo-02.mp4",
+        "readyState": 4,
+        "duration": 5.166667
+      },
+      {
+        "src": "https://loremotion.com/videos/promo-03.mp4",
+        "readyState": 4,
+        "duration": 5.166667
+      },
+      {
+        "src": "https://loremotion.com/videos/promo-01.mp4",
+        "readyState": 4,
+        "duration": 10.041667
+      },
+      {
+        "src": "",
+        "readyState": 0,
+        "duration": null
+      },
+      {
+        "src": "https://loremotion.com/videos/hero.mp4",
+        "readyState": 4,
+        "duration": 10.041667
+      }
+    ],
+    "links": [
+      {
+        "text": "loremotion",
+        "href": "https://loremotion.com/",
+        "aria": "LoreMotion home"
+      },
+      {
+        "text": "DISCOVER",
+        "href": "https://loremotion.com/discover",
+        "aria": ""
+      },
+      {
+        "text": "BLOG",
+        "href": "https://loremotion.com/blog/",
+        "aria": ""
+      },
+      {
+        "text": "PRICING",
+        "href": "https://loremotion.com/pricing/",
+        "aria": ""
+      },
+      {
+        "text": "Generate free",
+        "href": "https://loremotion.com/generate",
+        "aria": ""
+      },
+      {
+        "text": "Generate free",
+        "href": "https://loremotion.com/generate",
+        "aria": ""
+      },
+      {
+        "text": "See what you can make",
+        "href": "https://loremotion.com/#make",
+        "aria": ""
+      },
+      {
+        "text": "SCROLL",
+        "href": "https://loremotion.com/#make",
+        "aria": "Scroll to what you can make"
+      },
+      {
+        "text": "lone walker\ngreen aurora\nsnow drifting\n\nDescribe a shot…\n\nText → Video\nLTX-2.5\n720p · 5s\nGenerate\n01\nText to video\nFREE\n",
+        "href": "https://loremotion.com/generate?mode=t2v",
+        "aria": ""
+      },
+      {
+        "text": "Drop an image\nlab-keyframe.png\nSubject\nLight\nDepth\n\nDescribe the motion…\n\nImage → Video\nLTX-2.5\nAnimate\n02\nImage to vide",
+        "href": "https://loremotion.com/generate?mode=i2v",
+        "aria": ""
+      },
+      {
+        "text": "REFERENCE\nYOUR FOOTAGE\n\nSwap the driver \n\nVideo → Video\nOmni Flash Edit\nEdit\n03\nVideo to video\n\nSwap a subject or restyl",
+        "href": "https://loremotion.com/generate?model=wan-3-0-edit-720p",
+        "aria": ""
+      },
+      {
+        "text": "TIMELINE\n15s / 30s\nAuto-add on\nExport\nShot 1\nShot 2\nShot 3\n04\nVideo editing\nFREE\n\nStack your renders on a timeline and e",
+        "href": "https://loremotion.com/generate?timeline=1",
+        "aria": ""
+      },
+      {
+        "text": "CHARACTER\n\nAstronaut kid\n\nShot 1 · Launch\nShot 2 · Glide\nShot 3 · Arrive\nSCENE\n05\nStoryboard\n\nLay out a character and it",
+        "href": "https://loremotion.com/storyboard",
+        "aria": ""
+      },
+      {
+        "text": "YOUR CLIP\n\nWhat happens next…\n\nOriginal\n+5s\nContinue\n06\nContinue a clip\nFREE\n\nPick up from the last frame and keep the s",
+        "href": "https://loremotion.com/generate?mode=continue",
+        "aria": ""
+      },
+      {
+        "text": "Try the AI Director",
+        "href": "https://loremotion.com/storyboard",
+        "aria": ""
+      },
+      {
+        "text": "Try the AI Director",
+        "href": "https://loremotion.com/storyboard",
+        "aria": ""
+      },
+      {
+        "text": "Open the studio",
+        "href": "https://loremotion.com/generate",
+        "aria": ""
+      },
+      {
+        "text": "✦\nVIDEO\nWrite a scene\nFree\n\nDescribe a shot in words and get a video. Free on LTX.\n\n+5\nUse template",
+        "href": "https://loremotion.com/generate?template=write-scene",
+        "aria": ""
+      },
+      {
+        "text": "SCRIPT\n4 shots · 24s\nShot 1\nShot 2\nShot 3\nFinal cut\nAI Director\nStoryboard\n\nOne idea in. It writes the script, keeps you",
+        "href": "https://loremotion.com/storyboard",
+        "aria": ""
+      },
+      {
+        "text": "MOTION CLIP\nMotion transfer\nPremium\n\nYour character copies the moves from a reference video.\n\nUse template",
+        "href": "https://loremotion.com/generate?template=motion-transfer",
+        "aria": ""
+      },
+      {
+        "text": "YOUR CLIP\n+ NEW SECONDS\nExtend a clip\nFree\n\nAdd seconds after the end of a video. Free on LTX.\n\nUse template",
+        "href": "https://loremotion.com/generate?template=extend",
+        "aria": ""
+      },
+      {
+        "text": "PHOTO\nVIDEO\nAnimate a photo\nFree\n\nBring a still image to life. Free on LTX and MiniMax.\n\n+5\nUse template",
+        "href": "https://loremotion.com/generate?template=animate-photo",
+        "aria": ""
+      },
+      {
+        "text": "Cast your characters\nPremium\n\nWrite a scene starring the people or objects in your photos.\n\n+1\nUse template",
+        "href": "https://loremotion.com/generate?template=cast",
+        "aria": ""
+      },
+      {
+        "text": "Product showcase\nFree\n\nTurn a product photo into a clean studio spin with moving light.\n\n+1\nUse template",
+        "href": "https://loremotion.com/generate?template=product-shot",
+        "aria": ""
+      },
+      {
+        "text": "HD\n4K\n4K cinematic shot\nPremium\n\nTop-resolution footage for big screens and client work.\n\nUse template",
+        "href": "https://loremotion.com/generate?template=4k-shot",
+        "aria": ""
+      },
+      {
+        "text": "TITLE\nLAYOUT\nREADY\nPoster or thumbnail\nFree\n\nReadable titles and clean layouts for covers, thumbnails and ads.\n\nUse temp",
+        "href": "https://loremotion.com/generate?template=poster",
+        "aria": ""
+      },
+      {
+        "text": "@IMAGE1\n@IMAGE2\n9:16\nProduct ad\nPremium\n\nA presenter shows off your product, phone-style, with a spoken line. Ready for ",
+        "href": "https://loremotion.com/generate?template=ugc-ad",
+        "aria": ""
+      },
+      {
+        "text": "SHOT 1\nSHOT 2\nSHOT 3\n0s\n5s\n10s\n15s\nMulti-shot story\nPremium\n\nSeveral timed shots in one clip, like a mini trailer. Add p",
+        "href": "https://loremotion.com/generate?template=multi-shot",
+        "aria": ""
+      },
+      {
+        "text": "@VIDEO1\n@IMAGE1\nSWAPPED\nSwap an object\nPremium\n\nReplace a product, prop or logo in your clip with the one in your photo.",
+        "href": "https://loremotion.com/generate?template=replace-object",
+        "aria": ""
+      },
+      {
+        "text": "@IMAGE1\nLogo reveal\nPremium\n\nTurn your logo into a short animated intro for videos, ads and socials.\n\nUse template",
+        "href": "https://loremotion.com/generate?template=logo-reveal",
+        "aria": ""
+      },
+      {
+        "text": "ANIME\nAnime scene\nFree\n\nHand-drawn anime style: action, slice of life or fantasy, with sound.\n\n+1\nUse template",
+        "href": "https://loremotion.com/generate?template=anime-scene",
+        "aria": ""
+      },
+      {
+        "text": "@IMAGE1\nSTUDIO\nProduct photo\nPremium\n\nTurn a phone snap of your product into a clean studio or lifestyle shot.\n\nUse temp",
+        "href": "https://loremotion.com/generate?template=product-photo",
+        "aria": ""
+      },
+      {
+        "text": "@IMAGE1\nANIME ART\nPhoto to art\nPremium\n\nRedraw your photo as anime, a 3D cartoon, watercolour and more.\n\nUse template",
+        "href": "https://loremotion.com/generate?template=photo-to-art",
+        "aria": ""
+      },
+      {
+        "text": "✦\nVIDEO\nWrite a scene\nFree\n\nDescribe a shot in words and get a video. Free on LTX.\n\n+5\nUse template",
+        "href": "https://loremotion.com/generate?template=write-scene",
+        "aria": ""
+      },
+      {
+        "text": "SCRIPT\n4 shots · 24s\nShot 1\nShot 2\nShot 3\nFinal cut\nAI Director\nStoryboard\n\nOne idea in. It writes the script, keeps you",
+        "href": "https://loremotion.com/storyboard",
+        "aria": ""
+      },
+      {
+        "text": "MOTION CLIP\nMotion transfer\nPremium\n\nYour character copies the moves from a reference video.\n\nUse template",
+        "href": "https://loremotion.com/generate?template=motion-transfer",
+        "aria": ""
+      },
+      {
+        "text": "YOUR CLIP\n+ NEW SECONDS\nExtend a clip\nFree\n\nAdd seconds after the end of a video. Free on LTX.\n\nUse template",
+        "href": "https://loremotion.com/generate?template=extend",
+        "aria": ""
+      },
+      {
+        "text": "PHOTO\nVIDEO\nAnimate a photo\nFree\n\nBring a still image to life. Free on LTX and MiniMax.\n\n+5\nUse template",
+        "href": "https://loremotion.com/generate?template=animate-photo",
+        "aria": ""
+      },
+      {
+        "text": "Cast your characters\nPremium\n\nWrite a scene starring the people or objects in your photos.\n\n+1\nUse template",
+        "href": "https://loremotion.com/generate?template=cast",
+        "aria": ""
+      },
+      {
+        "text": "Product showcase\nFree\n\nTurn a product photo into a clean studio spin with moving light.\n\n+1\nUse template",
+        "href": "https://loremotion.com/generate?template=product-shot",
+        "aria": ""
+      },
+      {
+        "text": "HD\n4K\n4K cinematic shot\nPremium\n\nTop-resolution footage for big screens and client work.\n\nUse template",
+        "href": "https://loremotion.com/generate?template=4k-shot",
+        "aria": ""
+      },
+      {
+        "text": "TITLE\nLAYOUT\nREADY\nPoster or thumbnail\nFree\n\nReadable titles and clean layouts for covers, thumbnails and ads.\n\nUse temp",
+        "href": "https://loremotion.com/generate?template=poster",
+        "aria": ""
+      },
+      {
+        "text": "@IMAGE1\n@IMAGE2\n9:16\nProduct ad\nPremium\n\nA presenter shows off your product, phone-style, with a spoken line. Ready for ",
+        "href": "https://loremotion.com/generate?template=ugc-ad",
+        "aria": ""
+      },
+      {
+        "text": "SHOT 1\nSHOT 2\nSHOT 3\n0s\n5s\n10s\n15s\nMulti-shot story\nPremium\n\nSeveral timed shots in one clip, like a mini trailer. Add p",
+        "href": "https://loremotion.com/generate?template=multi-shot",
+        "aria": ""
+      },
+      {
+        "text": "@VIDEO1\n@IMAGE1\nSWAPPED\nSwap an object\nPremium\n\nReplace a product, prop or logo in your clip with the one in your photo.",
+        "href": "https://loremotion.com/generate?template=replace-object",
+        "aria": ""
+      },
+      {
+        "text": "@IMAGE1\nLogo reveal\nPremium\n\nTurn your logo into a short animated intro for videos, ads and socials.\n\nUse template",
+        "href": "https://loremotion.com/generate?template=logo-reveal",
+        "aria": ""
+      },
+      {
+        "text": "ANIME\nAnime scene\nFree\n\nHand-drawn anime style: action, slice of life or fantasy, with sound.\n\n+1\nUse template",
+        "href": "https://loremotion.com/generate?template=anime-scene",
+        "aria": ""
+      },
+      {
+        "text": "@IMAGE1\nSTUDIO\nProduct photo\nPremium\n\nTurn a phone snap of your product into a clean studio or lifestyle shot.\n\nUse temp",
+        "href": "https://loremotion.com/generate?template=product-photo",
+        "aria": ""
+      },
+      {
+        "text": "@IMAGE1\nANIME ART\nPhoto to art\nPremium\n\nRedraw your photo as anime, a 3D cartoon, watercolour and more.\n\nUse template",
+        "href": "https://loremotion.com/generate?template=photo-to-art",
+        "aria": ""
+      },
+      {
+        "text": "YOUR PHOTO\nSWAPPED\nCharacter swap\nPremium\n\nPut a character from your photo into a clip. Wan 3.0 Edit keeps the motion an",
+        "href": "https://loremotion.com/generate?template=character-swap",
+        "aria": ""
+      },
+      {
+        "text": "YOUR CLIP\nANIME STYLE\nRestyle a clip\nPremium\n\nChange the look of your footage while keeping its motion.\n\nUse template",
+        "href": "https://loremotion.com/generate?template=restyle",
+        "aria": ""
+      },
+      {
+        "text": "CAMERA REF\nCopy a camera move\nPremium\n\nReuse the camera motion or action from a clip in a brand-new scene.\n\nUse template",
+        "href": "https://loremotion.com/generate?template=camera-move",
+        "aria": ""
+      },
+      {
+        "text": "FIRST\nLAST\nFirst & last frame\nPremium\n\nSet where the shot starts and ends; the model fills the middle.\n\nUse template",
+        "href": "https://loremotion.com/generate?template=first-last",
+        "aria": ""
+      },
+      {
+        "text": "Scene with dialogue\nPremium\n\nCharacters speak your lines, with voices and sound made with the video.\n\n+1\nUse template",
+        "href": "https://loremotion.com/generate?template=dialogue",
+        "aria": ""
+      },
+      {
+        "text": "SCRIPT\n4 shots · 24s\nShot 1\nShot 2\nShot 3\nFinal cut\nAI Director\nStoryboard\n\nOne idea in. It writes the script, keeps you",
+        "href": "https://loremotion.com/storyboard",
+        "aria": ""
+      },
+      {
+        "text": "NO CUTS\n0s\n15s\n30s\nOne long take\nPremium\n\nA single continuous shot up to 30 seconds, with no cuts.\n\nUse template",
+        "href": "https://loremotion.com/generate?template=long-take",
+        "aria": ""
+      },
+      {
+        "text": "PHOTO\nEDITED\nEdit a photo\nPremium\n\nChange a photo with words; the subject stays the same.\n\nUse template",
+        "href": "https://loremotion.com/generate?template=image-edit",
+        "aria": ""
+      },
+      {
+        "text": "BLENDED\nBlend photos\nPremium\n\nCombine people, products and places from several photos into one image.\n\nUse template",
+        "href": "https://loremotion.com/generate?template=blend",
+        "aria": ""
+      },
+      {
+        "text": "@IMAGE1\n@IMAGE2\nTRY-ON\nOutfit try-on\nPremium\n\nSee a person wearing clothes from your photos, turning and walking like a ",
+        "href": "https://loremotion.com/generate?template=try-on",
+        "aria": ""
+      },
+      {
+        "text": "@IMAGE1 STYLE\nNEW SCENE\nCopy a look\nPremium\n\nUse any image as a style guide: its colours, texture and art style, on a br",
+        "href": "https://loremotion.com/generate?template=style-ref",
+        "aria": ""
+      },
+      {
+        "text": "PHOTO\nVOICE + LIP SYNC\nMake a photo talk\nPremium\n\nThe person or character in your photo speaks your line, with voice and",
+        "href": "https://loremotion.com/generate?template=talking-photo",
+        "aria": ""
+      },
+      {
+        "text": "TIKTOK\nREELS\nSHORTS\n9:16\nVertical short\nFree\n\nEye-catching 9:16 clips for TikTok, Reels and Shorts. Free on LTX.\n\n+1\nUse",
+        "href": "https://loremotion.com/generate?template=social-short",
+        "aria": ""
+      },
+      {
+        "text": "@IMAGE1\nFront\n3/4\nSide\nBack\nCharacter sheet\nPremium\n\nFront, side and back views of one character. Reuse it to keep them ",
+        "href": "https://loremotion.com/generate?template=char-sheet",
+        "aria": ""
+      },
+      {
+        "text": "@IMAGE1\nHEADSHOT\nProfessional headshot\nPremium\n\nA polished profile photo from a casual selfie. Same face, better light.\n",
+        "href": "https://loremotion.com/generate?template=headshot",
+        "aria": ""
+      },
+      {
+        "text": "OLD PHOTO\nRESTORED\nRestore an old photo\nPremium\n\nFix scratches, fading and blur, and add natural colour. Then animate it",
+        "href": "https://loremotion.com/generate?template=restore",
+        "aria": ""
+      },
+      {
+        "text": "YOUR PHOTO\nSWAPPED\nCharacter swap\nPremium\n\nPut a character from your photo into a clip. Wan 3.0 Edit keeps the motion an",
+        "href": "https://loremotion.com/generate?template=character-swap",
+        "aria": ""
+      },
+      {
+        "text": "YOUR CLIP\nANIME STYLE\nRestyle a clip\nPremium\n\nChange the look of your footage while keeping its motion.\n\nUse template",
+        "href": "https://loremotion.com/generate?template=restyle",
+        "aria": ""
+      },
+      {
+        "text": "CAMERA REF\nCopy a camera move\nPremium\n\nReuse the camera motion or action from a clip in a brand-new scene.\n\nUse template",
+        "href": "https://loremotion.com/generate?template=camera-move",
+        "aria": ""
+      },
+      {
+        "text": "FIRST\nLAST\nFirst & last frame\nPremium\n\nSet where the shot starts and ends; the model fills the middle.\n\nUse template",
+        "href": "https://loremotion.com/generate?template=first-last",
+        "aria": ""
+      },
+      {
+        "text": "Scene with dialogue\nPremium\n\nCharacters speak your lines, with voices and sound made with the video.\n\n+1\nUse template",
+        "href": "https://loremotion.com/generate?template=dialogue",
+        "aria": ""
+      },
+      {
+        "text": "SCRIPT\n4 shots · 24s\nShot 1\nShot 2\nShot 3\nFinal cut\nAI Director\nStoryboard\n\nOne idea in. It writes the script, keeps you",
+        "href": "https://loremotion.com/storyboard",
+        "aria": ""
+      },
+      {
+        "text": "NO CUTS\n0s\n15s\n30s\nOne long take\nPremium\n\nA single continuous shot up to 30 seconds, with no cuts.\n\nUse template",
+        "href": "https://loremotion.com/generate?template=long-take",
+        "aria": ""
+      },
+      {
+        "text": "PHOTO\nEDITED\nEdit a photo\nPremium\n\nChange a photo with words; the subject stays the same.\n\nUse template",
+        "href": "https://loremotion.com/generate?template=image-edit",
+        "aria": ""
+      },
+      {
+        "text": "BLENDED\nBlend photos\nPremium\n\nCombine people, products and places from several photos into one image.\n\nUse template",
+        "href": "https://loremotion.com/generate?template=blend",
+        "aria": ""
+      },
+      {
+        "text": "@IMAGE1\n@IMAGE2\nTRY-ON\nOutfit try-on\nPremium\n\nSee a person wearing clothes from your photos, turning and walking like a ",
+        "href": "https://loremotion.com/generate?template=try-on",
+        "aria": ""
+      },
+      {
+        "text": "@IMAGE1 STYLE\nNEW SCENE\nCopy a look\nPremium\n\nUse any image as a style guide: its colours, texture and art style, on a br",
+        "href": "https://loremotion.com/generate?template=style-ref",
+        "aria": ""
+      },
+      {
+        "text": "PHOTO\nVOICE + LIP SYNC\nMake a photo talk\nPremium\n\nThe person or character in your photo speaks your line, with voice and",
+        "href": "https://loremotion.com/generate?template=talking-photo",
+        "aria": ""
+      },
+      {
+        "text": "TIKTOK\nREELS\nSHORTS\n9:16\nVertical short\nFree\n\nEye-catching 9:16 clips for TikTok, Reels and Shorts. Free on LTX.\n\n+1\nUse",
+        "href": "https://loremotion.com/generate?template=social-short",
+        "aria": ""
+      },
+      {
+        "text": "@IMAGE1\nFront\n3/4\nSide\nBack\nCharacter sheet\nPremium\n\nFront, side and back views of one character. Reuse it to keep them ",
+        "href": "https://loremotion.com/generate?template=char-sheet",
+        "aria": ""
+      },
+      {
+        "text": "@IMAGE1\nHEADSHOT\nProfessional headshot\nPremium\n\nA polished profile photo from a casual selfie. Same face, better light.\n",
+        "href": "https://loremotion.com/generate?template=headshot",
+        "aria": ""
+      }
+    ],
+    "downloadLinks": [],
+    "verification": {
+      "cloudflareChallenge": false,
+      "recaptcha": false,
+      "challengeText": false,
+      "humanVerificationRequired": false,
+      "turnstileResponsePresent": false
+    },
+    "auth": {
+      "signInVisible": true,
+      "anonymousModeLikely": true
+    }
+  },
+  "steps": [],
+  "downloads": [],
+  "network": [
+    {
+      "url": "https://loremotion.com/videos/promo-03.webp",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "url": "https://loremotion.com/videos/promo-05.webp",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "url": "https://loremotion.com/videos/promo-10.webp",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "url": "https://loremotion.com/videos/promo-11.webp",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "url": "https://loremotion.com/videos/promo-04.webp",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "url": "https://loremotion.com/videos/promo-01.webp",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "url": "https://loremotion.com/videos/promo-13.webp",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "url": "https://loremotion.com/videos/promo-02.webp",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "url": "https://loremotion.com/videos/promo-06.webp",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "url": "https://loremotion.com/videos/promo-02.mp4",
+      "method": "GET",
+      "status": 206
+    },
+    {
+      "url": "https://loremotion.com/videos/promo-09.webp",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "url": "https://loremotion.com/videos/v2v-source.mp4",
+      "method": "GET",
+      "status": 206
+    },
+    {
+      "url": "https://loremotion.com/videos/promo-02.mp4",
+      "method": "GET",
+      "status": 206
+    },
+    {
+      "url": "https://loremotion.com/videos/promo-04.mp4",
+      "method": "GET",
+      "status": 206
+    },
+    {
+      "url": "https://loremotion.com/videos/v2v-edit.mp4",
+      "method": "GET",
+      "status": 206
+    },
+    {
+      "url": "https://loremotion.com/videos/promo-03.mp4",
+      "method": "GET",
+      "status": 206
+    },
+    {
+      "url": "https://loremotion.com/videos/promo-01.mp4",
+      "method": "GET",
+      "status": 206
+    },
+    {
+      "url": "https://loremotion.com/videos/hero.mp4",
+      "method": "GET",
+      "status": 206
+    },
+    {
+      "url": "https://loremotion.com/videos/promo-01.mp4",
+      "method": "GET",
+      "status": 206
+    },
+    {
+      "url": "https://loremotion.com/videos/promo-07.webp",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "url": "https://loremotion.com/videos/promo-08.webp",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "url": "https://loremotion.com/videos/v2v-ref.png",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "url": "https://loremotion.com/videos/director-b.jpg",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "url": "https://loremotion.com/videos/director-a.jpg",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "url": "https://loremotion.com/videos/promo-12.webp",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "url": "https://loremotion-production.up.railway.app/api/config",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "url": "https://loremotion.com/videos/promo-04.mp4",
+      "method": "GET",
+      "status": 206
+    },
+    {
+      "url": "https://loremotion.com/videos/promo-04.mp4",
+      "method": "GET",
+      "status": 206
+    },
+    {
+      "url": "https://loremotion.com/videos/promo-04.mp4",
+      "method": "GET",
+      "status": 206
+    },
+    {
+      "url": "https://loremotion.com/videos/promo-04.mp4",
+      "method": "GET",
+      "status": 206
+    },
+    {
+      "url": "https://loremotion.com/videos/promo-04.mp4",
+      "method": "GET",
+      "status": 206
+    },
+    {
+      "url": "https://loremotion.com/videos/promo-04.mp4",
+      "method": "GET",
+      "status": 206
+    },
+    {
+      "url": "https://loremotion.com/videos/promo-04.mp4",
+      "method": "GET",
+      "status": 206
+    },
+    {
+      "url": "https://loremotion-production.up.railway.app/api/queue/stats",
+      "method": "GET",
+      "status": 200
+    },
+    {
+      "url": "https://loremotion.com/videos/promo-04.mp4",
+      "method": "GET",
+      "status": 206
+    }
+  ],
+  "completedAt": "2026-11-21T01:07:56.582Z",
+  "note": "Navigation is limited to Pavo AI and LoreMotion. Login, passwords, payments, subscriptions, destructive account changes, and Cloudflare bypasses are blocked. Free generation requires an explicit task flag and a visible zero-cost/free indicator; credit and sign-in gates stop submission."
+}
