@@ -1,0 +1,15 @@
+{
+  "taskId": "jvb-pavo-login-page-inspect-20261121",
+  "operation": "sequence",
+  "url": "https://pavoai.app/auth/login",
+  "steps": [
+    {
+      "type": "inspect"
+    },
+    {
+      "type": "screenshot",
+      "fileName": "jvb-pavo-login-page.png",
+      "fullPage": true
+    }
+  ]
+}
