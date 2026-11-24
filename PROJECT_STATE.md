@@ -114,3 +114,28 @@ Deliver a reliable, Android-accessible AI video-production workflow that takes a
 4. Reproduce unit tests for provider validation, queue transitions, lease recovery, and MP4 assembly using mocks/synthetic clips without production secrets.
 5. Verify authenticated Studio-to-bridge connection only if a safe token is already available through an authorized connector; never expose or request secrets in chat.
 6. Update this file and CHANGELOG after each material result.
+
+
+## Audio pipeline implementation update — 2026-11-25
+- Added signature-based validation for uploaded WAV, MP3, M4A, AAC, OGG, and FLAC audio tracks.
+- Added optional audio upload controls in the Studio UI, capped at four files and 25 MiB per file.
+- Added original procedural background music generation (cheerful, adventure, gentle) in WAV format, with bounded duration and no external API.
+- Extended final FFmpeg assembly to mix uploaded audio and optional procedural music.
+- Added a Kokoro Gradio TTS provider adapter, authenticated `POST /api/hermes/voiceover` endpoint, and Studio controls for English narration text, voice, and speed. Generated narration is stored as a staged audio asset and included in the final audio mix.
+- The Kokoro adapter uses the public CPU Space and the official `@gradio/client` dependency already present in the repository. The endpoint name and output parsing are implemented but have not yet passed a live request.
+- A first direct HTTP smoke attempt against the assumed `/gradio_api/call/generate_first` route returned HTTP 404. The failure is an endpoint/protocol mismatch, not a generated-audio validation failure. A second smoke workflow was changed to use Gradio Client API discovery and `predict`, but the available GitHub workflow-run query returned no run for that branch update; execution remains unverified.
+- Mocked tests were added for WAV signature detection and Kokoro response validation. They have not yet been executed on the latest implementation head.
+- No production deployment, production secret change, paid API call, or paid media generation was performed.
+
+## Current State
+- The scene/video generation pipeline and durable assembly architecture remain in place.
+- Audio upload, procedural background music, and Kokoro text-to-speech are implemented on the isolated feature branch but not yet end-to-end verified.
+- The project is not complete: no full JoyVerse episode has yet been generated, assembled, playback-checked, and downloaded on Android.
+
+## Next Action
+1. Obtain a successful, no-cost Kokoro TTS smoke result through the official Gradio Client API; inspect discovered endpoint names instead of assuming REST paths.
+2. Run the full Node.js test suite and syntax checks on the latest implementation head; fix all failures.
+3. Test a real generated narration WAV through object storage and final FFmpeg mix, including a generated video clip.
+4. Re-run a real video generation smoke test only when a no-cost provider route and quota are verified; do not spend credits or bypass human verification.
+5. Verify final MP4 playback, audio synchronization, download, and the complete Android Studio workflow.
+6. Update this file and CHANGELOG with each verified result.
