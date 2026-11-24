@@ -9,3 +9,8 @@
 - No paid generation request, secret change, or production deployment was initiated.
 - Checked Flyne's public free text-to-video workflow (5 seconds, 480p, no signup claim); the generation action triggered Cloudflare Turnstile, so automation stopped without bypassing verification. No clip was produced.
 - Inspected AIFree's free Wan 2.2 visitor mode and submitted one 16:9 text-only smoke test; Cloudflare human verification blocked generation. No video was produced and no verification was bypassed.
+
+- Inspected the existing Agnes provider against the current 2.5-series API schema and found its image mode used obsolete request fields. The adapter now rejects that unsupported path rather than submitting a malformed request.
+- Added provider job ID persistence and resume support for asynchronous providers. After a worker restart, Agnes can poll the existing video ID instead of submitting a duplicate job.
+- Locked the Agnes adapter to `agnes-video-2.5-flash`; paid model IDs are rejected. Added mocked tests for text-to-video submission, MP4 validation, job resumption, and unsupported reference-image input.
+- No production deployment, environment-variable change, paid API request, or live video-generation request was made. GitHub Actions test execution is pending the implementation PR.
