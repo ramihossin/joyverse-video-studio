@@ -60,3 +60,10 @@
 - Created a local verified technical sample using the Wan smoke clip, live Kokoro voiceover, and original music: H.264 + AAC MP4, 7.125 seconds, 766,269 bytes. It is a pipeline test, not a finished JoyVerse episode.
 - Latest observed Node and Bridge test suites passed; live Kokoro acceptance passed. The newest web validation run is still being checked.
 - PR #54 remains unmerged and production main/Render configuration remain unchanged. No paid API, credit spend, secret change, or production deployment occurred.
+
+
+## 2026-11-25 — Final CI confirmation
+
+- Confirmed all four required GitHub Actions workflows passed on implementation head `460223dd3e295bb56b95e08dc6f8f1a85355410c`: Node.js tests, Bridge tests, web validation, and live Kokoro TTS acceptance.
+- Independently decoded the saved MP4 sample's H.264 video and AAC audio streams with FFmpeg; both passed (`DECODE_OK`).
+- Updated PROJECT_STATE to record the exact verification and keep the remaining character-reference and Android end-to-end acceptance tasks explicit.
