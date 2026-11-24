@@ -80,7 +80,7 @@ Deliver a reliable, Android-accessible AI video-production workflow that takes a
 - Advertised-free providers Flyne and AIFree both required Cloudflare human verification at generation time in the tested browser; neither is currently suitable for unattended automation.
 - Flyne's public free form was reachable and advertised 5-second 480p outputs with no signup; the single smoke attempt stopped at a Cloudflare Turnstile human-verification prompt. No challenge was bypassed and no clip was generated.
 - AIFree's public Wan 2.2 form loaded without login and advertised approximately 5-second 480p silent outputs subject to a daily pool; one generation attempt stopped at a Cloudflare human-verification gate. No challenge was bypassed and no clip was generated.
-- No new live video has been generated on this implementation branch. Durable clip retrieval, multi-clip MP4 assembly, final MP4 playback, and Android-device behavior have not yet passed a new end-to-end acceptance test. The Agnes API requires an authenticated API key; no key was exposed to or available in this execution context, and no production secrets were read.
+- A real anonymous Wan 2.2 I2V smoke test succeeded through the public ZeroGPU Space. The downloaded artifact was independently inspected with ffprobe: H.264 MP4, 640x640, 16 fps, 3.5625 seconds, 526,822 bytes. The sample is a synthetic golden-star test frame, not a JoyVerse character scene. Durable clip retrieval, multi-clip MP4 assembly, final MP4 playback, and Android-device behavior still need end-to-end acceptance. The Agnes API requires an authenticated API key; no key was exposed to or available in this execution context, and no production secrets were read.
 - Production branch `main` and live service configuration have not been modified in this operation.
 - Documentation changes are in draft PR #53; they are not merged into `main`.
 
@@ -89,6 +89,11 @@ Deliver a reliable, Android-accessible AI video-production workflow that takes a
 - The official Pika H3 Flex Hugging Face Space is listed as Running on Zero. An independent November 2026 test reports anonymous text-to-video with sound, but the downloaded file was not byte-verified. The connected Pika API quote for the same model is 5 credits; it was not run, and no credits were spent.
 
 ## Next Action
+1. Run the full CI suite on the latest PR head and fix any failures.
+2. Complete the provider integration acceptance test using a real JoyVerse reference image and verify the resulting clip preserves the reference subject.
+3. Test durable storage retrieval and FFmpeg assembly of at least two generated clips into a final MP4; verify playback and audio track handling.
+4. Verify the Android web interface can submit a task, track progress, retrieve the final artifact, and download it.
+5. Keep the provider opt-in until its public shared-GPU availability and quality are measured across several runs; do not claim unlimited or guaranteed availability.
 1. Test the public Pika H3 Flex Space through a no-credit, no-signup route, if a supported direct API path can be verified; do not use the connected Pika API because it quotes 5 credits.
 2. Verify whether the isolated NiftyVid push smoke workflow produced an artifact using an API/tool that can list push-triggered runs; if not, use a read-only workflow query before deciding whether to retry generation.
 3. If no anonymous provider can be called and downloaded through the available tools, the remaining viable API path is Agnes Flash, which requires an account API key that is not currently configured.
