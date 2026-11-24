@@ -1,1 +1,1 @@
-Trigger marker for the Kokoro CPU TTS API discovery and generation smoke test.
+Trigger marker for the Kokoro CPU TTS smoke test. Re-run after fixing SSE parsing and Gradio file URL fallback.
