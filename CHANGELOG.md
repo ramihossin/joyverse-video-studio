@@ -49,3 +49,14 @@
 - Latest GitHub Actions run passed: Node.js 82/82, Bridge 82/82, and web browser smoke tests 9/9. The real FFmpeg audio/video integration test passed in both Node and Bridge suites.
 - Added a live, no-key Kokoro TTS acceptance workflow using the official Gradio Python client. Its execution is pending; it was not merged into main just to force a run. The initial raw REST attempt returned 404, while the provider's mocked tests pass.
 - PR #54 remains open; branch comparison reports 63 commits ahead and 0 behind. No production merge or deployment was performed.
+
+
+## 2026-11-25 — Wan, Kokoro, and audio pipeline acceptance
+
+- Added the direct-REST Kokoro CPU TTS provider and an authenticated voiceover endpoint. The live acceptance workflow generated a valid 4.2-second, 24 kHz mono PCM WAV without an API key or paid credits.
+- Added audio upload and signature validation for WAV, MP3, M4A, AAC, OGG, and FLAC, plus browser controls for uploading audio and generating voiceover.
+- Added an original procedural music generator (cheerful, adventure, gentle) supporting up to 600 seconds at 16 kHz stereo.
+- Extended the production FFmpeg assembler to mix and pad up to four audio tracks. Added a real FFmpeg integration test that creates two clips, adds generated music, and decodes both output streams.
+- Created a local verified technical sample using the Wan smoke clip, live Kokoro voiceover, and original music: H.264 + AAC MP4, 7.125 seconds, 766,269 bytes. It is a pipeline test, not a finished JoyVerse episode.
+- Latest observed Node and Bridge test suites passed; live Kokoro acceptance passed. The newest web validation run is still being checked.
+- PR #54 remains unmerged and production main/Render configuration remain unchanged. No paid API, credit spend, secret change, or production deployment occurred.
