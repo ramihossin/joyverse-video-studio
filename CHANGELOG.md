@@ -24,3 +24,8 @@
 - Additional provider research: NiftyVid uses a public Wan 2.2 image-to-video Space without an API key, but caps clips at 4.5 seconds and relies on shared ZeroGPU capacity. A smoke workflow was staged on an isolated experiment branch; its push-triggered run could not be retrieved through the available GitHub connector, so no output is claimed.
 - The official Pika H3 Flex Hugging Face Space is currently listed as Running on Zero. A third-party November 2026 test reports anonymous text-to-video with audio but did not byte-verify the downloaded MP4. The connected Pika API quote is 5 credits; no generation was run and no credits were spent.
 - Prior Render inspection found no Agnes API key or Agnes provider selection in the inspected JoyVerse bridge environment; no GitHub Actions secret was reported.
+
+- Executed a real no-key Wan 2.2 image-to-video smoke test through the public Hugging Face ZeroGPU Space. The workflow uploaded a synthetic reference image, submitted the Gradio job, streamed the completion event, downloaded the MP4, and validated its container header.
+- Retrieved the GitHub Actions artifact through the GitHub connector and independently checked it with `ffprobe`: H.264, 640x640, 16 fps, 3.5625 seconds, 526,822 bytes. This is a technical smoke clip, not a finished JoyVerse scene.
+- Added the Wan 2.2 provider adapter with image upload, Gradio SSE handling, safe output-host validation, MP4 validation, resumable event-ID checkpointing, and explicit opt-in via `VIDEO_PROVIDER=niftyvid-wan`.
+- Latest GitHub Actions checks on the implementation head passed: Node.js tests 72/72, Bridge tests 72/72, and web validation passed. No production deployment or environment change was made.
