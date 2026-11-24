@@ -17,53 +17,28 @@ jobs:
     timeout-minutes: 12
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-node@v4
         with:
-          python-version: "3.11"
-      - name: Install Gradio client
-        run: python -m pip install --disable-pip-version-check gradio_client
-      - name: Discover public API and synthesize one short sample
+          node-version: "22"
+      - name: Run the production Kokoro adapter against the public CPU Space
         run: |
-          python - <<'PY'
-          import json, os, shutil
-          from gradio_client import Client
-          space = "RobinsAIWorld/Kokoro-TTS-cpu"
-          client = Client(space, verbose=True)
-          print("Discovering live Gradio API before synthesis:")
-          client.view_api()
-          result = client.predict(
-              "Hello! Welcome to JoyVerse. Let us begin a little adventure!",
-              "af_heart", 1.0, False,
-              api_name="/generate_first"
-          )
-          print("Raw result:", repr(result)[:2000])
-          audio = result[0] if isinstance(result, (tuple, list)) else result
-          if isinstance(audio, dict):
-              path = audio.get("path")
-              url = audio.get("url")
-              if path and os.path.isfile(path):
-                  source = path
-              elif url:
-                  import urllib.request
-                  urllib.request.urlretrieve(url, "joyverse-kokoro-live.wav")
-                  source = "joyverse-kokoro-live.wav"
-              else:
-                  raise RuntimeError("Audio result contained no downloadable file.")
-          elif isinstance(audio, str) and os.path.isfile(audio):
-              source = audio
-          else:
-              raise RuntimeError("Unexpected audio output shape: " + repr(audio)[:1000])
-          if source != "joyverse-kokoro-live.wav":
-              shutil.copyfile(source, "joyverse-kokoro-live.wav")
-          with open("joyverse-kokoro-live.wav", "rb") as f:
-              header = f.read(44)
-          if header[:4] != b"RIFF" or header[8:12] != b"WAVE":
-              raise RuntimeError("The live TTS output is not a valid WAV container.")
-          size = os.path.getsize("joyverse-kokoro-live.wav")
-          if size <= 44:
-              raise RuntimeError("The live TTS WAV contains no audio payload.")
-          print("LIVE_TTS_PASS bytes=", size, "sample_rate=", int.from_bytes(header[24:28], "little"))
-          PY
+          node --input-type=module <<'NODE'
+          import { writeFile } from "node:fs/promises";
+          import { createKokoroTtsProvider } from "./bridge/kokoro-tts-provider.js";
+          const provider = createKokoroTtsProvider();
+          const result = await provider.generate({
+            text: "Hello! Welcome to JoyVerse. Let us begin a little adventure!",
+            voice: "af_heart",
+            speed: 1.0
+          });
+          await writeFile("joyverse-kokoro-live.wav", result.buffer);
+          console.log("LIVE_TTS_PASS", JSON.stringify({
+            bytes: result.bytes,
+            sample_rate: result.sampleRate,
+            duration_seconds: result.durationSeconds,
+            voice: result.voice
+          }));
+          NODE
       - name: Upload verified voice sample
         uses: actions/upload-artifact@v4
         with:
