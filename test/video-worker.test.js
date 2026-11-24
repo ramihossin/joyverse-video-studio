@@ -151,3 +151,9 @@ test("video worker resumes a persisted Agnes job without submitting a duplicate"
   assert.equal(generated, true);
   assert.equal(receivedJobId, "agnes-job-existing");
 });
+
+
+test("selects the anonymous Wan 2.2 provider when explicitly configured", () => {
+  const provider = createDefaultVideoProvider({ VIDEO_PROVIDER: "niftyvid-wan" });
+  assert.equal(provider.name, "niftyvid-wan2-i2v");
+});
