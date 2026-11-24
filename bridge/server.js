@@ -11,6 +11,7 @@ import { assembleMp4 } from "./ffmpeg-assembler.js";
 import { detectAudioFormat } from "./audio-format.js";
 import { createProceduralMusicWav } from "./procedural-music.js";
 import { createKokoroTtsProvider } from "./kokoro-tts-provider.js";
+import { createKokoroTtsProvider } from "./kokoro-tts-provider.js";
 import { createVideoWorker } from "./video-worker.js";
 import { verifyGithubActionsToken } from "./github-oidc.js";
 import { initializeBingControlStore, installBingControlRoutes, dispatchConfiguredBingCommand, recordBingDeviceResult, logBingCommandStatus } from "./bing-control.js";
@@ -406,6 +407,34 @@ app.get("/api/hermes/status-chatgpt/:taskId", async (req, res) => {
     output_url: task.output_url, storage_key: task.storage_key,
     heartbeat_at: task.heartbeat_at, attempts: task.attempts,
     created_at: task.created_at, finished_at: task.finished_at ?? null });
+});
+
+// Generate a voiceover through the public Kokoro CPU Space and stage it for final assembly.
+app.post("/api/hermes/voiceover", async (req, res) => {
+  if (!JOYVERSE_STUDIO_TOKEN && !HERMES_WORKER_TOKEN) return res.status(503).json({ error: "studio_api_not_configured" });
+  if (!studioOrWorkerAuthorized(req)) return res.status(401).json({ error: "unauthorized" });
+  const { text, voice = "af_heart", speed = 1.0 } = req.body ?? {};
+  const allowedVoices = new Set(["af_heart", "af_bella", "af_nicole", "af_aoede", "af_kore", "af_sarah", "af_sky", "af_jessica", "af_river", "am_adam", "am_michael"]);
+  if (typeof text !== "string" || !text.trim() || text.length > 500) {
+    return res.status(400).json({ error: "voiceover_text_must_contain_1_to_500_characters" });
+  }
+  if (!allowedVoices.has(voice)) return res.status(400).json({ error: "unsupported_kokoro_voice" });
+  if (typeof speed !== "number" || !Number.isFinite(speed) || speed < 0.5 || speed > 2) {
+    return res.status(400).json({ error: "voiceover_speed_must_be_between_0_5_and_2" });
+  }
+  try {
+    const result = await createKokoroTtsProvider().generate({ text: text.trim(), voice, speed });
+    const key = "audio/pending/" + randomUUID() + ".wav";
+    await createObjectStorage().put(key, result.buffer, "audio/wav");
+    res.set("Cache-Control", "no-store");
+    return res.status(201).json({
+      audio_key: key, content_type: "audio/wav", bytes: result.bytes,
+      sample_rate: result.sampleRate, duration_seconds: result.durationSeconds, voice
+    });
+  } catch (error) {
+    console.error("Kokoro voiceover generation failed:", String(error?.message || error).slice(0, 240));
+    return res.status(502).json({ error: "voiceover_generation_failed", detail: String(error?.message || error).slice(0, 240) });
+  }
 });
 
 // Upload optional narration/music audio before final assembly.
