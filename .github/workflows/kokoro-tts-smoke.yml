@@ -39,60 +39,37 @@ jobs:
           echo
           python3 - <<'PY'
           import json, os
-          from urllib.parse import urljoin, urlparse
-          base=os.environ["SPACE"].rstrip("/")+"/"
+          base=os.environ["SPACE"].rstrip("/")
           raw=open("result.sse",encoding="utf-8",errors="replace").read()
-          normalized=raw.replace("\r\n","\n").replace("\r","\n")
-          events=[]
-          def find_file(value):
-              if isinstance(value,dict):
-                  if isinstance(value.get("url"),str) or isinstance(value.get("path"),str):
-                      return value
-                  for nested in value.values():
-                      found=find_file(nested)
-                      if found: return found
-              elif isinstance(value,list):
-                  for nested in value:
-                      found=find_file(nested)
-                      if found: return found
-              elif isinstance(value,str) and (value.startswith("http://") or value.startswith("https://") or value.startswith("/")):
-                  return {"url":value}
-              return None
-          for block in normalized.split("\n\n"):
-              event_name="message"
-              data_lines=[]
-              for line in block.split("\\n"):
-                  if line.startswith("event:"): event_name=line[6:].strip()
-                  elif line.startswith("data:"): data_lines.append(line[5:].strip())
-              if not data_lines: continue
-              data_text="\n".join(data_lines)
-              events.append(event_name)
-              if event_name=="error":
-                  raise SystemExit("Kokoro TTS event error: "+data_text[:1200])
-              try: payload=json.loads(data_text)
-              except Exception: continue
-              file=find_file(payload)
-              if file:
-                  path=file.get("path")
-                  url=file.get("url")
-                  primary=urljoin(base,url) if isinstance(url,str) and url else ""
-                  if primary and urlparse(primary).hostname in ("127.0.0.1","localhost","0.0.0.0"):
-                      primary=""
-                  if not primary and path:
-                      primary=urljoin(base,"file="+path)
-                  fallback=urljoin(base,"gradio_api/file="+path) if path else ""
-                  open("audio-url.txt","w").write(primary)
-                  open("audio-url-fallback.txt","w").write(fallback)
-                  print("Primary audio URL:",primary)
-                  print("Fallback audio URL:",fallback)
-                  break
-          else:
-              open("sse-events.txt","w").write("\n".join(events))
-              raise SystemExit("No audio file found in SSE response. Events: "+", ".join(events))
+          lines=raw.splitlines()
+          event_index=next((i for i,line in enumerate(lines) if line.strip()=="event: complete"),-1)
+          if event_index < 0:
+              raise SystemExit("No complete event. Raw SSE: "+raw[:2000])
+          data_line=next((line for line in lines[event_index+1:] if line.startswith("data:")),None)
+          if not data_line:
+              raise SystemExit("Complete event has no data line. Raw SSE: "+raw[:2000])
+          payload=json.loads(data_line[5:].strip())
+          candidates=payload if isinstance(payload,list) else [payload]
+          file=next((item for item in candidates if isinstance(item,dict) and (item.get("url") or item.get("path"))),None)
+          if not file:
+              raise SystemExit("Complete event contains no audio file object: "+repr(payload)[:1500])
+          path=file.get("path") or ""
+          primary=file.get("url") or ""
+          fallback1=base+"/gradio_api/file="+path
+          fallback2=base+"/file="+path
+          open("audio-url.txt","w").write(primary)
+          open("audio-url-fallback.txt","w").write(fallback1)
+          open("audio-url-fallback2.txt","w").write(fallback2)
+          print("Primary audio URL:",primary)
+          print("Fallback 1:",fallback1)
+          print("Fallback 2:",fallback2)
           PY
           if ! curl --fail --location --silent --show-error --max-time 120 "$(cat audio-url.txt)" -o joyverse-kokoro-voiceover.wav; then
             echo "Primary audio URL failed; trying Gradio API file endpoint."
-            curl --fail --location --silent --show-error --max-time 120 "$(cat audio-url-fallback.txt)" -o joyverse-kokoro-voiceover.wav
+            if ! curl --fail --location --silent --show-error --max-time 120 "$(cat audio-url-fallback.txt)" -o joyverse-kokoro-voiceover.wav; then
+              echo "Gradio API file endpoint failed; trying legacy file endpoint."
+              curl --fail --location --silent --show-error --max-time 120 "$(cat audio-url-fallback2.txt)" -o joyverse-kokoro-voiceover.wav
+            fi
           fi
           python3 - <<'PY'
           import os
@@ -137,6 +114,6 @@ jobs:
             result.sse
             audio-url.txt
             audio-url-fallback.txt
-            sse-events.txt
+            audio-url-fallback2.txt
           if-no-files-found: warn
           retention-days: 7
