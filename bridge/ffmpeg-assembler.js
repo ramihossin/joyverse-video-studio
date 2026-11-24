@@ -6,12 +6,17 @@ import { spawn as nodeSpawn } from "node:child_process";
 const MAX_CLIPS = 40;
 const MAX_CLIP_BYTES = 100 * 1024 * 1024;
 const MAX_TOTAL_BYTES = 500 * 1024 * 1024;
+const MAX_AUDIO_TRACKS = 4;
+const MAX_AUDIO_TRACK_BYTES = 50 * 1024 * 1024;
+const MAX_TOTAL_AUDIO_BYTES = 100 * 1024 * 1024;
+const AUDIO_EXTENSIONS = new Set(["wav", "mp3", "m4a", "aac", "ogg", "flac"]);
 
 export async function assembleMp4(clips, {
   ffmpegPath,
   spawn = nodeSpawn,
   workRoot = tmpdir(),
-  timeoutMs = 180000
+  timeoutMs = 180000,
+  audioTracks = []
 } = {}) {
   if (!Array.isArray(clips) || clips.length < 1 || clips.length > MAX_CLIPS) {
     throw new Error("Assembly requires between 1 and 40 clips.");
@@ -24,6 +29,21 @@ export async function assembleMp4(clips, {
     total += clip.length;
   }
   if (total > MAX_TOTAL_BYTES) throw new Error("Combined input exceeds 500 MiB.");
+  if (!Array.isArray(audioTracks) || audioTracks.length > MAX_AUDIO_TRACKS) {
+    throw new Error("Audio tracks must be an array containing at most 4 tracks.");
+  }
+  let totalAudio = 0;
+  for (const track of audioTracks) {
+    if (!track || !Buffer.isBuffer(track.buffer) || track.buffer.length === 0 ||
+        track.buffer.length > MAX_AUDIO_TRACK_BYTES) {
+      throw new Error("Each audio track must be a non-empty audio buffer up to 50 MiB.");
+    }
+    if (!AUDIO_EXTENSIONS.has(track.extension)) {
+      throw new Error("Audio track extension must be wav, mp3, m4a, aac, ogg, or flac.");
+    }
+    totalAudio += track.buffer.length;
+  }
+  if (totalAudio > MAX_TOTAL_AUDIO_BYTES) throw new Error("Combined audio exceeds 100 MiB.");
   if (!ffmpegPath) {
     const mod = await import("ffmpeg-static");
     ffmpegPath = mod.default;
@@ -40,13 +60,34 @@ export async function assembleMp4(clips, {
     }
     await writeFile(join(dir, "inputs.txt"), list.join("\n") + "\n", { flag: "wx", mode: 0o600 });
     const output = join(dir, "final.mp4");
+    const args = [
+      "-hide_banner", "-loglevel", "error", "-y",
+      "-f", "concat", "-safe", "1", "-i", join(dir, "inputs.txt")
+    ];
+    for (let i = 0; i < audioTracks.length; i++) {
+      const track = audioTracks[i];
+      const name = "audio-" + String(i).padStart(3, "0") + "." + track.extension;
+      await writeFile(join(dir, name), track.buffer, { flag: "wx", mode: 0o600 });
+      args.push("-i", join(dir, name));
+    }
+    if (audioTracks.length > 0) {
+      const filters = audioTracks.map((track, i) =>
+        "[" + (i + 1) + ":a:0]volume=" + (Number.isFinite(track.volume) ? Math.max(0, Math.min(2, track.volume)) : 1) + "[a" + i + "]"
+      );
+      const inputs = audioTracks.map((_, i) => "[a" + i + "]").join("");
+      filters.push(inputs + "amix=inputs=" + audioTracks.length + ":duration=longest:dropout_transition=2,apad[aout]");
+      args.push(
+        "-filter_complex", filters.join(";"),
+        "-map", "0:v:0", "-map", "[aout]"
+      );
+    }
+    args.push(
+      "-c:v", "libx264", "-preset", "veryfast", "-crf", "23",
+      "-c:a", "aac", "-b:a", "192k", "-shortest",
+      "-movflags", "+faststart", output
+    );
     await new Promise((resolve, reject) => {
-      const child = spawn(ffmpegPath, [
-        "-hide_banner", "-loglevel", "error", "-y",
-        "-f", "concat", "-safe", "1", "-i", join(dir, "inputs.txt"),
-        "-c:v", "libx264", "-preset", "veryfast", "-crf", "23",
-        "-c:a", "aac", "-movflags", "+faststart", output
-      ], { cwd: dir, stdio: ["ignore", "ignore", "pipe"] });
+      const child = spawn(ffmpegPath, args, { cwd: dir, stdio: ["ignore", "ignore", "pipe"] });
       let stderr = "";
       let settled = false;
       const timer = setTimeout(() => {
