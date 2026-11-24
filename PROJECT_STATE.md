@@ -61,6 +61,7 @@ Deliver a reliable, Android-accessible AI video-production workflow that takes a
 - Ordinary web-open checks of the public health endpoint returned an internal access error; browser automation succeeded instead.
 - The LTX-2.5 public Space generation smoke test failed because the free ZeroGPU run quota was exhausted. No output video was created.
 - Flyne's no-signup form could be filled, but generation was blocked by Cloudflare Turnstile verification. No attempt was made to bypass it and no output video was created.
+- AIFree's free Wan visitor workflow also reached Cloudflare human verification before generation. No attempt was made to bypass it and no output video was created.
 - fal catalog selection found no text-to-video candidate that met a strict $0 budget. No paid API request was submitted.
 - Earlier Library persistence upload for the project archive/state was blocked by the account Library storage limit. Existing Library files were not deleted.
 - Chromium headless smoke test on the separate local prototype timed out; that prototype is not the authoritative project.
@@ -69,8 +70,9 @@ Deliver a reliable, Android-accessible AI video-production workflow that takes a
 - The authoritative project is `ramihossin/joyverse-video-studio`.
 - The public frontend and bridge health endpoint are reachable.
 - The LTX public demo is currently up, but its free ZeroGPU run quota was exhausted during the single smoke test.
-- A second advertised-free provider (Flyne) requires a human verification challenge at generation time in the tested browser; it is not currently suitable for unattended automation.
+- Advertised-free providers Flyne and AIFree both required Cloudflare human verification at generation time in the tested browser; neither is currently suitable for unattended automation.
 - Flyne's public free form was reachable and advertised 5-second 480p outputs with no signup; the single smoke attempt stopped at a Cloudflare Turnstile human-verification prompt. No challenge was bypassed and no clip was generated.
+- AIFree's public Wan 2.2 form loaded without login and advertised approximately 5-second 480p silent outputs subject to a daily pool; one generation attempt stopped at a Cloudflare human-verification gate. No challenge was bypassed and no clip was generated.
 - Generation, durable clip retrieval, multi-clip MP4 assembly, final MP4 playback, and Android-device behavior have not yet passed an end-to-end acceptance test.
 - Production branch `main` and live service configuration have not been modified in this operation.
 - Documentation changes are in draft PR #53; they are not merged into `main`.
