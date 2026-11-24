@@ -76,18 +76,18 @@ Deliver a reliable, Android-accessible AI video-production workflow that takes a
 ## Current State
 - The authoritative project is `ramihossin/joyverse-video-studio`.
 - The public frontend and bridge health endpoint are reachable.
-- The LTX public demo is currently up, but its free ZeroGPU run quota was exhausted during the single smoke test.
+- The LTX public demo is currently up, but its free ZeroGPU run quota was exhausted during the single smoke test. (Retained historical result.)
 - Advertised-free providers Flyne and AIFree both required Cloudflare human verification at generation time in the tested browser; neither is currently suitable for unattended automation.
 - Flyne's public free form was reachable and advertised 5-second 480p outputs with no signup; the single smoke attempt stopped at a Cloudflare Turnstile human-verification prompt. No challenge was bypassed and no clip was generated.
 - AIFree's public Wan 2.2 form loaded without login and advertised approximately 5-second 480p silent outputs subject to a daily pool; one generation attempt stopped at a Cloudflare human-verification gate. No challenge was bypassed and no clip was generated.
-- Generation, durable clip retrieval, multi-clip MP4 assembly, final MP4 playback, and Android-device behavior have not yet passed an end-to-end acceptance test. The new code tests have been added but have not yet been run by GitHub Actions.
+- No new live video has been generated on this implementation branch. Durable clip retrieval, multi-clip MP4 assembly, final MP4 playback, and Android-device behavior have not yet passed a new end-to-end acceptance test. The Agnes API requires an authenticated API key; no key was exposed to or available in this execution context, and no production secrets were read.
 - Production branch `main` and live service configuration have not been modified in this operation.
 - Documentation changes are in draft PR #53; they are not merged into `main`.
 
 ## Next Action
-1. Resolve why GitHub Actions has not reported a pull-request test run, or obtain a full `npm test` execution in an environment with the repository dependencies installed.
-2. Check whether the existing deployment has an authorized Agnes free Flash key configured without reading or exposing secret values; do not change production environment settings or submit a live generation until the selected model and zero-cost route are confirmed.
-3. If Agnes is available, run one 4-second text-to-video smoke test, persist the provider job ID, retrieve and validate the MP4, then test assembly.
+1. Determine, through an authorized non-secret configuration check, whether the existing production bridge already has an Agnes API key and whether `VIDEO_PROVIDER=agnes` is configured. Do not expose the key or change production settings.
+2. If the free Flash key is already configured, run one 4-second text-to-video smoke test, persist the provider job ID, retrieve and validate the MP4, then test assembly.
+3. If no key is configured, the provider requires the account owner to create and add one; do not fabricate credentials or bypass authentication.
 4. Implement a secure hosted-image URL path for Agnes reference mode, then restore image-to-video continuity tests.
 5. Continue the end-to-end and Android acceptance tests.
 
