@@ -38,39 +38,44 @@ Deliver a reliable, Android-accessible AI video-production workflow that takes a
 - LTX adapter: `bridge/ltx-gradio-video-provider.js`, using the public Lightricks/LTX-2.5 Gradio Space.
 - Assembly: `bridge/ffmpeg-assembler.js` produces MP4.
 - Deployment: GitHub Pages workflow plus Render bridge and GitHub Actions worker workflow.
-- Main production branch remains `main`; this state baseline is being added on an isolated operations branch.
+- Main production branch remains `main`; this state baseline is isolated in the operations branch.
 
 ## Completed
 - Repository and default branch inspected through the connected GitHub integration.
 - README and implementation inspected for frontend, bridge, worker, provider, task store, and MP4 assembler.
 - Isolated branch `ops/project-state-baseline-2026-11-25` created from `main`.
-- This authoritative state file is being added to that branch.
-- Existing application already includes scene dispatch, task polling/recovery, result retrieval, and assembly UI (per source inspection).
+- Authoritative project state and changelog created on that branch.
+- Existing application includes scene dispatch, task polling/recovery, result retrieval, and assembly UI (source inspection).
+- A draft documentation PR was opened: #53.
 
 ## Verified
-- Live public Studio page loaded in a browser automation run; visible title: `JoyVerse Scene Studio`; no visible page error.
+- Live public Studio page loaded in browser automation; visible title: `JoyVerse Scene Studio`; no visible page error.
 - Live bridge health endpoint returned HTTP 200 and JSON `ok: true`; service identified as `joyverse-macrodroid-bridge`.
-- GitHub integration can list the user's repositories and read source files from `ramihossin/joyverse-video-studio`.
+- Public Lightricks/LTX-2.5 Space loaded and displayed Running status.
+- One controlled, 1-second public LTX smoke test was submitted with a harmless test prompt. The UI returned `You have exceeded your ZeroGPU runs limit`; no video file was produced. This confirms the provider UI is reachable but the free generation quota available to this browser/session is exhausted.
+- GitHub integration can list repositories and read source files from `ramihossin/joyverse-video-studio`.
 - The public bridge required a cold start before health returned 200.
-- Not yet verified in this run: authenticated Studio-to-bridge connection, actual LTX generation, persisted clip retrieval, multi-clip MP4 assembly, final MP4 playback, or Android-device behavior.
 
 ## Failed
 - Previous prototype-only approach did not meet the actual project goal; it was not a real AI video-generation system.
-- Browser health checks through the ordinary web-open route returned an internal access error; a live browser automation check succeeded instead.
-- No live generation was attempted because the connected fal catalog did not identify a model satisfying a strict $0 budget, and the public LTX route's free capacity is not guaranteed. No paid job was submitted.
+- Ordinary web-open checks of the public health endpoint returned an internal access error; browser automation succeeded instead.
+- The LTX-2.5 public Space generation smoke test failed because the free ZeroGPU run quota was exhausted. No output video was created.
+- fal catalog selection found no text-to-video candidate that met a strict $0 budget. No paid API request was submitted.
 - Earlier Library persistence upload for the project archive/state was blocked by the account Library storage limit. Existing Library files were not deleted.
+- Chromium headless smoke test on the separate local prototype timed out; that prototype is not the authoritative project.
 
 ## Current State
-- The real project is the GitHub repository `ramihossin/joyverse-video-studio`, not the standalone local planner prototype.
+- The authoritative project is `ramihossin/joyverse-video-studio`.
 - The public frontend and bridge health endpoint are reachable.
-- The generation/assembly architecture exists in source, but an end-to-end real-video run has not been proven in this execution.
+- The LTX public demo is currently up, but its free ZeroGPU run quota was exhausted during the single smoke test.
+- Generation, durable clip retrieval, multi-clip MP4 assembly, final MP4 playback, and Android-device behavior have not yet passed an end-to-end acceptance test.
 - Production branch `main` and live service configuration have not been modified in this operation.
-- This branch contains the project-state baseline; it is not yet merged into production.
+- Documentation changes are in draft PR #53; they are not merged into `main`.
 
 ## Next Action
-1. Inspect the complete GitHub Actions workflows and automated test inventory.
-2. Run or reproduce the project's unit/integration checks without touching production secrets.
-3. Validate bridge authentication and queue APIs without submitting a generation task.
-4. Verify storage and assembly behavior using synthetic test media in a non-production test path.
-5. Only then attempt a single free-provider video smoke test if the endpoint is demonstrably free and the required authorization is already available; otherwise document the exact blocker.
-6. Update this file and CHANGELOG with each verified result.
+1. Inspect the full source and deployment history for the current task queue, provider selection, and any already-supported alternate free route.
+2. Determine whether the LTX ZeroGPU limit is anonymous-session, account, or shared-space quota without repeatedly submitting jobs.
+3. Evaluate alternate public free providers against actual quota, terms, API accessibility, and integration cost; do not claim unlimited access.
+4. Reproduce unit tests for provider validation, queue transitions, lease recovery, and MP4 assembly using mocks/synthetic clips without production secrets.
+5. Verify authenticated Studio-to-bridge connection only if a safe token is already available through an authorized connector; never expose or request secrets in chat.
+6. Update this file and CHANGELOG after each material result.
