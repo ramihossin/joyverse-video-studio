@@ -1,0 +1,73 @@
+name: Live Kokoro TTS acceptance test
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "bridge/kokoro-tts-provider.js"
+      - "test/kokoro-tts-provider.test.js"
+      - ".github/workflows/kokoro-tts-live-smoke.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  live-tts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install Gradio client
+        run: python -m pip install --disable-pip-version-check gradio_client
+      - name: Discover public API and synthesize one short sample
+        run: |
+          python - <<'PY'
+          import json, os, shutil
+          from gradio_client import Client
+          space = "RobinsAIWorld/Kokoro-TTS-cpu"
+          client = Client(space, verbose=True)
+          print("Discovering live Gradio API before synthesis:")
+          client.view_api()
+          result = client.predict(
+              "Hello! Welcome to JoyVerse. Let us begin a little adventure!",
+              "af_heart", 1.0, False,
+              api_name="/generate_first"
+          )
+          print("Raw result:", repr(result)[:2000])
+          audio = result[0] if isinstance(result, (tuple, list)) else result
+          if isinstance(audio, dict):
+              path = audio.get("path")
+              url = audio.get("url")
+              if path and os.path.isfile(path):
+                  source = path
+              elif url:
+                  import urllib.request
+                  urllib.request.urlretrieve(url, "joyverse-kokoro-live.wav")
+                  source = "joyverse-kokoro-live.wav"
+              else:
+                  raise RuntimeError("Audio result contained no downloadable file.")
+          elif isinstance(audio, str) and os.path.isfile(audio):
+              source = audio
+          else:
+              raise RuntimeError("Unexpected audio output shape: " + repr(audio)[:1000])
+          if source != "joyverse-kokoro-live.wav":
+              shutil.copyfile(source, "joyverse-kokoro-live.wav")
+          with open("joyverse-kokoro-live.wav", "rb") as f:
+              header = f.read(44)
+          if header[:4] != b"RIFF" or header[8:12] != b"WAVE":
+              raise RuntimeError("The live TTS output is not a valid WAV container.")
+          size = os.path.getsize("joyverse-kokoro-live.wav")
+          if size <= 44:
+              raise RuntimeError("The live TTS WAV contains no audio payload.")
+          print("LIVE_TTS_PASS bytes=", size, "sample_rate=", int.from_bytes(header[24:28], "little"))
+          PY
+      - name: Upload verified voice sample
+        uses: actions/upload-artifact@v4
+        with:
+          name: joyverse-kokoro-live-voiceover
+          path: joyverse-kokoro-live.wav
+          if-no-files-found: error
+          retention-days: 7
