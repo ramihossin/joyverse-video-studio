@@ -37,7 +37,6 @@ jobs:
           except Exception as exc:
               print("API info endpoint unavailable:", repr(exc))
           client = Client("RobinsAIWorld/Kokoro-TTS-cpu", verbose=True)
-          client.view_api()
           result = client.predict(
               "Look! A little golden star is shining in the garden. Let us follow its light!",
               "af_heart", 1.0, False,
