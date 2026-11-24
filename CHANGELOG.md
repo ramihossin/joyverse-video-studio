@@ -43,3 +43,9 @@
 - Confirmed Kokoro provider unit tests, audio-format tests, and procedural music tests were included in the passing Node/Bridge suites.
 - PR #54 is open and GitHub reports it mergeable; no merge or production deployment was performed.
 - Live Kokoro TTS remains unverified: the first assumed REST route returned HTTP 404; the follow-up Gradio-client discovery workflow has not produced a retrievable run result. Mocked provider tests are not presented as proof of live synthesis.
+
+
+- Added a real FFmpeg media integration test: creates an H.264 test clip, mixes generated WAV music using the production assembler, and decodes the final MP4's video and audio streams.
+- Latest GitHub Actions run passed: Node.js 82/82, Bridge 82/82, and web browser smoke tests 9/9. The real FFmpeg audio/video integration test passed in both Node and Bridge suites.
+- Added a live, no-key Kokoro TTS acceptance workflow using the official Gradio Python client. Its execution is pending; it was not merged into main just to force a run. The initial raw REST attempt returned 404, while the provider's mocked tests pass.
+- PR #54 remains open; branch comparison reports 63 commits ahead and 0 behind. No production merge or deployment was performed.
