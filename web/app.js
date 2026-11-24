@@ -23,6 +23,10 @@ const audioSummary = $("audio-summary");
 const uploadAudioButton = $("upload-audio");
 const backgroundMusicInput = $("background-music");
 const musicStyleInput = $("music-style");
+const voiceoverTextInput = $("voiceover-text");
+const voiceoverVoiceInput = $("voiceover-voice");
+const generateVoiceoverButton = $("generate-voiceover");
+const voiceoverStatus = $("voiceover-status");
 const voiceoverText = $("voiceover-text");
 const voiceoverVoice = $("voiceover-voice");
 const voiceoverSpeed = $("voiceover-speed");
@@ -385,6 +389,37 @@ async function generateVoiceover() {
     setStatus("تعذّر توليد التعليق الصوتي: " + error.message);
   } finally { generateVoiceoverButton.disabled = false; }
 }
+async function generateVoiceover() {
+  const narration = voiceoverTextInput?.value.trim() || "";
+  const voice = voiceoverVoiceInput?.value || "af_heart";
+  if (!narration) return setStatus("اكتب نص التعليق الصوتي أولاً.");
+  if (narration.length > 500) return setStatus("الحد الأقصى لنص التعليق الصوتي 500 حرف.");
+  if (audioAssets.length >= 4) return setStatus("اكتمل الحد الأقصى لأربعة مسارات صوتية.");
+  generateVoiceoverButton.disabled = true;
+  if (voiceoverStatus) voiceoverStatus.textContent = "جارٍ توليد التعليق الصوتي...";
+  try {
+    const response = await apiRequest("/api/hermes/voiceover", {
+      method: "POST",
+      json: { text: narration, voice, speed: 1.0 }
+    });
+    const data = await response.json();
+    audioAssets.push({
+      key: data.audio_key,
+      name: "تعليق صوتي · " + voice,
+      contentType: "audio/wav",
+      bytes: data.bytes
+    });
+    localStorage.setItem(AUDIO_KEYS_STORAGE, JSON.stringify(audioAssets));
+    voiceoverTextInput.value = "";
+    renderAudioSummary();
+    if (voiceoverStatus) voiceoverStatus.textContent =
+      "اكتمل التوليد: " + Number(data.duration_seconds).toFixed(1) + " ثانية · " + data.sample_rate + " Hz.";
+    setStatus("تم توليد التعليق الصوتي وإضافته إلى مسارات الفيديو.");
+  } catch (error) {
+    if (voiceoverStatus) voiceoverStatus.textContent = "تعذّر التوليد: " + error.message;
+    setStatus("فشل توليد التعليق الصوتي: " + error.message);
+  } finally { generateVoiceoverButton.disabled = false; }
+}
 async function assembleCompletedScenes() {
   if (queueRunning || assemblyRunning) return;
   const completed = queue.filter(scene => scene.status === "done" && scene.serverTaskId);
@@ -426,6 +461,7 @@ $("test-connection").addEventListener("click", async () => {
 });
 assembleButton.addEventListener("click", assembleCompletedScenes);
 uploadAudioButton?.addEventListener("click", uploadAudioFiles);
+generateVoiceoverButton?.addEventListener("click", generateVoiceover);
 generateVoiceoverButton?.addEventListener("click", generateVoiceover);
 renderAudioSummary();
 startButton.addEventListener("click", runQueue);
