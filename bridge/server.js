@@ -9,6 +9,7 @@ import { normalizeVideoOptions, assertVideoOptionsForProvider } from "./video-jo
 import { createObjectStorage } from "./object-storage.js";
 import { assembleMp4 } from "./ffmpeg-assembler.js";
 import { detectAudioFormat } from "./audio-format.js";
+import { createProceduralMusicWav } from "./procedural-music.js";
 import { createVideoWorker } from "./video-worker.js";
 import { verifyGithubActionsToken } from "./github-oidc.js";
 import { initializeBingControlStore, installBingControlRoutes, dispatchConfiguredBingCommand, recordBingDeviceResult, logBingCommandStatus } from "./bing-control.js";
@@ -776,7 +777,7 @@ app.get("/api/hermes/tasks/:taskId", async (req, res) => {
 app.post("/api/hermes/assemble", async (req, res) => {
   if (!JOYVERSE_STUDIO_TOKEN && !HERMES_WORKER_TOKEN) return res.status(503).json({ error: "studio_api_not_configured" });
   if (!studioOrWorkerAuthorized(req)) return res.status(401).json({ error: "unauthorized" });
-  const { task_ids, audio_keys = [] } = req.body ?? {};
+  const { task_ids, audio_keys = [], background_music = false, music_style = "cheerful" } = req.body ?? {};
   if (!Array.isArray(task_ids) || task_ids.length < 1 || task_ids.length > 40 ||
       task_ids.some(id => typeof id !== "string" || !id.trim() || id.length > 100)) {
     return res.status(400).json({ error: "task_ids_must_contain_1_to_40_valid_ids_in_playback_order" });
@@ -786,6 +787,10 @@ app.post("/api/hermes/assemble", async (req, res) => {
       audio_keys.some(key => typeof key !== "string" ||
         !/^audio\/pending\/[0-9a-f-]{36}\.(wav|mp3|m4a|aac|ogg|flac)$/i.test(key))) {
     return res.status(400).json({ error: "audio_keys_must_contain_up_to_4_uploaded_audio_keys" });
+  }
+  if (typeof background_music !== "boolean") return res.status(400).json({ error: "background_music_must_be_boolean" });
+  if (!["cheerful", "adventure", "gentle"].includes(music_style)) {
+    return res.status(400).json({ error: "music_style_must_be_cheerful_adventure_or_gentle" });
   }
   if (new Set(audio_keys).size !== audio_keys.length) return res.status(400).json({ error: "duplicate_audio_keys" });
   try {
@@ -799,7 +804,7 @@ app.post("/api/hermes/assemble", async (req, res) => {
       if (typeof key !== "string" || !key.startsWith("jobs/")) {
         return res.status(409).json({ error: "scene_video_missing", task_id: id });
       }
-      tasks.push({ id, key });
+      tasks.push({ id, key, video_options: task.video_options || {} });
     }
     const storage = createObjectStorage();
     const clips = [];
@@ -809,6 +814,17 @@ app.post("/api/hermes/assemble", async (req, res) => {
       const extension = key.split(".").pop().toLowerCase();
       audioTracks.push({ buffer: await storage.get(key), extension });
     }
+    if (background_music) {
+      const targetDuration = tasks.reduce((sum, task) => {
+        const duration = Number(task.video_options?.duration ?? 3.5);
+        return sum + (Number.isFinite(duration) && duration > 0 ? duration : 3.5);
+      }, 0);
+      audioTracks.push({
+        buffer: createProceduralMusicWav({ durationSeconds: targetDuration, style: music_style }),
+        extension: "wav",
+        volume: 0.28
+      });
+    }
     const finalVideo = await assembleMp4(clips, { audioTracks });
     const finalId = randomUUID();
     const finalKey = "finals/" + finalId + ".mp4";
@@ -816,7 +832,7 @@ app.post("/api/hermes/assemble", async (req, res) => {
     res.set("Cache-Control", "no-store");
     return res.status(201).json({
       status: "completed", final_id: finalId, storage_key: finalKey,
-      scene_count: tasks.length, audio_track_count: audioTracks.length, bytes: finalVideo.length,
+      scene_count: tasks.length, audio_track_count: audioTracks.length, background_music, music_style, bytes: finalVideo.length,
       download_path: "/api/hermes/final/" + finalId
     });
   } catch (error) {
