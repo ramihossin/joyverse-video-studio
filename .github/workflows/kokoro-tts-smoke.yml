@@ -42,7 +42,7 @@ jobs:
           from urllib.parse import urljoin, urlparse
           base=os.environ["SPACE"].rstrip("/")+"/"
           raw=open("result.sse",encoding="utf-8",errors="replace").read()
-          normalized=raw.replace("\\r\\n","\\n").replace("\\r","\\n")
+          normalized=raw.replace("\r\n","\n").replace("\r","\n")
           events=[]
           def find_file(value):
               if isinstance(value,dict):
@@ -58,14 +58,14 @@ jobs:
               elif isinstance(value,str) and (value.startswith("http://") or value.startswith("https://") or value.startswith("/")):
                   return {"url":value}
               return None
-          for block in normalized.split("\\n\\n"):
+          for block in normalized.split("\n\n"):
               event_name="message"
               data_lines=[]
               for line in block.split("\\n"):
                   if line.startswith("event:"): event_name=line[6:].strip()
                   elif line.startswith("data:"): data_lines.append(line[5:].strip())
               if not data_lines: continue
-              data_text="\\n".join(data_lines)
+              data_text="\n".join(data_lines)
               events.append(event_name)
               if event_name=="error":
                   raise SystemExit("Kokoro TTS event error: "+data_text[:1200])
@@ -79,15 +79,15 @@ jobs:
                   if primary and urlparse(primary).hostname in ("127.0.0.1","localhost","0.0.0.0"):
                       primary=""
                   if not primary and path:
-                      primary=urljoin(base,"file="+path.lstrip("/"))
-                  fallback=urljoin(base,"gradio_api/file="+path.lstrip("/")) if path else ""
+                      primary=urljoin(base,"file="+path)
+                  fallback=urljoin(base,"gradio_api/file="+path) if path else ""
                   open("audio-url.txt","w").write(primary)
                   open("audio-url-fallback.txt","w").write(fallback)
                   print("Primary audio URL:",primary)
                   print("Fallback audio URL:",fallback)
                   break
           else:
-              open("sse-events.txt","w").write("\\n".join(events))
+              open("sse-events.txt","w").write("\n".join(events))
               raise SystemExit("No audio file found in SSE response. Events: "+", ".join(events))
           PY
           if ! curl --fail --location --silent --show-error --max-time 120 "$(cat audio-url.txt)" -o joyverse-kokoro-voiceover.wav; then
@@ -107,7 +107,7 @@ jobs:
           OUTCOME: ${{ steps.generate.outcome }}
         run: |
           if [ -s joyverse-kokoro-voiceover.wav ]; then
-            RESULT="PASS: Gradio client generated and verified a WAV voiceover."
+            RESULT="PASS: direct Gradio REST generated and verified a WAV voiceover."
             BYTES="$(wc -c < joyverse-kokoro-voiceover.wav)"
           else
             RESULT="FAIL: no verified WAV. Step outcome: ${OUTCOME:-unknown}."
