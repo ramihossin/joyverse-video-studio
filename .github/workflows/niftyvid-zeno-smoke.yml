@@ -1,0 +1,125 @@
+name: Wan 2.2 JoyVerse dragon reference smoke
+
+on:
+  push:
+    branches: [experiment/niftyvid-wan-smoke]
+    paths:
+      - ".github/workflows/niftyvid-zeno-smoke.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  generate-character-reference-clip:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: experiment/niftyvid-wan-smoke
+
+      - name: Download the generated dragon reference frame
+        env:
+          IMAGE_URL: https://cdn.pika.art/v2/creation/uploads/24ee8670-5b67-4374-b0a8-a0ed66ff0872/0e21b7a435a74a05b335d7bb14c9f82d.png
+        run: |
+          set -euo pipefail
+          curl --fail --location --silent --show-error --max-time 120 "$IMAGE_URL" -o joyverse-dragon-reference.png
+          python3 - <<'PY'
+          import os
+          data=open("joyverse-dragon-reference.png","rb").read(24)
+          if data[:8] != b"\x89PNG\r\n\x1a\n":
+              raise SystemExit("Reference frame is not a PNG.")
+          print("Reference frame downloaded:", os.path.getsize("joyverse-dragon-reference.png"), "bytes")
+          PY
+
+      - name: Submit one Wan 2.2 image-to-video job
+        id: generate
+        continue-on-error: true
+        env:
+          SPACE: https://cbensimon-wan2-2-fp8da-aoti-preview2.hf.space
+        run: |
+          set -euo pipefail
+          upload="$(curl --fail --silent --show-error --max-time 120 \
+            -F "files=@joyverse-dragon-reference.png;filename=joyverse-dragon-reference.png" \
+            "$SPACE/gradio_api/upload")"
+          image_path="$(printf '%s' "$upload" | python3 -c 'import json,sys; print(json.load(sys.stdin)[0])')"
+          export IMAGE_PATH="$image_path"
+          python3 - <<'PY' > request.json
+          import json, os
+          base=os.environ["SPACE"]; path=os.environ["IMAGE_PATH"]
+          image={"path":path,"url":base+"/gradio_api/file="+path,"orig_name":"joyverse-dragon-reference.png","size":None,"mime_type":"image/png","meta":{"_type":"gradio.FileData"}}
+          data=[image,None,"The small turquoise dragon gently flaps its golden wings, blinks its large amber eyes and slowly floats forward above the magical garden; preserve the reference character design and proportions, smooth camera push-in, polished cheerful 3D animated film look, no extra characters, no text.",6,"blurry, distorted, character redesign, text, watermark",3.5,1,1,77,False,6,"UniPCMultistep",3.0,16,False,True]
+          print(json.dumps({"data":data}))
+          PY
+          accepted="$(curl --fail --silent --show-error --max-time 120 \
+            -H "Content-Type: application/json" --data-binary @request.json \
+            "$SPACE/gradio_api/call/generate_video")"
+          event_id="$(printf '%s' "$accepted" | python3 -c 'import json,sys; print(json.load(sys.stdin)["event_id"])')"
+          curl --fail --silent --show-error --max-time 600 \
+            -H "Accept: text/event-stream" \
+            "$SPACE/gradio_api/call/generate_video/$event_id" > result.sse
+          python3 - <<'PY' > video-url.txt
+          import json, os
+          raw=open("result.sse",encoding="utf-8").read()
+          for block in raw.replace("\r\n","\n").split("\n\n"):
+              event="message"; data=[]
+              for line in block.split("\n"):
+                  if line.startswith("event:"): event=line[6:].strip()
+                  elif line.startswith("data:"): data.append(line[5:].strip())
+              if event=="error": raise SystemExit("Upstream generation error: "+"\n".join(data)[:1000])
+              if event=="complete" and data:
+                  result=json.loads("\n".join(data))
+                  first=next((x for x in (result if isinstance(result,list) else [result]) if isinstance(x,dict) and (x.get("url") or x.get("path"))),None)
+                  if first and first.get("url"): print(first["url"])
+                  elif first and first.get("path"): print(os.environ["SPACE"]+"/gradio_api/file="+first["path"])
+                  else: raise SystemExit("Completed event did not contain a video file.")
+                  break
+          else: raise SystemExit("SSE stream ended without a complete event.")
+          PY
+          curl --fail --location --silent --show-error --max-time 120 "$(cat video-url.txt)" -o joyverse-dragon-smoke.mp4
+          python3 - <<'PY'
+          import os
+          data=open("joyverse-dragon-smoke.mp4","rb").read(16)
+          if len(data)<12 or data[4:8]!=b"ftyp":
+              raise SystemExit("Provider output is not a valid MP4 container.")
+          print("Verified MP4 header; bytes:",os.path.getsize("joyverse-dragon-smoke.mp4"))
+          PY
+
+      - name: Record the smoke result
+        if: always()
+        env:
+          OUTCOME: ${{ steps.generate.outcome }}
+        run: |
+          if [ -s joyverse-dragon-smoke.mp4 ]; then
+            RESULT="PASS: generated a verified Wan 2.2 clip from the dragon reference image."
+            BYTES="$(wc -c < joyverse-dragon-smoke.mp4)"
+          else
+            RESULT="FAIL: no verified MP4. Generation step outcome: ${OUTCOME:-unknown}. Inspect this workflow run's logs."
+            BYTES="0"
+          fi
+          {
+            echo "# JoyVerse dragon reference smoke test"
+            echo
+            echo "- Workflow run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+            echo "- Result: $RESULT"
+            echo "- MP4 bytes: $BYTES"
+            echo "- Requested duration: 3.5 seconds"
+            echo "- No API key or paid generation credits used."
+          } > NIFTYVID_ZENO_SMOKE_RESULT.md
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add NIFTYVID_ZENO_SMOKE_RESULT.md
+          git commit -m "Record JoyVerse dragon reference smoke result" || true
+          git push origin HEAD:experiment/niftyvid-wan-smoke || true
+
+      - name: Upload generated clip
+        if: always() && hashFiles('joyverse-dragon-smoke.mp4') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: joyverse-wan2-dragon-reference-smoke
+          path: |
+            joyverse-dragon-smoke.mp4
+            joyverse-dragon-reference.png
+            NIFTYVID_ZENO_SMOKE_RESULT.md
+          if-no-files-found: error
+          retention-days: 7
