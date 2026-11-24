@@ -1,4 +1,4 @@
-name: Inspect NiftyVid smoke run
+name: Inspect NiftyVid smoke run (diagnostic)
 
 on:
   pull_request:
