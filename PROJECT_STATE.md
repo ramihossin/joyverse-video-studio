@@ -68,10 +68,9 @@ Deliver an Android-accessible video-production system that moves from a scene pl
 - One real anonymous Wan 2.2 I2V smoke test produced an MP4. Independent ffprobe inspection: H.264, 640×640, 16 fps, 3.5625 seconds, 526,822 bytes. The input was a synthetic golden-star frame, not a JoyVerse character reference.
 - Live Kokoro TTS acceptance workflow passed using the same direct-REST provider adapter as the bridge. Retrieved WAV: PCM 16-bit mono, 24 kHz, 4.2 seconds, 201,644 bytes.
 - Local final-media sample was assembled from the Wan smoke clip, a live Kokoro voiceover, and an original procedural music bed. ffprobe verified H.264 video plus AAC audio, 640×640, 7.125 seconds, 766,269 bytes. Local file: `/mnt/data/joyverse-kokoro-voiceover-music-sample.mp4`. This is a technical sample, not a finished JoyVerse episode.
-- Latest observed Node.js tests passed, including the real FFmpeg video/audio integration test.
-- Latest observed Bridge tests passed.
-- Latest live Kokoro acceptance test passed.
-- Web browser validation passed on the preceding implementation head; the latest run after the most recent server/music changes is still being checked.
+- Latest PR-head CI at commit `460223dd3e295bb56b95e08dc6f8f1a85355410c`: Node.js tests passed, Bridge tests passed, live Kokoro acceptance passed, and web validation passed.
+- Latest observed Node.js tests include the real FFmpeg video/audio integration test.
+- Local final MP4 was independently decoded by FFmpeg for both video and audio streams (`DECODE_OK`).
 
 ## Failed / Limitations
 
