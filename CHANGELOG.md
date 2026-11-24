@@ -29,3 +29,11 @@
 - Retrieved the GitHub Actions artifact through the GitHub connector and independently checked it with `ffprobe`: H.264, 640x640, 16 fps, 3.5625 seconds, 526,822 bytes. This is a technical smoke clip, not a finished JoyVerse scene.
 - Added the Wan 2.2 provider adapter with image upload, Gradio SSE handling, safe output-host validation, MP4 validation, resumable event-ID checkpointing, and explicit opt-in via `VIDEO_PROVIDER=niftyvid-wan`.
 - Latest GitHub Actions checks on the implementation head passed: Node.js tests 72/72, Bridge tests 72/72, and web validation passed. No production deployment or environment change was made.
+
+
+- Added a reusable audio-format detector and tests for supported WAV/MP3/M4A/AAC/OGG/FLAC signatures.
+- Added optional upload of up to four audio tracks in the Studio UI and integrated uploaded tracks into server-side FFmpeg assembly.
+- Added original procedural WAV background music in three styles, with deterministic output and validation tests; no external music API or credit is used.
+- Added a Kokoro TTS provider adapter, authenticated voiceover endpoint, and Studio controls for short English narration generation. Voiceover output is staged in object storage for final mixing.
+- Diagnosed the first Kokoro HTTP smoke failure: the assumed Gradio REST route returned HTTP 404. The smoke workflow now uses the official Gradio Python client to discover the live API and invoke the named endpoint. The updated workflow run could not be confirmed with the available GitHub Actions query, so no live voiceover is claimed.
+- Latest audio/TTS implementation has not yet passed the full CI suite or live end-to-end verification. No production deployment, secret changes, or paid generation requests were made.
