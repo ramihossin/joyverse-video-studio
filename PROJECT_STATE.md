@@ -60,6 +60,7 @@ Deliver a reliable, Android-accessible AI video-production workflow that takes a
 - Previous prototype-only approach did not meet the actual project goal; it was not a real AI video-generation system.
 - Ordinary web-open checks of the public health endpoint returned an internal access error; browser automation succeeded instead.
 - The LTX-2.5 public Space generation smoke test failed because the free ZeroGPU run quota was exhausted. No output video was created.
+- Flyne's no-signup form could be filled, but generation was blocked by Cloudflare Turnstile verification. No attempt was made to bypass it and no output video was created.
 - fal catalog selection found no text-to-video candidate that met a strict $0 budget. No paid API request was submitted.
 - Earlier Library persistence upload for the project archive/state was blocked by the account Library storage limit. Existing Library files were not deleted.
 - Chromium headless smoke test on the separate local prototype timed out; that prototype is not the authoritative project.
@@ -68,6 +69,8 @@ Deliver a reliable, Android-accessible AI video-production workflow that takes a
 - The authoritative project is `ramihossin/joyverse-video-studio`.
 - The public frontend and bridge health endpoint are reachable.
 - The LTX public demo is currently up, but its free ZeroGPU run quota was exhausted during the single smoke test.
+- A second advertised-free provider (Flyne) requires a human verification challenge at generation time in the tested browser; it is not currently suitable for unattended automation.
+- Flyne's public free form was reachable and advertised 5-second 480p outputs with no signup; the single smoke attempt stopped at a Cloudflare Turnstile human-verification prompt. No challenge was bypassed and no clip was generated.
 - Generation, durable clip retrieval, multi-clip MP4 assembly, final MP4 playback, and Android-device behavior have not yet passed an end-to-end acceptance test.
 - Production branch `main` and live service configuration have not been modified in this operation.
 - Documentation changes are in draft PR #53; they are not merged into `main`.
@@ -75,7 +78,7 @@ Deliver a reliable, Android-accessible AI video-production workflow that takes a
 ## Next Action
 1. Inspect the full source and deployment history for the current task queue, provider selection, and any already-supported alternate free route.
 2. Determine whether the LTX ZeroGPU limit is anonymous-session, account, or shared-space quota without repeatedly submitting jobs.
-3. Evaluate alternate public free providers against actual quota, terms, API accessibility, and integration cost; do not claim unlimited access.
+3. Evaluate alternate public free providers against actual quota, terms, API accessibility, and integration cost; do not claim unlimited access or bypass verification.
 4. Reproduce unit tests for provider validation, queue transitions, lease recovery, and MP4 assembly using mocks/synthetic clips without production secrets.
 5. Verify authenticated Studio-to-bridge connection only if a safe token is already available through an authorized connector; never expose or request secrets in chat.
 6. Update this file and CHANGELOG after each material result.
