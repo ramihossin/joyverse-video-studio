@@ -1,7 +1,7 @@
 # Kokoro CPU TTS smoke test
 
-- Workflow run: https://github.com/ramihossin/joyverse-video-studio/actions/runs/45510147061
-- Result: FAIL: no verified WAV. Step outcome: failure. Inspect this workflow run's logs.
+- Workflow run: https://github.com/ramihossin/joyverse-video-studio/actions/runs/45510233322
+- Result: FAIL: no verified WAV. Step outcome: failure.
 - WAV bytes: 0
-- Voice: af_heart
+- Space: RobinsAIWorld/Kokoro-TTS-cpu
 - No API key or paid credits used.
