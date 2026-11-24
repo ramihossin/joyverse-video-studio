@@ -441,6 +441,13 @@ app.post("/api/hermes/voiceover", async (req, res) => {
   if (typeof text !== "string" || !text.trim() || text.length > 500) {
     return res.status(400).json({ error: "voiceover_text_must_contain_1_to_500_characters" });
   }
+  if (!["af_heart", "af_bella", "af_nicole", "af_aoede", "af_kore", "af_sarah",
+        "af_sky", "af_jessica", "af_river", "am_adam", "am_michael"].includes(voice)) {
+    return res.status(400).json({ error: "unsupported_voice" });
+  }
+  if (typeof speed !== "number" || !Number.isFinite(speed) || speed < 0.5 || speed > 2) {
+    return res.status(400).json({ error: "speed_must_be_between_0_5_and_2" });
+  }
   try {
     if (!kokoroTtsProvider) kokoroTtsProvider = createKokoroTtsProvider();
     const result = await kokoroTtsProvider.generate({ text, voice, speed });
