@@ -10,6 +10,7 @@ import { createObjectStorage } from "./object-storage.js";
 import { assembleMp4 } from "./ffmpeg-assembler.js";
 import { detectAudioFormat } from "./audio-format.js";
 import { createProceduralMusicWav } from "./procedural-music.js";
+import { createKokoroTtsProvider } from "./kokoro-tts-provider.js";
 import { createVideoWorker } from "./video-worker.js";
 import { verifyGithubActionsToken } from "./github-oidc.js";
 import { initializeBingControlStore, installBingControlRoutes, dispatchConfiguredBingCommand, recordBingDeviceResult, logBingCommandStatus } from "./bing-control.js";
@@ -66,6 +67,7 @@ const BING_STATUS_COMMAND_ID = process.env.BING_STATUS_COMMAND_ID || "";
 const SELECTED_VIDEO_PROVIDER = String(process.env.VIDEO_PROVIDER || "ltx").toLowerCase();
 let backgroundVideoWorker = null;
 let backgroundVideoWorkerBusy = false;
+let kokoroTtsProvider = null;
 
 function getBackgroundVideoWorker() {
   if (backgroundVideoWorker) return backgroundVideoWorker;
@@ -428,6 +430,30 @@ app.post("/api/hermes/audio-upload", express.raw({
   } catch (error) {
     console.error("Staged audio upload failed:", String(error?.message || error).slice(0, 200));
     return res.status(502).json({ error: "audio_storage_failed" });
+  }
+});
+
+// Generate narration from a short script and store it as an audio track for final assembly.
+app.post("/api/hermes/voiceover", async (req, res) => {
+  if (!JOYVERSE_STUDIO_TOKEN && !HERMES_WORKER_TOKEN) return res.status(503).json({ error: "studio_api_not_configured" });
+  if (!studioOrWorkerAuthorized(req)) return res.status(401).json({ error: "unauthorized" });
+  const { text, voice = "af_heart", speed = 1 } = req.body ?? {};
+  if (typeof text !== "string" || !text.trim() || text.length > 500) {
+    return res.status(400).json({ error: "voiceover_text_must_contain_1_to_500_characters" });
+  }
+  try {
+    if (!kokoroTtsProvider) kokoroTtsProvider = createKokoroTtsProvider();
+    const result = await kokoroTtsProvider.generate({ text, voice, speed });
+    const key = "audio/pending/" + randomUUID() + ".wav";
+    await createObjectStorage().put(key, result.buffer, result.contentType);
+    res.set("Cache-Control", "no-store");
+    return res.status(201).json({
+      audio_key: key, content_type: result.contentType, bytes: result.bytes,
+      voice: result.voice, sample_rate: result.sampleRate
+    });
+  } catch (error) {
+    console.error("Voiceover generation failed:", String(error?.message || error).slice(0, 240));
+    return res.status(502).json({ error: "voiceover_generation_failed", message: String(error?.message || error).slice(0, 160) });
   }
 });
 
