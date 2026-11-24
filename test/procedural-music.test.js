@@ -10,7 +10,7 @@ test("creates deterministic original stereo PCM music in a valid WAV container",
   assert.equal(first.toString("ascii", 8, 12), "WAVE");
   assert.equal(first.toString("ascii", 12, 16), "fmt ");
   assert.equal(first.readUInt16LE(22), 2);
-  assert.equal(first.readUInt32LE(24), 22050);
+  assert.equal(first.readUInt32LE(24), 16000);
   assert.equal(first.toString("ascii", 36, 40), "data");
   assert.equal(first.readUInt32LE(40), first.length - 44);
 });
