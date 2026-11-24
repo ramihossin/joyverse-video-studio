@@ -17,3 +17,6 @@
 
 - Local validation of the implementation branch: 8 isolated Node.js mocked tests passed (4 Agnes adapter tests, 4 worker persistence/recovery tests); `node --check` passed for both modules and both test modules. This is not a full repository test-suite run.
 - GitHub Actions workflow-run and combined commit-status queries returned no runs/statuses for PR #54; full repository CI remains unverified.
+
+- GitHub Actions re-validation after correcting the outdated reference-image test passed: Node.js tests 66/66, Bridge tests 66/66, and web browser smoke tests 9/9. JavaScript and Android worker syntax checks passed.
+- Confirmed the Agnes API endpoint rejects unauthenticated model-list access with HTTP 401. The public free Flash offer requires an account/API key, is a limited-time promotion, and is rate-limited; no credential was available to this execution context, so no live generation was submitted.
