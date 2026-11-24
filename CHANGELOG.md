@@ -7,3 +7,4 @@
 - Verified the official public LTX-2.5 Space was running, then performed one controlled 1-second generation smoke test. The provider rejected it with `You have exceeded your ZeroGPU runs limit`; no video output was produced.
 - Opened draft PR #53 containing documentation-only state and changelog files. Production branch and service configuration remain unchanged.
 - No paid generation request, secret change, or production deployment was initiated.
+- Checked Flyne's public free text-to-video workflow (5 seconds, 480p, no signup claim); the generation action triggered Cloudflare Turnstile, so automation stopped without bypassing verification. No clip was produced.
