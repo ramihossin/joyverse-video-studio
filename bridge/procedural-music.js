@@ -1,5 +1,5 @@
-const SAMPLE_RATE = 22050;
-const MAX_DURATION_SECONDS = 180;
+const SAMPLE_RATE = 16000;
+const MAX_DURATION_SECONDS = 600;
 const PROGRESSIONS = Object.freeze({
   cheerful: [
     [261.63, 329.63, 392.00],
