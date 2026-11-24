@@ -95,6 +95,19 @@
           <input id="audio-files" type="file" accept="audio/wav,audio/x-wav,audio/mpeg,audio/mp4,audio/aac,audio/ogg,audio/flac" multiple>
           <p id="audio-summary" class="queue-summary">يمكن إضافة تعليق صوتي أو موسيقى أو مؤثرات (حتى 4 ملفات، 25 ميغابايت لكل ملف).</p>
           <button id="upload-audio" class="secondary" type="button">رفع المسارات الصوتية</button>
+          <label class="field-title" for="voiceover-text">نص التعليق الصوتي</label>
+          <textarea id="voiceover-text" rows="3" maxlength="500" placeholder="اكتب الجملة أو السرد الذي سيُقرأ في الفيديو..."></textarea>
+          <label class="field-title" for="voiceover-voice">صوت الراوي</label>
+          <select id="voiceover-voice">
+            <option value="af_heart">Heart — دافئ</option>
+            <option value="af_bella">Bella — واضح</option>
+            <option value="af_sarah">Sarah — هادئ</option>
+            <option value="af_nicole">Nicole — ناعم</option>
+            <option value="am_adam">Adam — رجالي</option>
+            <option value="am_michael">Michael — رجالي</option>
+          </select>
+          <button id="generate-voiceover" class="secondary" type="button">توليد التعليق الصوتي</button>
+          <p id="voiceover-status" class="queue-summary" aria-live="polite">التوليد عبر Kokoro CPU العام، دون مفتاح API أو رصيد مدفوع؛ قد يتأثر بالازدحام.</p>
           <label class="field-title" for="voiceover-text">إنشاء تعليق صوتي من النص</label>
           <textarea id="voiceover-text" rows="3" maxlength="500" placeholder="اكتب نص التعليق الصوتي باللغة الإنجليزية (حتى 500 حرف)…"></textarea>
           <div class="voiceover-options">
