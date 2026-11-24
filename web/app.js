@@ -23,6 +23,10 @@ const audioSummary = $("audio-summary");
 const uploadAudioButton = $("upload-audio");
 const backgroundMusicInput = $("background-music");
 const musicStyleInput = $("music-style");
+const voiceoverText = $("voiceover-text");
+const voiceoverVoice = $("voiceover-voice");
+const voiceoverSpeed = $("voiceover-speed");
+const generateVoiceoverButton = $("generate-voiceover");
 const resultBox = $("result-box");
 const resultVideo = $("result-video");
 const downloadLink = $("download");
@@ -355,6 +359,32 @@ async function uploadAudioFiles() {
     setStatus("تعذّر رفع المسارات الصوتية بعد رفع " + uploaded + ": " + error.message);
   } finally { uploadAudioButton.disabled = false; renderAudioSummary(); }
 }
+async function generateVoiceover() {
+  const text = voiceoverText?.value?.trim() || "";
+  if (!text) return setStatus("اكتب نص التعليق الصوتي أولاً.");
+  if (text.length > 500) return setStatus("الحد الأقصى لنص التعليق الصوتي 500 حرف.");
+  if (audioAssets.length >= 4) return setStatus("وصلت إلى الحد الأقصى لأربعة مسارات صوتية.");
+  generateVoiceoverButton.disabled = true;
+  try {
+    setStatus("يرسل النص إلى محرك Kokoro المجاني لتوليد التعليق الصوتي…", true);
+    const response = await apiRequest("/api/hermes/voiceover", {
+      method: "POST",
+      json: { text, voice: voiceoverVoice.value, speed: Number(voiceoverSpeed.value) }
+    });
+    const data = await response.json();
+    audioAssets.push({
+      key: data.audio_key,
+      name: "تعليق صوتي · " + voiceoverVoice.value,
+      contentType: data.content_type,
+      bytes: data.bytes
+    });
+    localStorage.setItem(AUDIO_KEYS_STORAGE, JSON.stringify(audioAssets));
+    renderAudioSummary();
+    setStatus("تم توليد التعليق الصوتي وحفظه. أصبح ضمن المسارات التي ستُمزج عند دمج الفيديو.");
+  } catch (error) {
+    setStatus("تعذّر توليد التعليق الصوتي: " + error.message);
+  } finally { generateVoiceoverButton.disabled = false; }
+}
 async function assembleCompletedScenes() {
   if (queueRunning || assemblyRunning) return;
   const completed = queue.filter(scene => scene.status === "done" && scene.serverTaskId);
@@ -396,6 +426,7 @@ $("test-connection").addEventListener("click", async () => {
 });
 assembleButton.addEventListener("click", assembleCompletedScenes);
 uploadAudioButton?.addEventListener("click", uploadAudioFiles);
+generateVoiceoverButton?.addEventListener("click", generateVoiceover);
 renderAudioSummary();
 startButton.addEventListener("click", runQueue);
 stopButton.addEventListener("click", () => { stopRequested = true; });
