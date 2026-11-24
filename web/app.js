@@ -18,6 +18,16 @@ const assembleButton = $("assemble-scenes");
 const assemblyBox = $("assembly-box");
 const assemblyVideo = $("assembly-video");
 const assemblyDownload = $("assembly-download");
+const audioInput = $("audio-files");
+const audioSummary = $("audio-summary");
+const uploadAudioButton = $("upload-audio");
+const backgroundMusicInput = $("background-music");
+const musicStyleInput = $("music-style");
+const voiceoverTextInput = $("voiceover-text");
+const voiceoverVoiceInput = $("voiceover-voice");
+const generateVoiceoverButton = $("generate-voiceover");
+const voiceoverStatus = $("voiceover-status");
+const voiceoverSpeedInput = $("voiceover-speed");
 const resultBox = $("result-box");
 const resultVideo = $("result-video");
 const downloadLink = $("download");
@@ -26,10 +36,16 @@ const studioTokenInput = $("studio-token");
 
 const STORAGE_KEY = "joyverse-scene-queue-v2";
 const FINAL_KEY = "joyverse-final-video-v1";
+const AUDIO_KEYS_STORAGE = "joyverse-audio-keys-v1";
 let queue = [];
 let queueRunning = false;
 let stopRequested = false;
 let assemblyRunning = false;
+let audioAssets = [];
+try {
+  const savedAudio = JSON.parse(localStorage.getItem(AUDIO_KEYS_STORAGE) || "[]");
+  if (Array.isArray(savedAudio)) audioAssets = savedAudio.slice(0, 4);
+} catch { audioAssets = []; }
 let previewUrl = null;
 let assemblyUrl = null;
 const clipUrls = new Map();
@@ -310,6 +326,71 @@ async function showFinal(finalId) {
   assemblyDownload.href = assemblyUrl;
   assemblyBox.hidden = false;
 }
+function renderAudioSummary() {
+  if (!audioSummary) return;
+  audioSummary.textContent = audioAssets.length
+    ? "المسارات المرفوعة: " + audioAssets.map(item => item.name).join("، ") + " · " + audioAssets.length + "/4"
+    : "يمكن إضافة تعليق صوتي أو موسيقى أو مؤثرات (حتى 4 ملفات، 25 ميغابايت لكل ملف).";
+}
+async function uploadAudioFiles() {
+  const files = Array.from(audioInput?.files || []);
+  if (!files.length) return setStatus("اختر ملفاً صوتياً واحداً على الأقل.");
+  if (audioAssets.length + files.length > 4) return setStatus("الحد الأقصى أربعة مسارات صوتية للفيديو النهائي.");
+  uploadAudioButton.disabled = true;
+  let uploaded = 0;
+  try {
+    for (const file of files) {
+      if (file.size < 12 || file.size > 25 * 1024 * 1024) {
+        throw new Error("حجم الملف الصوتي يجب أن يكون بين 12 بايت و25 ميغابايت: " + file.name);
+      }
+      const response = await apiRequest("/api/hermes/audio-upload", {
+        method: "POST",
+        headers: { "Content-Type": file.type || "application/octet-stream" },
+        body: file
+      });
+      const data = await response.json();
+      audioAssets.push({ key: data.audio_key, name: file.name, contentType: data.content_type, bytes: data.bytes });
+      uploaded++;
+      localStorage.setItem(AUDIO_KEYS_STORAGE, JSON.stringify(audioAssets));
+      renderAudioSummary();
+    }
+    audioInput.value = "";
+    setStatus("تم رفع " + uploaded + " مسارات صوتية. ستُمزج مع الفيديو النهائي عند الدمج.");
+  } catch (error) {
+    setStatus("تعذّر رفع المسارات الصوتية بعد رفع " + uploaded + ": " + error.message);
+  } finally { uploadAudioButton.disabled = false; renderAudioSummary(); }
+}
+async function generateVoiceover() {
+  const narration = voiceoverTextInput?.value.trim() || "";
+  const voice = voiceoverVoiceInput?.value || "af_heart";
+  if (!narration) return setStatus("اكتب نص التعليق الصوتي أولاً.");
+  if (narration.length > 500) return setStatus("الحد الأقصى لنص التعليق الصوتي 500 حرف.");
+  if (audioAssets.length >= 4) return setStatus("اكتمل الحد الأقصى لأربعة مسارات صوتية.");
+  generateVoiceoverButton.disabled = true;
+  if (voiceoverStatus) voiceoverStatus.textContent = "جارٍ توليد التعليق الصوتي...";
+  try {
+    const response = await apiRequest("/api/hermes/voiceover", {
+      method: "POST",
+      json: { text: narration, voice, speed: Number(voiceoverSpeedInput?.value || 1.0) }
+    });
+    const data = await response.json();
+    audioAssets.push({
+      key: data.audio_key,
+      name: "تعليق صوتي · " + voice,
+      contentType: "audio/wav",
+      bytes: data.bytes
+    });
+    localStorage.setItem(AUDIO_KEYS_STORAGE, JSON.stringify(audioAssets));
+    voiceoverTextInput.value = "";
+    renderAudioSummary();
+    if (voiceoverStatus) voiceoverStatus.textContent =
+      "اكتمل التوليد: " + Number(data.duration_seconds).toFixed(1) + " ثانية · " + data.sample_rate + " Hz.";
+    setStatus("تم توليد التعليق الصوتي وإضافته إلى مسارات الفيديو.");
+  } catch (error) {
+    if (voiceoverStatus) voiceoverStatus.textContent = "تعذّر التوليد: " + error.message;
+    setStatus("فشل توليد التعليق الصوتي: " + error.message);
+  } finally { generateVoiceoverButton.disabled = false; }
+}
 async function assembleCompletedScenes() {
   if (queueRunning || assemblyRunning) return;
   const completed = queue.filter(scene => scene.status === "done" && scene.serverTaskId);
@@ -319,12 +400,17 @@ async function assembleCompletedScenes() {
   try {
     setStatus("يرسل الاستوديو ترتيب المشاهد إلى FFmpeg على الخادم…", true);
     const response = await apiRequest("/api/hermes/assemble", {
-      method: "POST", json: { task_ids: completed.map(scene => scene.serverTaskId) }
+      method: "POST", json: {
+        task_ids: completed.map(scene => scene.serverTaskId),
+        audio_keys: audioAssets.map(item => item.key),
+        background_music: Boolean(backgroundMusicInput?.checked),
+        music_style: musicStyleInput?.value || "cheerful"
+      }
     });
     const data = await response.json();
     localStorage.setItem(FINAL_KEY, data.final_id);
     await showFinal(data.final_id);
-    setStatus("اكتمل دمج " + data.scene_count + " مشاهد. حُفظ الفيديو النهائي في التخزين السحابي.");
+    setStatus("اكتمل دمج " + data.scene_count + " مشاهد و" + (data.audio_track_count || 0) + " مسارات صوتية. حُفظ الفيديو النهائي في التخزين السحابي.");
   } catch (error) {
     setStatus("تعذّر الدمج على الخادم: " + error.message);
   } finally { assemblyRunning = false; renderQueue(); }
@@ -345,6 +431,9 @@ $("test-connection").addEventListener("click", async () => {
   finally { button.disabled = false; }
 });
 assembleButton.addEventListener("click", assembleCompletedScenes);
+uploadAudioButton?.addEventListener("click", uploadAudioFiles);
+generateVoiceoverButton?.addEventListener("click", generateVoiceover);
+renderAudioSummary();
 startButton.addEventListener("click", runQueue);
 stopButton.addEventListener("click", () => { stopRequested = true; });
 $("clear-queue").addEventListener("click", () => {

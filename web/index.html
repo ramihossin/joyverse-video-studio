@@ -90,6 +90,38 @@
         <button id="stop-queue" class="secondary" type="button" disabled>إيقاف المتابعة فقط</button>
         <button id="clear-queue" class="secondary" type="button">مسح المكتمل</button>
         <button id="assemble-scenes" class="secondary" type="button" disabled>دمج المشاهد المكتملة</button>
+        <div class="audio-tools">
+          <label class="field-title" for="audio-files">مسارات صوتية اختيارية</label>
+          <input id="audio-files" type="file" accept="audio/wav,audio/x-wav,audio/mpeg,audio/mp4,audio/aac,audio/ogg,audio/flac" multiple>
+          <p id="audio-summary" class="queue-summary">يمكن إضافة تعليق صوتي أو موسيقى أو مؤثرات (حتى 4 ملفات، 25 ميغابايت لكل ملف).</p>
+          <button id="upload-audio" class="secondary" type="button">رفع المسارات الصوتية</button>
+          <label class="field-title" for="voiceover-text">نص التعليق الصوتي</label>
+          <textarea id="voiceover-text" rows="3" maxlength="500" placeholder="اكتب الجملة أو السرد الذي سيُقرأ في الفيديو..."></textarea>
+          <label class="field-title" for="voiceover-voice">صوت الراوي</label>
+          <select id="voiceover-voice">
+            <option value="af_heart">Heart — دافئ</option>
+            <option value="af_bella">Bella — واضح</option>
+            <option value="af_sarah">Sarah — هادئ</option>
+            <option value="af_nicole">Nicole — ناعم</option>
+            <option value="am_adam">Adam — رجالي</option>
+            <option value="am_michael">Michael — رجالي</option>
+          </select>
+          <label class="field-title" for="voiceover-speed">سرعة التعليق</label>
+          <select id="voiceover-speed">
+            <option value="0.9">أبطأ</option>
+            <option value="1" selected>طبيعي</option>
+            <option value="1.1">أسرع</option>
+          </select>
+          <button id="generate-voiceover" class="secondary" type="button">توليد التعليق الصوتي</button>
+          <p id="voiceover-status" class="queue-summary" aria-live="polite">التوليد عبر Kokoro CPU العام، دون مفتاح API أو رصيد مدفوع؛ قد يتأثر بالازدحام.</p>
+          <label class="music-toggle"><input id="background-music" type="checkbox"> إضافة موسيقى خلفية أصلية مولدة برمجيًا دون API أو رصيد</label>
+          <label class="field-title" for="music-style">نمط الموسيقى</label>
+          <select id="music-style">
+            <option value="cheerful">مرح ومشرق</option>
+            <option value="adventure">مغامرة</option>
+            <option value="gentle">هادئ ولطيف</option>
+          </select>
+        </div>
       </div>
       <p id="queue-summary" class="queue-summary">لا توجد مشاهد في القائمة بعد.</p>
       <ol id="scene-list" class="scene-list"></ol>

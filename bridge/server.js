@@ -8,6 +8,9 @@ import { initializeTaskStore, enqueueTask, getTask, claimNextTask, finishTask, g
 import { normalizeVideoOptions, assertVideoOptionsForProvider } from "./video-job.js";
 import { createObjectStorage } from "./object-storage.js";
 import { assembleMp4 } from "./ffmpeg-assembler.js";
+import { detectAudioFormat } from "./audio-format.js";
+import { createProceduralMusicWav } from "./procedural-music.js";
+import { createKokoroTtsProvider } from "./kokoro-tts-provider.js";
 import { createVideoWorker } from "./video-worker.js";
 import { verifyGithubActionsToken } from "./github-oidc.js";
 import { initializeBingControlStore, installBingControlRoutes, dispatchConfiguredBingCommand, recordBingDeviceResult, logBingCommandStatus } from "./bing-control.js";
@@ -64,6 +67,7 @@ const BING_STATUS_COMMAND_ID = process.env.BING_STATUS_COMMAND_ID || "";
 const SELECTED_VIDEO_PROVIDER = String(process.env.VIDEO_PROVIDER || "ltx").toLowerCase();
 let backgroundVideoWorker = null;
 let backgroundVideoWorkerBusy = false;
+let kokoroTtsProvider = null;
 
 function getBackgroundVideoWorker() {
   if (backgroundVideoWorker) return backgroundVideoWorker;
@@ -402,6 +406,90 @@ app.get("/api/hermes/status-chatgpt/:taskId", async (req, res) => {
     output_url: task.output_url, storage_key: task.storage_key,
     heartbeat_at: task.heartbeat_at, attempts: task.attempts,
     created_at: task.created_at, finished_at: task.finished_at ?? null });
+});
+
+// Generate a voiceover through the public Kokoro CPU Space and stage it for final assembly.
+app.post("/api/hermes/voiceover", async (req, res) => {
+  if (!JOYVERSE_STUDIO_TOKEN && !HERMES_WORKER_TOKEN) return res.status(503).json({ error: "studio_api_not_configured" });
+  if (!studioOrWorkerAuthorized(req)) return res.status(401).json({ error: "unauthorized" });
+  const { text, voice = "af_heart", speed = 1.0 } = req.body ?? {};
+  const allowedVoices = new Set(["af_heart", "af_bella", "af_nicole", "af_aoede", "af_kore", "af_sarah", "af_sky", "af_jessica", "af_river", "am_adam", "am_michael"]);
+  if (typeof text !== "string" || !text.trim() || text.length > 500) {
+    return res.status(400).json({ error: "voiceover_text_must_contain_1_to_500_characters" });
+  }
+  if (!allowedVoices.has(voice)) return res.status(400).json({ error: "unsupported_kokoro_voice" });
+  if (typeof speed !== "number" || !Number.isFinite(speed) || speed < 0.5 || speed > 2) {
+    return res.status(400).json({ error: "voiceover_speed_must_be_between_0_5_and_2" });
+  }
+  try {
+    const result = await createKokoroTtsProvider().generate({ text: text.trim(), voice, speed });
+    const key = "audio/pending/" + randomUUID() + ".wav";
+    await createObjectStorage().put(key, result.buffer, "audio/wav");
+    res.set("Cache-Control", "no-store");
+    return res.status(201).json({
+      audio_key: key, content_type: "audio/wav", bytes: result.bytes,
+      sample_rate: result.sampleRate, duration_seconds: result.durationSeconds, voice
+    });
+  } catch (error) {
+    console.error("Kokoro voiceover generation failed:", String(error?.message || error).slice(0, 240));
+    return res.status(502).json({ error: "voiceover_generation_failed", detail: String(error?.message || error).slice(0, 240) });
+  }
+});
+
+// Upload optional narration/music audio before final assembly.
+app.post("/api/hermes/audio-upload", express.raw({
+  type: ["audio/wav", "audio/x-wav", "audio/mpeg", "audio/mp4", "audio/aac", "audio/ogg", "audio/flac", "application/octet-stream"],
+  limit: "25mb"
+}), async (req, res) => {
+  if (!JOYVERSE_STUDIO_TOKEN && !HERMES_WORKER_TOKEN) return res.status(503).json({ error: "studio_api_not_configured" });
+  if (!studioOrWorkerAuthorized(req)) return res.status(401).json({ error: "unauthorized" });
+  if (!Buffer.isBuffer(req.body) || req.body.length < 12 || req.body.length > 25 * 1024 * 1024) {
+    return res.status(400).json({ error: "invalid_audio_body", max_bytes: 26214400 });
+  }
+  const bytes = req.body;
+  const audioFormat = detectAudioFormat(bytes);
+  if (!audioFormat) return res.status(415).json({ error: "unsupported_audio_format" });
+  const { extension, contentType } = audioFormat;
+  const key = "audio/pending/" + randomUUID() + "." + extension;
+  try {
+    await createObjectStorage().put(key, bytes, contentType);
+    res.set("Cache-Control", "no-store");
+    return res.status(201).json({ audio_key: key, content_type: contentType, bytes: bytes.length });
+  } catch (error) {
+    console.error("Staged audio upload failed:", String(error?.message || error).slice(0, 200));
+    return res.status(502).json({ error: "audio_storage_failed" });
+  }
+});
+
+// Generate narration from a short script and store it as an audio track for final assembly.
+app.post("/api/hermes/voiceover", async (req, res) => {
+  if (!JOYVERSE_STUDIO_TOKEN && !HERMES_WORKER_TOKEN) return res.status(503).json({ error: "studio_api_not_configured" });
+  if (!studioOrWorkerAuthorized(req)) return res.status(401).json({ error: "unauthorized" });
+  const { text, voice = "af_heart", speed = 1 } = req.body ?? {};
+  if (typeof text !== "string" || !text.trim() || text.length > 500) {
+    return res.status(400).json({ error: "voiceover_text_must_contain_1_to_500_characters" });
+  }
+  if (!["af_heart", "af_bella", "af_nicole", "af_aoede", "af_kore", "af_sarah",
+        "af_sky", "af_jessica", "af_river", "am_adam", "am_michael"].includes(voice)) {
+    return res.status(400).json({ error: "unsupported_voice" });
+  }
+  if (typeof speed !== "number" || !Number.isFinite(speed) || speed < 0.5 || speed > 2) {
+    return res.status(400).json({ error: "speed_must_be_between_0_5_and_2" });
+  }
+  try {
+    if (!kokoroTtsProvider) kokoroTtsProvider = createKokoroTtsProvider();
+    const result = await kokoroTtsProvider.generate({ text, voice, speed });
+    const key = "audio/pending/" + randomUUID() + ".wav";
+    await createObjectStorage().put(key, result.buffer, result.contentType);
+    res.set("Cache-Control", "no-store");
+    return res.status(201).json({
+      audio_key: key, content_type: result.contentType, bytes: result.bytes,
+      voice: result.voice, sample_rate: result.sampleRate
+    });
+  } catch (error) {
+    console.error("Voiceover generation failed:", String(error?.message || error).slice(0, 240));
+    return res.status(502).json({ error: "voiceover_generation_failed", message: String(error?.message || error).slice(0, 160) });
+  }
 });
 
 // Upload a staged reference image before dispatch; dispatch atomically associates its key with the new task.
@@ -750,12 +838,22 @@ app.get("/api/hermes/tasks/:taskId", async (req, res) => {
 app.post("/api/hermes/assemble", async (req, res) => {
   if (!JOYVERSE_STUDIO_TOKEN && !HERMES_WORKER_TOKEN) return res.status(503).json({ error: "studio_api_not_configured" });
   if (!studioOrWorkerAuthorized(req)) return res.status(401).json({ error: "unauthorized" });
-  const { task_ids } = req.body ?? {};
+  const { task_ids, audio_keys = [], background_music = false, music_style = "cheerful" } = req.body ?? {};
   if (!Array.isArray(task_ids) || task_ids.length < 1 || task_ids.length > 40 ||
       task_ids.some(id => typeof id !== "string" || !id.trim() || id.length > 100)) {
     return res.status(400).json({ error: "task_ids_must_contain_1_to_40_valid_ids_in_playback_order" });
   }
   if (new Set(task_ids).size !== task_ids.length) return res.status(400).json({ error: "duplicate_task_ids" });
+  if (!Array.isArray(audio_keys) || audio_keys.length > 4 ||
+      audio_keys.some(key => typeof key !== "string" ||
+        !/^audio\/pending\/[0-9a-f-]{36}\.(wav|mp3|m4a|aac|ogg|flac)$/i.test(key))) {
+    return res.status(400).json({ error: "audio_keys_must_contain_up_to_4_uploaded_audio_keys" });
+  }
+  if (typeof background_music !== "boolean") return res.status(400).json({ error: "background_music_must_be_boolean" });
+  if (!["cheerful", "adventure", "gentle"].includes(music_style)) {
+    return res.status(400).json({ error: "music_style_must_be_cheerful_adventure_or_gentle" });
+  }
+  if (new Set(audio_keys).size !== audio_keys.length) return res.status(400).json({ error: "duplicate_audio_keys" });
   try {
     const tasks = [];
     for (const id of task_ids) {
@@ -767,19 +865,35 @@ app.post("/api/hermes/assemble", async (req, res) => {
       if (typeof key !== "string" || !key.startsWith("jobs/")) {
         return res.status(409).json({ error: "scene_video_missing", task_id: id });
       }
-      tasks.push({ id, key });
+      tasks.push({ id, key, video_options: task.video_options || {} });
     }
     const storage = createObjectStorage();
     const clips = [];
     for (const task of tasks) clips.push(await storage.get(task.key));
-    const finalVideo = await assembleMp4(clips);
+    const audioTracks = [];
+    for (const key of audio_keys) {
+      const extension = key.split(".").pop().toLowerCase();
+      audioTracks.push({ buffer: await storage.get(key), extension });
+    }
+    if (background_music) {
+      const targetDuration = tasks.reduce((sum, task) => {
+        const duration = Number(task.video_options?.duration ?? 3.5);
+        return sum + (Number.isFinite(duration) && duration > 0 ? duration : 3.5);
+      }, 0);
+      audioTracks.push({
+        buffer: createProceduralMusicWav({ durationSeconds: targetDuration, style: music_style, sampleRate: 16000 }),
+        extension: "wav",
+        volume: 0.28
+      });
+    }
+    const finalVideo = await assembleMp4(clips, { audioTracks });
     const finalId = randomUUID();
     const finalKey = "finals/" + finalId + ".mp4";
     await storage.put(finalKey, finalVideo, "video/mp4");
     res.set("Cache-Control", "no-store");
     return res.status(201).json({
       status: "completed", final_id: finalId, storage_key: finalKey,
-      scene_count: tasks.length, bytes: finalVideo.length,
+      scene_count: tasks.length, audio_track_count: audioTracks.length, background_music, music_style, bytes: finalVideo.length,
       download_path: "/api/hermes/final/" + finalId
     });
   } catch (error) {

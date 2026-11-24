@@ -35,9 +35,11 @@ test("Agnes submits a text video, polls by video_id and downloads verified MP4",
   assert.deepEqual(result.buffer, mp4);
   const submitted = JSON.parse(calls[0].options.body);
   assert.equal(submitted.model, "agnes-video-2.5-flash");
+  assert.equal(submitted.mode, "text");
   assert.equal(submitted.aspect_ratio, "1:1");
   assert.equal(submitted.seconds, "12");
   assert.ok(calls[1].url.includes("video_id=video_123"));
+  assert.ok(calls[1].url.includes("model_name=agnes-video-2.5-flash"));
   assert.equal(calls[0].options.headers.Authorization, "Bearer test-secret");
 });
 
@@ -62,25 +64,17 @@ test("Agnes retries only explicit queue-full 503 responses with bounded backoff"
   assert.deepEqual(delays, [30000, 60000, 1000]);
 });
 
-test("Agnes supports a reference frame as a data URL", async () => {
-  const calls = [];
+test("Agnes rejects reference buffers until a hosted-image URL flow is implemented", async () => {
+  let requests = 0;
   const provider = createAgnesVideoProvider({
     apiKey: "test-secret", pollIntervalMs: 1000, sleep: async () => {},
-    fetchImpl: async (url, options = {}) => {
-      calls.push({ url: String(url), options });
-      if (String(url).endsWith("/v1/videos")) return response(200, { video_id: "video_456" });
-      if (String(url).includes("/agnesapi?")) return response(200, { status: "failed", error: "test stop" });
-      throw new Error("unexpected download");
-    }
+    fetchImpl: async () => { requests++; throw new Error("unexpected request"); }
   });
   await assert.rejects(provider.generate({
     prompt: "Animate the frame", referenceImage: Buffer.from("image"),
     videoOptions: { aspect: "portrait", duration: 4 }
-  }), /test stop/);
-  const submitted = JSON.parse(calls[0].options.body);
-  assert.equal(submitted.mode, "img2video");
-  assert.equal(submitted.seconds, "4");
-  assert.match(submitted.first_frame, /^data:image\/png;base64,/);
+  }), /hosted image URL.*text-to-video only/);
+  assert.equal(requests, 0);
 });
 
 test("Agnes rejects untrusted output hosts and missing credentials", async () => {

@@ -4,6 +4,7 @@ import {
 } from "./task-store.js";
 import { createLtxGradioVideoProvider } from "./ltx-gradio-video-provider.js";
 import { createAgnesVideoProvider } from "./agnes-video-provider.js";
+import { createNiftyVidWanProvider } from "./niftyvid-wan-provider.js";
 
 export function createDefaultVideoProvider(env = process.env) {
   const selected = String(env.VIDEO_PROVIDER || "ltx").toLowerCase();
@@ -11,8 +12,11 @@ export function createDefaultVideoProvider(env = process.env) {
     apiKey: env.AGNES_API_KEY,
     model: env.AGNES_VIDEO_MODEL || "agnes-video-2.5-flash"
   });
+  if (selected === "niftyvid-wan") return createNiftyVidWanProvider({
+    spaceUrl: env.NIFTYVID_SPACE_URL || undefined
+  });
   if (selected === "ltx") return createLtxGradioVideoProvider();
-  throw new Error("VIDEO_PROVIDER must be either agnes or ltx.");
+  throw new Error("VIDEO_PROVIDER must be one of agnes, ltx, or niftyvid-wan.");
 }
 import { createObjectStorage } from "./object-storage.js";
 
@@ -45,16 +49,16 @@ export async function processClaimedVideoTask(task, {
 
   const providerName = provider.name || task.provider || "custom-video-provider";
   if (task.attempts > 1 && task.provider === providerName &&
-      ["submitting", "generating", "downloading", "uploading"].includes(task.stage) &&
-      !task.storage_key) {
-    const reason = "The previous worker stopped after submitting to the provider. The provider job cannot be resumed safely, so the task was not submitted again.";
+      ["submitting", "provider_queued", "generating", "downloading", "uploading"].includes(task.stage) &&
+      !task.storage_key && !task.provider_job_id) {
+    const reason = "The previous worker stopped after submitting to the provider without a resumable provider job ID. The task was not submitted again, to avoid duplicate generation and quota consumption.";
     await finish(task.task_id, claimToken, "failed", null, reason);
     return { status: "failed", reason: "provider_resume_unavailable", error: reason };
   }
   let heartbeatTimer = null;
   let heartbeatChain = Promise.resolve();
   let heartbeatError = null;
-  let currentStage = "submitting";
+  let currentStage = task.provider_job_id ? "provider_queued" : "submitting";
   const renewLease = () => {
     heartbeatChain = heartbeatChain.then(async () => {
       const renewed = await checkpoint(task.task_id, claimToken, {
@@ -66,7 +70,7 @@ export async function processClaimedVideoTask(task, {
   };
   try {
     const started = await checkpoint(task.task_id, claimToken, {
-      stage: "submitting", provider: providerName
+      stage: currentStage, provider: providerName
     });
     if (!started) throw new Error("Task claim expired before video generation started.");
     heartbeatTimer = setInterval(() => { void renewLease(); }, heartbeatIntervalMs);
@@ -78,8 +82,20 @@ export async function processClaimedVideoTask(task, {
       prompt: task.prompt,
       referenceImage,
       videoOptions: task.video_options || {},
-      onProgress: async () => {
-        currentStage = "generating";
+      providerJobId: task.provider_job_id || null,
+      onJobCreated: async providerJobId => {
+        if (typeof providerJobId !== "string" || !providerJobId.trim() || providerJobId.length > 2048) {
+          throw new Error("Video provider returned an invalid resumable job ID.");
+        }
+        currentStage = "provider_queued";
+        const saved = await checkpoint(task.task_id, claimToken, {
+          stage: currentStage, provider: providerName, provider_job_id: providerJobId
+        });
+        if (!saved) throw new Error("Task claim expired before the provider job ID could be persisted.");
+        if (heartbeatError) throw heartbeatError;
+      },
+      onProgress: async progress => {
+        currentStage = progress?.stage === "downloading" ? "downloading" : "generating";
         await renewLease();
         if (heartbeatError) throw heartbeatError;
       }

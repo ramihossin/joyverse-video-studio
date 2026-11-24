@@ -1,0 +1,48 @@
+name: Live Kokoro TTS acceptance test
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "bridge/kokoro-tts-provider.js"
+      - "test/kokoro-tts-provider.test.js"
+      - ".github/workflows/kokoro-tts-live-smoke.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  live-tts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Run the production Kokoro adapter against the public CPU Space
+        run: |
+          node --input-type=module <<'NODE'
+          import { writeFile } from "node:fs/promises";
+          import { createKokoroTtsProvider } from "./bridge/kokoro-tts-provider.js";
+          const provider = createKokoroTtsProvider();
+          const result = await provider.generate({
+            text: "Hello! Welcome to JoyVerse. Let us begin a little adventure!",
+            voice: "af_heart",
+            speed: 1.0
+          });
+          await writeFile("joyverse-kokoro-live.wav", result.buffer);
+          console.log("LIVE_TTS_PASS", JSON.stringify({
+            bytes: result.bytes,
+            sample_rate: result.sampleRate,
+            duration_seconds: result.durationSeconds,
+            voice: result.voice
+          }));
+          NODE
+      - name: Upload verified voice sample
+        uses: actions/upload-artifact@v4
+        with:
+          name: joyverse-kokoro-live-voiceover
+          path: joyverse-kokoro-live.wav
+          if-no-files-found: error
+          retention-days: 7

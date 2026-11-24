@@ -110,3 +110,50 @@ test("video worker validates polling interval", () => {
     provider: {}, storage: {}, pollMs: 100
   }), /VIDEO_WORKER_POLL_MS/);
 });
+
+
+test("video worker persists a provider job ID and passes it through to the provider", async () => {
+  const checkpoints = [];
+  let receivedJobId;
+  const result = await processClaimedVideoTask(baseTask, {
+    provider: { name: "agnes-video-2.5-flash", generate: async ({ providerJobId, onJobCreated }) => {
+      await onJobCreated("agnes-job-123");
+      receivedJobId = providerJobId;
+      return { buffer: Buffer.from("mp4"), contentType: "video/mp4" };
+    } },
+    storage: { put: async (key, buffer) => ({ key, size: buffer.length, content_type: "video/mp4" }) },
+    checkpoint: async (_id, _token, value) => { checkpoints.push(value); return { accepted: true }; },
+    finish: async () => ({ status: "completed" })
+  });
+  assert.equal(result.status, "completed");
+  assert.equal(receivedJobId, null);
+  assert.ok(checkpoints.some(item => item.provider_job_id === "agnes-job-123"));
+});
+
+test("video worker resumes a persisted Agnes job without submitting a duplicate", async () => {
+  let generated = false;
+  let receivedJobId;
+  const task = {
+    ...baseTask, attempts: 2, provider: "agnes-video-2.5-flash",
+    provider_job_id: "agnes-job-existing", stage: "generating"
+  };
+  const result = await processClaimedVideoTask(task, {
+    provider: { name: "agnes-video-2.5-flash", generate: async ({ providerJobId }) => {
+      generated = true;
+      receivedJobId = providerJobId;
+      return { buffer: Buffer.from("mp4"), contentType: "video/mp4" };
+    } },
+    storage: { put: async (key, buffer) => ({ key, size: buffer.length, content_type: "video/mp4" }) },
+    checkpoint: async () => ({ accepted: true }),
+    finish: async () => ({ status: "completed" })
+  });
+  assert.equal(result.status, "completed");
+  assert.equal(generated, true);
+  assert.equal(receivedJobId, "agnes-job-existing");
+});
+
+
+test("selects the anonymous Wan 2.2 provider when explicitly configured", () => {
+  const provider = createDefaultVideoProvider({ VIDEO_PROVIDER: "niftyvid-wan" });
+  assert.equal(provider.name, "niftyvid-wan2-i2v");
+});
