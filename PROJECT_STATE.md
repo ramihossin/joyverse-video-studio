@@ -84,12 +84,16 @@ Deliver a reliable, Android-accessible AI video-production workflow that takes a
 - Production branch `main` and live service configuration have not been modified in this operation.
 - Documentation changes are in draft PR #53; they are not merged into `main`.
 
+## Additional Free-Provider Research
+- NiftyVid is an open-source no-signup image-to-video client for a public Wan 2.2 ZeroGPU Space. Its documented public path is capped at 4.5 seconds and uses a shared queue; it is image-to-video, not text-to-video. A one-shot GitHub Actions smoke workflow was added on an isolated experiment branch, but the available GitHub connector only exposes pull-request-triggered workflow runs; the push-triggered result/artifact could not be verified through the available query. Do not claim a generated clip.
+- The official Pika H3 Flex Hugging Face Space is listed as Running on Zero. An independent November 2026 test reports anonymous text-to-video with sound, but the downloaded file was not byte-verified. The connected Pika API quote for the same model is 5 credits; it was not run, and no credits were spent.
+
 ## Next Action
-1. Determine, through an authorized non-secret configuration check, whether the existing production bridge already has an Agnes API key and whether `VIDEO_PROVIDER=agnes` is configured. Do not expose the key or change production settings.
-2. If the free Flash key is already configured, run one 4-second text-to-video smoke test, persist the provider job ID, retrieve and validate the MP4, then test assembly.
-3. If no key is configured, the provider requires the account owner to create and add one; do not fabricate credentials or bypass authentication.
+1. Test the public Pika H3 Flex Space through a no-credit, no-signup route, if a supported direct API path can be verified; do not use the connected Pika API because it quotes 5 credits.
+2. Verify whether the isolated NiftyVid push smoke workflow produced an artifact using an API/tool that can list push-triggered runs; if not, use a read-only workflow query before deciding whether to retry generation.
+3. If no anonymous provider can be called and downloaded through the available tools, the remaining viable API path is Agnes Flash, which requires an account API key that is not currently configured.
 4. Implement a secure hosted-image URL path for Agnes reference mode, then restore image-to-video continuity tests.
-5. Continue the end-to-end and Android acceptance tests.
+5. Continue end-to-end MP4 assembly and Android acceptance tests.
 
 ## Previous Next Action
 1. Run the repository Node.js test workflow on the implementation PR and repair any failures.
