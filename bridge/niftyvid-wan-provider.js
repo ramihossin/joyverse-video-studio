@@ -5,8 +5,11 @@ const DEFAULT_NEGATIVE_PROMPT = "blurry, distorted, low quality, text, watermark
 function readSpaceUrl(value) {
   let url;
   try { url = new URL(value); } catch { throw new Error("NIFTYVID_SPACE_URL must be a valid HTTPS URL."); }
-  if (url.protocol !== "https:" || url.username || url.password || url.search || url.hash) {
-    throw new Error("NiftyVid Space URL must use HTTPS without credentials, query, or fragment.");
+  if (url.protocol !== "https:") {
+    throw new Error("NIFTYVID_SPACE_URL must be an HTTPS URL.");
+  }
+  if (url.username || url.password || url.search || url.hash) {
+    throw new Error("NIFTYVID_SPACE_URL must not include credentials, query, or fragment.");
   }
   return url.origin;
 }
