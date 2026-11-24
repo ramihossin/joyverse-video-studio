@@ -1,0 +1,99 @@
+name: Kokoro CPU TTS smoke test
+
+on:
+  push:
+    branches: [experiment/niftyvid-wan-smoke]
+    paths:
+      - ".github/workflows/kokoro-tts-smoke.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  generate-one-voiceover:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: experiment/niftyvid-wan-smoke
+
+      - name: Generate short English voiceover through public CPU Space
+        id: generate
+        continue-on-error: true
+        env:
+          SPACE: https://robinsaiworld-kokoro-tts-cpu.hf.space
+        run: |
+          set -euo pipefail
+          accepted="$(curl --fail --silent --show-error --max-time 120 \
+            -H "Content-Type: application/json" \
+            --data-binary '{"data":["Look! A little golden star is shining in the garden. Let us follow its light!","af_heart",1.0,false]}' \
+            "$SPACE/gradio_api/call/generate_first")"
+          event_id="$(printf '%s' "$accepted" | python3 -c 'import json,sys; print(json.load(sys.stdin)["event_id"])')"
+          curl --fail --silent --show-error --max-time 600 \
+            -H "Accept: text/event-stream" \
+            "$SPACE/gradio_api/call/generate_first/$event_id" > result.sse
+          python3 - <<'PY' > audio-url.txt
+          import json, os
+          raw=open("result.sse",encoding="utf-8").read()
+          for block in raw.replace("\r\n","\n").split("\n\n"):
+              event="message"; data=[]
+              for line in block.split("\n"):
+                  if line.startswith("event:"): event=line[6:].strip()
+                  elif line.startswith("data:"): data.append(line[5:].strip())
+              if event=="error": raise SystemExit("Kokoro TTS error: "+"\n".join(data)[:1000])
+              if event=="complete" and data:
+                  result=json.loads("\n".join(data))
+                  first=next((x for x in (result if isinstance(result,list) else [result]) if isinstance(x,dict) and (x.get("url") or x.get("path"))),None)
+                  if first and first.get("url"): print(first["url"])
+                  elif first and first.get("path"): print(os.environ["SPACE"]+"/gradio_api/file="+first["path"])
+                  else: raise SystemExit("Completed event did not contain an audio file.")
+                  break
+          else: raise SystemExit("SSE stream ended without a complete event.")
+          PY
+          curl --fail --location --silent --show-error --max-time 120 "$(cat audio-url.txt)" -o joyverse-kokoro-voiceover.wav
+          python3 - <<'PY'
+          import os
+          data=open("joyverse-kokoro-voiceover.wav","rb").read(44)
+          if data[:4] != b"RIFF" or data[8:12] != b"WAVE":
+              raise SystemExit("Kokoro output is not a WAV file.")
+          print("Verified WAV; bytes:",os.path.getsize("joyverse-kokoro-voiceover.wav"),"sample rate:",int.from_bytes(data[24:28],"little"))
+          PY
+
+      - name: Record TTS result
+        if: always()
+        env:
+          OUTCOME: ${{ steps.generate.outcome }}
+        run: |
+          if [ -s joyverse-kokoro-voiceover.wav ]; then
+            RESULT="PASS: public Kokoro CPU Space generated a valid WAV voiceover."
+            BYTES="$(wc -c < joyverse-kokoro-voiceover.wav)"
+          else
+            RESULT="FAIL: no verified WAV. Step outcome: ${OUTCOME:-unknown}. Inspect this workflow run's logs."
+            BYTES="0"
+          fi
+          {
+            echo "# Kokoro CPU TTS smoke test"
+            echo
+            echo "- Workflow run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+            echo "- Result: $RESULT"
+            echo "- WAV bytes: $BYTES"
+            echo "- Voice: af_heart"
+            echo "- No API key or paid credits used."
+          } > KOKORO_TTS_SMOKE_RESULT.md
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add KOKORO_TTS_SMOKE_RESULT.md
+          git commit -m "Record Kokoro CPU TTS smoke result" || true
+          git push origin HEAD:experiment/niftyvid-wan-smoke || true
+
+      - name: Upload generated voiceover
+        if: always() && hashFiles('joyverse-kokoro-voiceover.wav') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: joyverse-kokoro-tts-smoke
+          path: |
+            joyverse-kokoro-voiceover.wav
+            KOKORO_TTS_SMOKE_RESULT.md
+          if-no-files-found: error
+          retention-days: 7
