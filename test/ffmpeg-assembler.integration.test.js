@@ -22,16 +22,23 @@ test("real FFmpeg assembly produces a playable MP4 with a mixed audio stream", a
   assert.ok(ffmpeg,"ffmpeg-static binary must be available");
   const dir=await mkdtemp(join(tmpdir(),"joyverse-media-integration-"));
   try {
-    const input=join(dir,"synthetic-clip.mp4");
+    const inputA=join(dir,"synthetic-clip-a.mp4");
+    const inputB=join(dir,"synthetic-clip-b.mp4");
     await run(ffmpeg,[
       "-hide_banner","-loglevel","error","-y",
       "-f","lavfi","-i","color=c=blue:s=320x240:r=24:d=1",
-      "-an","-c:v","libx264","-pix_fmt","yuv420p","-movflags","+faststart",input
+      "-an","-c:v","libx264","-pix_fmt","yuv420p","-movflags","+faststart",inputA
     ]);
-    const clip=await readFile(input);
-    assert.ok(clip.length>1000);
-    const music=createProceduralMusicWav({durationSeconds:1.2,style:"cheerful"});
-    const final=await assembleMp4([clip],{
+    await run(ffmpeg,[
+      "-hide_banner","-loglevel","error","-y",
+      "-f","lavfi","-i","color=c=green:s=320x240:r=24:d=1",
+      "-an","-c:v","libx264","-pix_fmt","yuv420p","-movflags","+faststart",inputB
+    ]);
+    const clips=[await readFile(inputA),await readFile(inputB)];
+    assert.ok(clips.every(clip=>clip.length>1000));
+    const music=createProceduralMusicWav({durationSeconds:2.4,style:"cheerful"});
+    const final=await assembleMp4(clips,{
+      ffmpegPath:ffmpeg,
       audioTracks:[{buffer:music,extension:"wav",volume:0.25}]
     });
     assert.equal(final.toString("ascii",4,8),"ftyp");
