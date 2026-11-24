@@ -11,7 +11,6 @@ import { assembleMp4 } from "./ffmpeg-assembler.js";
 import { detectAudioFormat } from "./audio-format.js";
 import { createProceduralMusicWav } from "./procedural-music.js";
 import { createKokoroTtsProvider } from "./kokoro-tts-provider.js";
-import { createKokoroTtsProvider } from "./kokoro-tts-provider.js";
 import { createVideoWorker } from "./video-worker.js";
 import { verifyGithubActionsToken } from "./github-oidc.js";
 import { initializeBingControlStore, installBingControlRoutes, dispatchConfiguredBingCommand, recordBingDeviceResult, logBingCommandStatus } from "./bing-control.js";
