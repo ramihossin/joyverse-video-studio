@@ -5,6 +5,7 @@ on:
     branches: [experiment/niftyvid-wan-smoke]
     paths:
       - ".github/workflows/kokoro-tts-smoke.yml"
+      - "TTS_SMOKE_TRIGGER.md"
 
 permissions:
   contents: write
