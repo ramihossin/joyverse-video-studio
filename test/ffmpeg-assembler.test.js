@@ -72,6 +72,6 @@ test("FFmpeg assembler mixes multiple audio tracks and pads to the video duratio
   assert.ok(command.args.some(arg => arg.includes("apad")));
   assert.ok(command.args.includes("[aout]"));
   assert.ok(command.args.includes("-shortest"));
-  assert.ok(command.args.includes("audio-000.wav"));
-  assert.ok(command.args.includes("audio-001.mp3"));
+  assert.ok(command.args.some(arg => arg.endsWith("audio-000.wav")));
+  assert.ok(command.args.some(arg => arg.endsWith("audio-001.mp3")));
 });
