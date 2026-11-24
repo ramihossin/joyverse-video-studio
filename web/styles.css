@@ -172,3 +172,24 @@ footer a { color: #a5b4fc; }
   font: inherit;
 }
 .audio-tools .queue-summary { margin: 0; overflow-wrap: anywhere; }
+
+
+.music-toggle {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: #dbeafe;
+  font-size: 0.92rem;
+}
+.music-toggle input[type="checkbox"] {
+  position: static;
+  width: 18px;
+  height: 18px;
+  opacity: 1;
+  pointer-events: auto;
+  accent-color: #38bdf8;
+}
+.audio-tools select {
+  width: 100%;
+  min-height: 42px;
+}
