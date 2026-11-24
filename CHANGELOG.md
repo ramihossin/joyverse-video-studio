@@ -14,3 +14,6 @@
 - Added provider job ID persistence and resume support for asynchronous providers. After a worker restart, Agnes can poll the existing video ID instead of submitting a duplicate job.
 - Locked the Agnes adapter to `agnes-video-2.5-flash`; paid model IDs are rejected. Added mocked tests for text-to-video submission, MP4 validation, job resumption, and unsupported reference-image input.
 - No production deployment, environment-variable change, paid API request, or live video-generation request was made. GitHub Actions test execution is pending the implementation PR.
+
+- Local validation of the implementation branch: 8 isolated Node.js mocked tests passed (4 Agnes adapter tests, 4 worker persistence/recovery tests); `node --check` passed for both modules and both test modules. This is not a full repository test-suite run.
+- GitHub Actions workflow-run and combined commit-status queries returned no runs/statuses for PR #54; full repository CI remains unverified.
