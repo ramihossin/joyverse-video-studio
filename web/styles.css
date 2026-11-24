@@ -193,3 +193,19 @@ footer a { color: #a5b4fc; }
   width: 100%;
   min-height: 42px;
 }
+
+
+.audio-tools textarea {
+  width: 100%;
+  min-height: 84px;
+  resize: vertical;
+}
+.audio-tools select,
+.audio-tools textarea {
+  border: 1px solid #3a4968;
+  border-radius: 9px;
+  background: #0b1220;
+  color: #e2e8f0;
+  padding: 10px 12px;
+  font: inherit;
+}
