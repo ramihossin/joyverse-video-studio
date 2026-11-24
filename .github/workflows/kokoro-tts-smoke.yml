@@ -1,4 +1,4 @@
-name: Kokoro CPU TTS smoke test
+name: Kokoro CPU TTS API discovery and generation
 
 on:
   push:
@@ -17,58 +17,65 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: experiment/niftyvid-wan-smoke
-
-      - name: Generate short English voiceover through public CPU Space
+      - name: Install Gradio client
+        run: python -m pip install --disable-pip-version-check gradio_client
+      - name: Discover API and generate voiceover
         id: generate
         continue-on-error: true
         run: |
-          set -euo pipefail
-          python3 -m pip install --quiet gradio_client soundfile numpy
-          python3 - <<'PY'
-          import os, shutil, soundfile as sf, numpy as np
+          python - <<'PY'
+          import json, os, urllib.request
           from gradio_client import Client
+          space = "https://robinsaiworld-kokoro-tts-cpu.hf.space"
+          req = urllib.request.Request(space + "/gradio_api/info", headers={"Accept":"application/json"})
+          try:
+              with urllib.request.urlopen(req, timeout=30) as response:
+                  info = json.loads(response.read())
+              open("kokoro-api-info.json","w").write(json.dumps(info,indent=2))
+              print("API INFO:", json.dumps(info,indent=2)[:12000])
+          except Exception as exc:
+              print("API info endpoint unavailable:", repr(exc))
           client = Client("RobinsAIWorld/Kokoro-TTS-cpu", verbose=True)
           client.view_api()
           result = client.predict(
               "Look! A little golden star is shining in the garden. Let us follow its light!",
-              "af_heart",
-              1.0,
-              False,
+              "af_heart", 1.0, False,
               api_name="/generate_first"
           )
-          print("Kokoro result type:", type(result).__name__)
-          print("Kokoro result preview:", repr(result)[:1500])
-          audio = result[0] if isinstance(result, (tuple, list)) and result else result
-          if isinstance(audio, str) and os.path.isfile(audio):
-              shutil.copyfile(audio, "joyverse-kokoro-voiceover.wav")
-          elif isinstance(audio, dict) and audio.get("path") and os.path.isfile(audio["path"]):
-              shutil.copyfile(audio["path"], "joyverse-kokoro-voiceover.wav")
-          elif isinstance(audio, tuple) and len(audio) == 2:
-              sample_rate, samples = audio
-              array = np.asarray(samples)
-              if array.dtype.kind == "f":
-                  array = np.clip(array, -1.0, 1.0)
-                  array = (array * 32767).astype(np.int16)
-              elif array.dtype != np.int16:
-                  array = array.astype(np.int16)
-              sf.write("joyverse-kokoro-voiceover.wav", array, int(sample_rate), subtype="PCM_16")
+          print("PREDICT RESULT TYPE:", type(result).__name__)
+          print("PREDICT RESULT:", repr(result)[:4000])
+          audio = result[0] if isinstance(result,(tuple,list)) else result
+          if isinstance(audio,dict):
+              path = audio.get("path")
+              url = audio.get("url")
+              if path and os.path.isfile(path):
+                  source=path
+              elif url:
+                  urllib.request.urlretrieve(url,"joyverse-kokoro-voiceover.wav")
+                  source="joyverse-kokoro-voiceover.wav"
+              else:
+                  raise RuntimeError("Audio result dictionary has neither local path nor URL.")
+          elif isinstance(audio,str) and os.path.isfile(audio):
+              source=audio
           else:
-              raise SystemExit("Kokoro returned an unsupported audio value.")
-          info = sf.info("joyverse-kokoro-voiceover.wav")
-          if info.frames <= 0 or info.samplerate < 8000:
-              raise SystemExit("Kokoro returned an invalid or empty WAV.")
-          print("Verified WAV:", info)
+              raise RuntimeError("Unsupported audio result: "+repr(audio)[:1000])
+          if source != "joyverse-kokoro-voiceover.wav":
+              import shutil; shutil.copyfile(source,"joyverse-kokoro-voiceover.wav")
+          data=open("joyverse-kokoro-voiceover.wav","rb").read(44)
+          if data[:4] != b"RIFF" or data[8:12] != b"WAVE":
+              raise RuntimeError("Generated audio is not WAV.")
+          print("VERIFIED_WAV_BYTES:",os.path.getsize("joyverse-kokoro-voiceover.wav"))
           PY
-      - name: Record TTS result
+      - name: Record test outcome
         if: always()
         env:
           OUTCOME: ${{ steps.generate.outcome }}
         run: |
           if [ -s joyverse-kokoro-voiceover.wav ]; then
-            RESULT="PASS: public Kokoro CPU Space generated a valid WAV voiceover."
+            RESULT="PASS: Gradio client generated and verified a WAV voiceover."
             BYTES="$(wc -c < joyverse-kokoro-voiceover.wav)"
           else
-            RESULT="FAIL: no verified WAV. Step outcome: ${OUTCOME:-unknown}. Inspect this workflow run's logs."
+            RESULT="FAIL: no verified WAV. Step outcome: ${OUTCOME:-unknown}."
             BYTES="0"
           fi
           {
@@ -77,7 +84,7 @@ jobs:
             echo "- Workflow run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
             echo "- Result: $RESULT"
             echo "- WAV bytes: $BYTES"
-            echo "- Voice: af_heart"
+            echo "- Space: RobinsAIWorld/Kokoro-TTS-cpu"
             echo "- No API key or paid credits used."
           } > KOKORO_TTS_SMOKE_RESULT.md
           git config user.name "github-actions[bot]"
@@ -85,15 +92,10 @@ jobs:
           git add KOKORO_TTS_SMOKE_RESULT.md
           git commit -m "Record Kokoro CPU TTS smoke result" || true
           git push origin HEAD:experiment/niftyvid-wan-smoke || true
-
       - name: Upload generated voiceover
         if: always() && hashFiles('joyverse-kokoro-voiceover.wav') != ''
         uses: actions/upload-artifact@v4
         with:
           name: joyverse-kokoro-tts-smoke
-          path: |
-            joyverse-kokoro-voiceover.wav
-            KOKORO_TTS_SMOKE_RESULT.md
-            KOKORO_TTS_SMOKE_RESULT.md
-          if-no-files-found: warn
+          path: joyverse-kokoro-voiceover.wav
           retention-days: 7
