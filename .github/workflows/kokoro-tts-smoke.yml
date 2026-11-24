@@ -30,28 +30,45 @@ jobs:
             --data-binary '{"data":["Look! A little golden star is shining in the garden. Let us follow its light!","af_heart",1.0,false]}' \
             "$SPACE/gradio_api/call/generate_first")"
           event_id="$(printf '%s' "$accepted" | python3 -c 'import json,sys; print(json.load(sys.stdin)["event_id"])')"
+          echo "Kokoro event id: $event_id"
           curl --fail --silent --show-error --max-time 600 \
             -H "Accept: text/event-stream" \
             "$SPACE/gradio_api/call/generate_first/$event_id" > result.sse
-          python3 - <<'PY' > audio-url.txt
+          python3 - <<'PY'
           import json, os
+          from urllib.parse import urljoin, urlparse
+          base=os.environ["SPACE"].rstrip("/")+"/"
           raw=open("result.sse",encoding="utf-8").read()
-          for block in raw.replace("\r\n","\n").split("\n\n"):
+          for block in raw.replace("\\r\\n","\\n").split("\\n\\n"):
               event="message"; data=[]
-              for line in block.split("\n"):
+              for line in block.split("\\n"):
                   if line.startswith("event:"): event=line[6:].strip()
                   elif line.startswith("data:"): data.append(line[5:].strip())
-              if event=="error": raise SystemExit("Kokoro TTS error: "+"\n".join(data)[:1000])
+              if event=="error": raise SystemExit("Kokoro TTS error: "+"\\n".join(data)[:1000])
               if event=="complete" and data:
-                  result=json.loads("\n".join(data))
-                  first=next((x for x in (result if isinstance(result,list) else [result]) if isinstance(x,dict) and (x.get("url") or x.get("path"))),None)
-                  if first and first.get("url"): print(first["url"])
-                  elif first and first.get("path"): print(os.environ["SPACE"]+"/gradio_api/file="+first["path"])
-                  else: raise SystemExit("Completed event did not contain an audio file.")
+                  result=json.loads("\\n".join(data))
+                  candidates=result if isinstance(result,list) else [result]
+                  file=next((x for x in candidates if isinstance(x,dict) and (x.get("path") or x.get("url"))),None)
+                  if not file: raise SystemExit("Completed event did not contain an audio file.")
+                  path=file.get("path")
+                  url=file.get("url")
+                  primary=urljoin(base,url) if isinstance(url,str) and url else ""
+                  if primary and urlparse(primary).hostname in ("127.0.0.1","localhost","0.0.0.0"):
+                      primary=""
+                  if not primary and path:
+                      primary=urljoin(base,"file="+path.lstrip("/"))
+                  fallback=urljoin(base,"gradio_api/file="+path.lstrip("/")) if path else ""
+                  open("audio-url.txt","w").write(primary)
+                  open("audio-url-fallback.txt","w").write(fallback)
+                  print("Primary audio URL:",primary)
+                  print("Fallback audio URL:",fallback)
                   break
           else: raise SystemExit("SSE stream ended without a complete event.")
           PY
-          curl --fail --location --silent --show-error --max-time 120 "$(cat audio-url.txt)" -o joyverse-kokoro-voiceover.wav
+          if ! curl --fail --location --silent --show-error --max-time 120 "$(cat audio-url.txt)" -o joyverse-kokoro-voiceover.wav; then
+            echo "Primary audio URL failed; trying Gradio API file endpoint."
+            curl --fail --location --silent --show-error --max-time 120 "$(cat audio-url-fallback.txt)" -o joyverse-kokoro-voiceover.wav
+          fi
           python3 - <<'PY'
           import os
           data=open("joyverse-kokoro-voiceover.wav","rb").read(44)
@@ -95,5 +112,8 @@ jobs:
           path: |
             joyverse-kokoro-voiceover.wav
             KOKORO_TTS_SMOKE_RESULT.md
-          if-no-files-found: error
+            result.sse
+            audio-url.txt
+            audio-url-fallback.txt
+          if-no-files-found: warn
           retention-days: 7
