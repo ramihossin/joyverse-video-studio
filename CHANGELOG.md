@@ -37,3 +37,9 @@
 - Added a Kokoro TTS provider adapter, authenticated voiceover endpoint, and Studio controls for short English narration generation. Voiceover output is staged in object storage for final mixing.
 - Diagnosed the first Kokoro HTTP smoke failure: the assumed Gradio REST route returned HTTP 404. The smoke workflow now uses the official Gradio Python client to discover the live API and invoke the named endpoint. The updated workflow run could not be confirmed with the available GitHub Actions query, so no live voiceover is claimed.
 - Latest audio/TTS implementation has not yet passed the full CI suite or live end-to-end verification. No production deployment, secret changes, or paid generation requests were made.
+
+
+- Latest implementation PR #54 CI completed successfully: Node.js 81/81, Bridge 81/81, and web browser smoke tests 9/9. Server/provider syntax checks also passed.
+- Confirmed Kokoro provider unit tests, audio-format tests, and procedural music tests were included in the passing Node/Bridge suites.
+- PR #54 is open and GitHub reports it mergeable; no merge or production deployment was performed.
+- Live Kokoro TTS remains unverified: the first assumed REST route returned HTTP 404; the follow-up Gradio-client discovery workflow has not produced a retrievable run result. Mocked provider tests are not presented as proof of live synthesis.
