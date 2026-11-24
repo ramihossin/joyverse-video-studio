@@ -1,7 +1,7 @@
 # PROJECT_STATE — JoyVerse Video Studio
 
-Last updated: 2026-11-25
-Authoritative branch: `ops/project-state-baseline-2026-11-25`
+Last updated: 2026-11-25 (provider recovery implementation)
+Authoritative branch: `fix/agnes-resumable-video-jobs`
 Baseline branch: `main`
 Repository: `ramihossin/joyverse-video-studio`
 
@@ -41,6 +41,10 @@ Deliver a reliable, Android-accessible AI video-production workflow that takes a
 - Main production branch remains `main`; this state baseline is isolated in the operations branch.
 
 ## Completed
+- Added durable provider-job-ID checkpointing to the worker contract so asynchronous providers can resume polling after a worker restart.
+- Updated the Agnes Flash adapter to persist and reuse its asynchronous `video_id`, and to avoid duplicate submission when a prior job ID exists.
+- Restricted the Agnes adapter to the known free Flash model identifier; paid model identifiers are rejected.
+- Added deterministic mocked tests for Agnes text-to-video request schema, MP4 response validation, persisted-job resumption, and safe rejection of unsupported image input.
 - Repository and default branch inspected through the connected GitHub integration.
 - README and implementation inspected for frontend, bridge, worker, provider, task store, and MP4 assembler.
 - Isolated branch `ops/project-state-baseline-2026-11-25` created from `main`.
@@ -49,6 +53,8 @@ Deliver a reliable, Android-accessible AI video-production workflow that takes a
 - A draft documentation PR was opened: #53.
 
 ## Verified
+- Source-level review confirms the Agnes 2.5 Flash adapter is already present and can be selected explicitly with `VIDEO_PROVIDER=agnes`; LTX remains the default unless configured otherwise.
+- Current public API documentation describes the Flash video model as a limited-time free promotion, 720P only, with queue congestion possible; this is not a permanent free-service guarantee.
 - Live public Studio page loaded in browser automation; visible title: `JoyVerse Scene Studio`; no visible page error.
 - Live bridge health endpoint returned HTTP 200 and JSON `ok: true`; service identified as `joyverse-macrodroid-bridge`.
 - Public Lightricks/LTX-2.5 Space loaded and displayed Running status.
@@ -57,6 +63,7 @@ Deliver a reliable, Android-accessible AI video-production workflow that takes a
 - The public bridge required a cold start before health returned 200.
 
 ## Failed
+- Agnes image-to-video was using the obsolete `img2video` mode and a base64 `first_frame` payload inconsistent with the current documented 2.5-series schema. The adapter now fails clearly before sending that unsupported request; reference-image support still needs a hosted-image URL flow.
 - Previous prototype-only approach did not meet the actual project goal; it was not a real AI video-generation system.
 - Ordinary web-open checks of the public health endpoint returned an internal access error; browser automation succeeded instead.
 - The LTX-2.5 public Space generation smoke test failed because the free ZeroGPU run quota was exhausted. No output video was created.
@@ -73,11 +80,18 @@ Deliver a reliable, Android-accessible AI video-production workflow that takes a
 - Advertised-free providers Flyne and AIFree both required Cloudflare human verification at generation time in the tested browser; neither is currently suitable for unattended automation.
 - Flyne's public free form was reachable and advertised 5-second 480p outputs with no signup; the single smoke attempt stopped at a Cloudflare Turnstile human-verification prompt. No challenge was bypassed and no clip was generated.
 - AIFree's public Wan 2.2 form loaded without login and advertised approximately 5-second 480p silent outputs subject to a daily pool; one generation attempt stopped at a Cloudflare human-verification gate. No challenge was bypassed and no clip was generated.
-- Generation, durable clip retrieval, multi-clip MP4 assembly, final MP4 playback, and Android-device behavior have not yet passed an end-to-end acceptance test.
+- Generation, durable clip retrieval, multi-clip MP4 assembly, final MP4 playback, and Android-device behavior have not yet passed an end-to-end acceptance test. The new code tests have been added but have not yet been run by GitHub Actions.
 - Production branch `main` and live service configuration have not been modified in this operation.
 - Documentation changes are in draft PR #53; they are not merged into `main`.
 
 ## Next Action
+1. Run the repository Node.js test workflow on the implementation PR and repair any failures.
+2. Check whether the existing deployment has an authorized Agnes free Flash key configured without reading or exposing secret values; do not change production environment settings or submit a live generation until the selected model and zero-cost route are confirmed.
+3. If Agnes is available, run one 4-second text-to-video smoke test, persist the provider job ID, retrieve and validate the MP4, then test assembly.
+4. Implement a secure hosted-image URL path for Agnes reference mode, then restore image-to-video continuity tests.
+5. Continue the end-to-end and Android acceptance tests.
+
+## Previous Next Action
 1. Inspect the full source and deployment history for the current task queue, provider selection, and any already-supported alternate free route.
 2. Determine whether the LTX ZeroGPU limit is anonymous-session, account, or shared-space quota without repeatedly submitting jobs.
 3. Evaluate alternate public free providers against actual quota, terms, API accessibility, and integration cost; do not claim unlimited access or bypass verification.
