@@ -31,6 +31,8 @@ jobs:
               raise SystemExit("Reference frame is not a PNG.")
           print("Reference frame downloaded:", os.path.getsize("joyverse-dragon-reference.png"), "bytes")
           PY
+          ffmpeg -y -loglevel error -i joyverse-dragon-reference.png -vf "scale=512:288" -frames:v 1 joyverse-dragon-reference-small.png
+          file joyverse-dragon-reference-small.png
 
       - name: Submit one Wan 2.2 image-to-video job
         id: generate
@@ -40,15 +42,15 @@ jobs:
         run: |
           set -euo pipefail
           upload="$(curl --fail --silent --show-error --max-time 120 \
-            -F "files=@joyverse-dragon-reference.png;filename=joyverse-dragon-reference.png" \
+            -F "files=@joyverse-dragon-reference-small.png;filename=joyverse-dragon-reference-small.png" \
             "$SPACE/gradio_api/upload")"
           image_path="$(printf '%s' "$upload" | python3 -c 'import json,sys; print(json.load(sys.stdin)[0])')"
           export IMAGE_PATH="$image_path"
           python3 - <<'PY' > request.json
           import json, os
           base=os.environ["SPACE"]; path=os.environ["IMAGE_PATH"]
-          image={"path":path,"url":base+"/gradio_api/file="+path,"orig_name":"joyverse-dragon-reference.png","size":None,"mime_type":"image/png","meta":{"_type":"gradio.FileData"}}
-          data=[image,None,"The small turquoise dragon gently flaps its golden wings, blinks its large amber eyes and slowly floats forward above the magical garden; preserve the reference character design and proportions, smooth camera push-in, polished cheerful 3D animated film look, no extra characters, no text.",6,"blurry, distorted, character redesign, text, watermark",3.5,1,1,77,False,6,"UniPCMultistep",3.0,16,False,True]
+          image={"path":path,"url":base+"/gradio_api/file="+path,"orig_name":"joyverse-dragon-reference-small.png","size":None,"mime_type":"image/png","meta":{"_type":"gradio.FileData"}}
+          data=[image,None,"A cute turquoise dragon flaps its golden wings and slowly floats forward above a magical garden. Keep the same character design. Bright cheerful 3D animation, smooth camera movement, no text.",6,"blurry, distorted, text, watermark",3.5,1,1,77,True,6,"UniPCMultistep",3.0,16,False,True]
           print(json.dumps({"data":data}))
           PY
           accepted="$(curl --fail --silent --show-error --max-time 120 \
@@ -103,6 +105,7 @@ jobs:
             echo "- Workflow run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
             echo "- Result: $RESULT"
             echo "- MP4 bytes: $BYTES"
+            echo "- Input frame: downscaled to 512x288 before upload"
             echo "- Requested duration: 3.5 seconds"
             echo "- No API key or paid generation credits used."
           } > NIFTYVID_ZENO_SMOKE_RESULT.md
