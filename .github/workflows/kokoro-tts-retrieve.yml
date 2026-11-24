@@ -1,0 +1,69 @@
+name: Retrieve existing Kokoro voiceover result
+
+on:
+  push:
+    branches: [experiment/niftyvid-wan-smoke]
+    paths:
+      - ".github/workflows/kokoro-tts-retrieve.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  retrieve-existing-audio:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: experiment/niftyvid-wan-smoke
+
+      - name: Download the audio file returned by the successful TTS completion event
+        id: retrieve
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+          curl --fail --location --silent --show-error --max-time 120 \
+            "https://robinsaiworld-kokoro-tts-cpu.hf.space/gradio_a/gradio_api/file=/tmp/gradio/90f779f4defcd0c089231179e8dde8f2edebda9995dd72092878af8cfb23ceb7/audio.wav" \
+            -o joyverse-kokoro-voiceover.wav
+          python3 - <<'PY'
+          import os
+          data=open("joyverse-kokoro-voiceover.wav","rb").read(44)
+          if data[:4] != b"RIFF" or data[8:12] != b"WAVE":
+              raise SystemExit("Retrieved file is not WAV.")
+          print("Verified WAV:",os.path.getsize("joyverse-kokoro-voiceover.wav"),"bytes")
+          PY
+
+      - name: Record retrieval result
+        if: always()
+        env:
+          OUTCOME: ${{ steps.retrieve.outcome }}
+        run: |
+          if [ -s joyverse-kokoro-voiceover.wav ]; then
+            RESULT="PASS: retrieved the audio output from the existing Kokoro completion event."
+            BYTES="$(wc -c < joyverse-kokoro-voiceover.wav)"
+          else
+            RESULT="FAIL: existing Space file URL was unavailable. Step outcome: ${OUTCOME:-unknown}."
+            BYTES="0"
+          fi
+          {
+            echo "# Kokoro TTS audio retrieval"
+            echo
+            echo "- Workflow run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+            echo "- Result: $RESULT"
+            echo "- WAV bytes: $BYTES"
+            echo "- No new TTS generation request was made."
+          } > KOKORO_TTS_RETRIEVAL_RESULT.md
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add KOKORO_TTS_RETRIEVAL_RESULT.md
+          git commit -m "Record Kokoro audio retrieval result" || true
+          git push origin HEAD:experiment/niftyvid-wan-smoke || true
+
+      - name: Upload retrieved WAV
+        if: always() && hashFiles('joyverse-kokoro-voiceover.wav') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: joyverse-kokoro-tts-retrieved-audio
+          path: joyverse-kokoro-voiceover.wav
+          retention-days: 7
