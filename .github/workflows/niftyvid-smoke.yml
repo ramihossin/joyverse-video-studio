@@ -1,0 +1,150 @@
+name: NiftyVid anonymous Wan smoke test
+
+on:
+  push:
+    branches: [experiment/niftyvid-wan-smoke]
+    paths:
+      - ".github/workflows/niftyvid-smoke.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  generate-one-diagnostic-clip:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Create a synthetic test frame
+        run: |
+          python3 - <<'PY'
+          import math, struct, zlib
+          w = h = 512
+          vertices = []
+          cx = cy = 256
+          for i in range(10):
+              angle = -math.pi / 2 + i * math.pi / 5
+              radius = 150 if i % 2 == 0 else 65
+              vertices.append((cx + math.cos(angle) * radius, cy + math.sin(angle) * radius))
+          def inside_star(x, y):
+              inside = False
+              j = len(vertices) - 1
+              for i, (xi, yi) in enumerate(vertices):
+                  xj, yj = vertices[j]
+                  if ((yi > y) != (yj > y)) and (x < (xj - xi) * (y - yi) / ((yj - yi) or 1e-9) + xi):
+                      inside = not inside
+                  j = i
+              return inside
+          raw = bytearray()
+          for y in range(h):
+              raw.append(0)
+              for x in range(w):
+                  t = y / (h - 1)
+                  r = int(22 + 42 * t + 12 * math.sin(x / 48))
+                  g = int(30 + 45 * (1 - t) + 10 * math.cos(x / 52))
+                  b = int(88 + 100 * (1 - t) + 16 * math.sin((x + y) / 60))
+                  if inside_star(x, y):
+                      r, g, b = 255, 205 + (x % 35), 54
+                  raw.extend((max(0,min(255,r)), max(0,min(255,g)), max(0,min(255,b))))
+          def chunk(kind, data):
+              return struct.pack(">I", len(data)) + kind + data + struct.pack(">I", zlib.crc32(kind + data) & 0xffffffff)
+          png = b"\x89PNG\r\n\x1a\n"
+          png += chunk(b"IHDR", struct.pack(">2I5B", w, h, 8, 2, 0, 0, 0))
+          png += chunk(b"IDAT", zlib.compress(bytes(raw), 6))
+          png += chunk(b"IEND", b"")
+          open("joyverse-smoke-frame.png", "wb").write(png)
+          PY
+
+      - name: Upload frame and submit one Wan 2.2 job
+        id: submit
+        env:
+          SPACE: https://cbensimon-wan2-2-fp8da-aoti-preview2.hf.space
+        run: |
+          set -euo pipefail
+          upload="$(curl --fail --silent --show-error --max-time 90 \
+            -F "files=@joyverse-smoke-frame.png;filename=joyverse-smoke-frame.png" \
+            "$SPACE/gradio_api/upload")"
+          image_path="$(printf '%s' "$upload" | python3 -c 'import json,sys; x=json.load(sys.stdin); print(x[0])')"
+          export IMAGE_PATH="$image_path"
+          python3 - <<'PY' > request.json
+          import json, os
+          image_path = os.environ["IMAGE_PATH"]
+          base = os.environ["SPACE"]
+          image = {
+              "path": image_path,
+              "url": base + "/gradio_api/file=" + image_path,
+              "orig_name": "joyverse-smoke-frame.png",
+              "size": None,
+              "mime_type": "image/png",
+              "meta": {"_type": "gradio.FileData"},
+          }
+          data = [
+              image, None,
+              "A glowing golden star gently rotates and sparkles above a colorful magical garden, slow smooth camera push-in, polished cheerful 3D animated film look, soft light, no text, no people.",
+              6,
+              "blurry, distorted, extra limbs, text, watermark",
+              3.5, 1, 1, 42, True, 6, "UniPCMultistep", 3.0, 16, False, True
+          ]
+          print(json.dumps({"data": data}))
+          PY
+          accepted="$(curl --fail --silent --show-error --max-time 90 \
+            -H "Content-Type: application/json" \
+            --data-binary @request.json \
+            "$SPACE/gradio_api/call/generate_video")"
+          event_id="$(printf '%s' "$accepted" | python3 -c 'import json,sys; print(json.load(sys.stdin)["event_id"])')"
+          echo "event_id=$event_id" >> "$GITHUB_OUTPUT"
+
+      - name: Stream result and download MP4
+        env:
+          SPACE: https://cbensimon-wan2-2-fp8da-aoti-preview2.hf.space
+          EVENT_ID: ${{ steps.submit.outputs.event_id }}
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --max-time 600 \
+            -H "Accept: text/event-stream" \
+            "$SPACE/gradio_api/call/generate_video/$EVENT_ID" > result.sse
+          python3 - <<'PY' > video-url.txt
+          import json, os
+          raw = open("result.sse", encoding="utf-8").read()
+          for block in raw.replace("\r\n", "\n").split("\n\n"):
+              event = "message"
+              data = []
+              for line in block.split("\n"):
+                  if line.startswith("event:"):
+                      event = line[6:].strip()
+                  elif line.startswith("data:"):
+                      data.append(line[5:].strip())
+              if event == "error":
+                  raise SystemExit("Upstream generation error: " + "\n".join(data)[:1000])
+              if event == "complete" and data:
+                  result = json.loads("\n".join(data))
+                  first = result[0] if isinstance(result, list) and result else None
+                  if isinstance(first, dict) and first.get("url"):
+                      print(first["url"])
+                  elif isinstance(first, dict) and first.get("path"):
+                      print(os.environ["SPACE"] + "/gradio_api/file=" + first["path"])
+                  elif isinstance(first, str):
+                      print(os.environ["SPACE"] + "/gradio_api/file=" + first)
+                  else:
+                      raise SystemExit("Completed event did not contain a video file.")
+                  break
+          else:
+              raise SystemExit("SSE stream ended without a complete event.")
+          PY
+          video_url="$(cat video-url.txt)"
+          curl --fail --location --silent --show-error --max-time 120 "$video_url" -o joyverse-wan-smoke.mp4
+          python3 - <<'PY'
+          data = open("joyverse-wan-smoke.mp4", "rb").read(16)
+          if len(data) < 12 or data[4:8] != b"ftyp":
+              raise SystemExit("Provider output is not a valid MP4 container.")
+          print("Verified MP4 header; bytes:", __import__("os").path.getsize("joyverse-wan-smoke.mp4"))
+          PY
+
+      - name: Upload diagnostic artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: joyverse-wan2-anonymous-smoke
+          path: |
+            joyverse-wan-smoke.mp4
+            joyverse-smoke-frame.png
+          if-no-files-found: error
+          retention-days: 7
