@@ -4,6 +4,7 @@ import {
 } from "./task-store.js";
 import { createLtxGradioVideoProvider } from "./ltx-gradio-video-provider.js";
 import { createAgnesVideoProvider } from "./agnes-video-provider.js";
+import { createNiftyVidWanProvider } from "./niftyvid-wan-provider.js";
 
 export function createDefaultVideoProvider(env = process.env) {
   const selected = String(env.VIDEO_PROVIDER || "ltx").toLowerCase();
@@ -11,8 +12,11 @@ export function createDefaultVideoProvider(env = process.env) {
     apiKey: env.AGNES_API_KEY,
     model: env.AGNES_VIDEO_MODEL || "agnes-video-2.5-flash"
   });
+  if (selected === "niftyvid-wan") return createNiftyVidWanProvider({
+    spaceUrl: env.NIFTYVID_SPACE_URL || undefined
+  });
   if (selected === "ltx") return createLtxGradioVideoProvider();
-  throw new Error("VIDEO_PROVIDER must be either agnes or ltx.");
+  throw new Error("VIDEO_PROVIDER must be one of agnes, ltx, or niftyvid-wan.");
 }
 import { createObjectStorage } from "./object-storage.js";
 
