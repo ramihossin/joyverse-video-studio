@@ -27,10 +27,7 @@ const voiceoverTextInput = $("voiceover-text");
 const voiceoverVoiceInput = $("voiceover-voice");
 const generateVoiceoverButton = $("generate-voiceover");
 const voiceoverStatus = $("voiceover-status");
-const voiceoverText = $("voiceover-text");
-const voiceoverVoice = $("voiceover-voice");
-const voiceoverSpeed = $("voiceover-speed");
-const generateVoiceoverButton = $("generate-voiceover");
+const voiceoverSpeedInput = $("voiceover-speed");
 const resultBox = $("result-box");
 const resultVideo = $("result-video");
 const downloadLink = $("download");
@@ -364,32 +361,6 @@ async function uploadAudioFiles() {
   } finally { uploadAudioButton.disabled = false; renderAudioSummary(); }
 }
 async function generateVoiceover() {
-  const text = voiceoverText?.value?.trim() || "";
-  if (!text) return setStatus("اكتب نص التعليق الصوتي أولاً.");
-  if (text.length > 500) return setStatus("الحد الأقصى لنص التعليق الصوتي 500 حرف.");
-  if (audioAssets.length >= 4) return setStatus("وصلت إلى الحد الأقصى لأربعة مسارات صوتية.");
-  generateVoiceoverButton.disabled = true;
-  try {
-    setStatus("يرسل النص إلى محرك Kokoro المجاني لتوليد التعليق الصوتي…", true);
-    const response = await apiRequest("/api/hermes/voiceover", {
-      method: "POST",
-      json: { text, voice: voiceoverVoice.value, speed: Number(voiceoverSpeed.value) }
-    });
-    const data = await response.json();
-    audioAssets.push({
-      key: data.audio_key,
-      name: "تعليق صوتي · " + voiceoverVoice.value,
-      contentType: data.content_type,
-      bytes: data.bytes
-    });
-    localStorage.setItem(AUDIO_KEYS_STORAGE, JSON.stringify(audioAssets));
-    renderAudioSummary();
-    setStatus("تم توليد التعليق الصوتي وحفظه. أصبح ضمن المسارات التي ستُمزج عند دمج الفيديو.");
-  } catch (error) {
-    setStatus("تعذّر توليد التعليق الصوتي: " + error.message);
-  } finally { generateVoiceoverButton.disabled = false; }
-}
-async function generateVoiceover() {
   const narration = voiceoverTextInput?.value.trim() || "";
   const voice = voiceoverVoiceInput?.value || "af_heart";
   if (!narration) return setStatus("اكتب نص التعليق الصوتي أولاً.");
@@ -400,7 +371,7 @@ async function generateVoiceover() {
   try {
     const response = await apiRequest("/api/hermes/voiceover", {
       method: "POST",
-      json: { text: narration, voice, speed: 1.0 }
+      json: { text: narration, voice, speed: Number(voiceoverSpeedInput?.value || 1.0) }
     });
     const data = await response.json();
     audioAssets.push({
@@ -461,7 +432,6 @@ $("test-connection").addEventListener("click", async () => {
 });
 assembleButton.addEventListener("click", assembleCompletedScenes);
 uploadAudioButton?.addEventListener("click", uploadAudioFiles);
-generateVoiceoverButton?.addEventListener("click", generateVoiceover);
 generateVoiceoverButton?.addEventListener("click", generateVoiceover);
 renderAudioSummary();
 startButton.addEventListener("click", runQueue);
