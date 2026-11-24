@@ -95,6 +95,13 @@
           <input id="audio-files" type="file" accept="audio/wav,audio/x-wav,audio/mpeg,audio/mp4,audio/aac,audio/ogg,audio/flac" multiple>
           <p id="audio-summary" class="queue-summary">يمكن إضافة تعليق صوتي أو موسيقى أو مؤثرات (حتى 4 ملفات، 25 ميغابايت لكل ملف).</p>
           <button id="upload-audio" class="secondary" type="button">رفع المسارات الصوتية</button>
+          <label class="music-toggle"><input id="background-music" type="checkbox"> إضافة موسيقى خلفية أصلية مولدة برمجيًا دون API أو رصيد</label>
+          <label class="field-title" for="music-style">نمط الموسيقى</label>
+          <select id="music-style">
+            <option value="cheerful">مرح ومشرق</option>
+            <option value="adventure">مغامرة</option>
+            <option value="gentle">هادئ ولطيف</option>
+          </select>
         </div>
       </div>
       <p id="queue-summary" class="queue-summary">لا توجد مشاهد في القائمة بعد.</p>
