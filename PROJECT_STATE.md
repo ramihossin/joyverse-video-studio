@@ -85,6 +85,13 @@ Deliver a reliable, Android-accessible AI video-production workflow that takes a
 - Documentation changes are in draft PR #53; they are not merged into `main`.
 
 ## Next Action
+1. Resolve why GitHub Actions has not reported a pull-request test run, or obtain a full `npm test` execution in an environment with the repository dependencies installed.
+2. Check whether the existing deployment has an authorized Agnes free Flash key configured without reading or exposing secret values; do not change production environment settings or submit a live generation until the selected model and zero-cost route are confirmed.
+3. If Agnes is available, run one 4-second text-to-video smoke test, persist the provider job ID, retrieve and validate the MP4, then test assembly.
+4. Implement a secure hosted-image URL path for Agnes reference mode, then restore image-to-video continuity tests.
+5. Continue the end-to-end and Android acceptance tests.
+
+## Previous Next Action
 1. Run the repository Node.js test workflow on the implementation PR and repair any failures.
 2. Check whether the existing deployment has an authorized Agnes free Flash key configured without reading or exposing secret values; do not change production environment settings or submit a live generation until the selected model and zero-cost route are confirmed.
 3. If Agnes is available, run one 4-second text-to-video smoke test, persist the provider job ID, retrieve and validate the MP4, then test assembly.
