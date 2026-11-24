@@ -90,6 +90,12 @@
         <button id="stop-queue" class="secondary" type="button" disabled>إيقاف المتابعة فقط</button>
         <button id="clear-queue" class="secondary" type="button">مسح المكتمل</button>
         <button id="assemble-scenes" class="secondary" type="button" disabled>دمج المشاهد المكتملة</button>
+        <div class="audio-tools">
+          <label class="field-title" for="audio-files">مسارات صوتية اختيارية</label>
+          <input id="audio-files" type="file" accept="audio/wav,audio/x-wav,audio/mpeg,audio/mp4,audio/aac,audio/ogg,audio/flac" multiple>
+          <p id="audio-summary" class="queue-summary">يمكن إضافة تعليق صوتي أو موسيقى أو مؤثرات (حتى 4 ملفات، 25 ميغابايت لكل ملف).</p>
+          <button id="upload-audio" class="secondary" type="button">رفع المسارات الصوتية</button>
+        </div>
       </div>
       <p id="queue-summary" class="queue-summary">لا توجد مشاهد في القائمة بعد.</p>
       <ol id="scene-list" class="scene-list"></ol>
