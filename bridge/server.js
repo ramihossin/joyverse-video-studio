@@ -8,6 +8,7 @@ import { initializeTaskStore, enqueueTask, getTask, claimNextTask, finishTask, g
 import { normalizeVideoOptions, assertVideoOptionsForProvider } from "./video-job.js";
 import { createObjectStorage } from "./object-storage.js";
 import { assembleMp4 } from "./ffmpeg-assembler.js";
+import { detectAudioFormat } from "./audio-format.js";
 import { createVideoWorker } from "./video-worker.js";
 import { verifyGithubActionsToken } from "./github-oidc.js";
 import { initializeBingControlStore, installBingControlRoutes, dispatchConfiguredBingCommand, recordBingDeviceResult, logBingCommandStatus } from "./bing-control.js";
@@ -415,23 +416,9 @@ app.post("/api/hermes/audio-upload", express.raw({
     return res.status(400).json({ error: "invalid_audio_body", max_bytes: 26214400 });
   }
   const bytes = req.body;
-  let extension, contentType;
-  if (bytes.toString("ascii", 0, 4) === "RIFF" && bytes.toString("ascii", 8, 12) === "WAVE") {
-    extension = "wav"; contentType = "audio/wav";
-  } else if (bytes.toString("ascii", 0, 4) === "fLaC") {
-    extension = "flac"; contentType = "audio/flac";
-  } else if (bytes.toString("ascii", 0, 4) === "OggS") {
-    extension = "ogg"; contentType = "audio/ogg";
-  } else if (bytes.toString("ascii", 0, 3) === "ID3" ||
-             (bytes[0] === 0xff && (bytes[1] & 0xe0) === 0xe0)) {
-    extension = "mp3"; contentType = "audio/mpeg";
-  } else if (bytes.toString("ascii", 4, 8) === "ftyp") {
-    extension = "m4a"; contentType = "audio/mp4";
-  } else if (bytes[0] === 0xff && (bytes[1] & 0xf6) === 0xf0) {
-    extension = "aac"; contentType = "audio/aac";
-  } else {
-    return res.status(415).json({ error: "unsupported_audio_format" });
-  }
+  const audioFormat = detectAudioFormat(bytes);
+  if (!audioFormat) return res.status(415).json({ error: "unsupported_audio_format" });
+  const { extension, contentType } = audioFormat;
   const key = "audio/pending/" + randomUUID() + "." + extension;
   try {
     await createObjectStorage().put(key, bytes, contentType);
