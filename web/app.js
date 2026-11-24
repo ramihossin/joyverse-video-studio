@@ -21,6 +21,8 @@ const assemblyDownload = $("assembly-download");
 const audioInput = $("audio-files");
 const audioSummary = $("audio-summary");
 const uploadAudioButton = $("upload-audio");
+const backgroundMusicInput = $("background-music");
+const musicStyleInput = $("music-style");
 const resultBox = $("result-box");
 const resultVideo = $("result-video");
 const downloadLink = $("download");
@@ -364,7 +366,9 @@ async function assembleCompletedScenes() {
     const response = await apiRequest("/api/hermes/assemble", {
       method: "POST", json: {
         task_ids: completed.map(scene => scene.serverTaskId),
-        audio_keys: audioAssets.map(item => item.key)
+        audio_keys: audioAssets.map(item => item.key),
+        background_music: Boolean(backgroundMusicInput?.checked),
+        music_style: musicStyleInput?.value || "cheerful"
       }
     });
     const data = await response.json();
