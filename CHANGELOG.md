@@ -20,3 +20,7 @@
 
 - GitHub Actions re-validation after correcting the outdated reference-image test passed: Node.js tests 66/66, Bridge tests 66/66, and web browser smoke tests 9/9. JavaScript and Android worker syntax checks passed.
 - Confirmed the Agnes API endpoint rejects unauthenticated model-list access with HTTP 401. The public free Flash offer requires an account/API key, is a limited-time promotion, and is rate-limited; no credential was available to this execution context, so no live generation was submitted.
+
+- Additional provider research: NiftyVid uses a public Wan 2.2 image-to-video Space without an API key, but caps clips at 4.5 seconds and relies on shared ZeroGPU capacity. A smoke workflow was staged on an isolated experiment branch; its push-triggered run could not be retrieved through the available GitHub connector, so no output is claimed.
+- The official Pika H3 Flex Hugging Face Space is currently listed as Running on Zero. A third-party November 2026 test reports anonymous text-to-video with audio but did not byte-verify the downloaded MP4. The connected Pika API quote is 5 credits; no generation was run and no credits were spent.
+- Prior Render inspection found no Agnes API key or Agnes provider selection in the inspected JoyVerse bridge environment; no GitHub Actions secret was reported.
