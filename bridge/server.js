@@ -404,6 +404,45 @@ app.get("/api/hermes/status-chatgpt/:taskId", async (req, res) => {
     created_at: task.created_at, finished_at: task.finished_at ?? null });
 });
 
+// Upload optional narration/music audio before final assembly.
+app.post("/api/hermes/audio-upload", express.raw({
+  type: ["audio/wav", "audio/x-wav", "audio/mpeg", "audio/mp4", "audio/aac", "audio/ogg", "audio/flac", "application/octet-stream"],
+  limit: "25mb"
+}), async (req, res) => {
+  if (!JOYVERSE_STUDIO_TOKEN && !HERMES_WORKER_TOKEN) return res.status(503).json({ error: "studio_api_not_configured" });
+  if (!studioOrWorkerAuthorized(req)) return res.status(401).json({ error: "unauthorized" });
+  if (!Buffer.isBuffer(req.body) || req.body.length < 12 || req.body.length > 25 * 1024 * 1024) {
+    return res.status(400).json({ error: "invalid_audio_body", max_bytes: 26214400 });
+  }
+  const bytes = req.body;
+  let extension, contentType;
+  if (bytes.toString("ascii", 0, 4) === "RIFF" && bytes.toString("ascii", 8, 12) === "WAVE") {
+    extension = "wav"; contentType = "audio/wav";
+  } else if (bytes.toString("ascii", 0, 4) === "fLaC") {
+    extension = "flac"; contentType = "audio/flac";
+  } else if (bytes.toString("ascii", 0, 4) === "OggS") {
+    extension = "ogg"; contentType = "audio/ogg";
+  } else if (bytes.toString("ascii", 0, 3) === "ID3" ||
+             (bytes[0] === 0xff && (bytes[1] & 0xe0) === 0xe0)) {
+    extension = "mp3"; contentType = "audio/mpeg";
+  } else if (bytes.toString("ascii", 4, 8) === "ftyp") {
+    extension = "m4a"; contentType = "audio/mp4";
+  } else if (bytes[0] === 0xff && (bytes[1] & 0xf6) === 0xf0) {
+    extension = "aac"; contentType = "audio/aac";
+  } else {
+    return res.status(415).json({ error: "unsupported_audio_format" });
+  }
+  const key = "audio/pending/" + randomUUID() + "." + extension;
+  try {
+    await createObjectStorage().put(key, bytes, contentType);
+    res.set("Cache-Control", "no-store");
+    return res.status(201).json({ audio_key: key, content_type: contentType, bytes: bytes.length });
+  } catch (error) {
+    console.error("Staged audio upload failed:", String(error?.message || error).slice(0, 200));
+    return res.status(502).json({ error: "audio_storage_failed" });
+  }
+});
+
 // Upload a staged reference image before dispatch; dispatch atomically associates its key with the new task.
 app.post("/api/hermes/reference-upload", express.raw({
   type: ["image/png", "image/jpeg", "image/webp", "application/octet-stream"],
@@ -750,12 +789,18 @@ app.get("/api/hermes/tasks/:taskId", async (req, res) => {
 app.post("/api/hermes/assemble", async (req, res) => {
   if (!JOYVERSE_STUDIO_TOKEN && !HERMES_WORKER_TOKEN) return res.status(503).json({ error: "studio_api_not_configured" });
   if (!studioOrWorkerAuthorized(req)) return res.status(401).json({ error: "unauthorized" });
-  const { task_ids } = req.body ?? {};
+  const { task_ids, audio_keys = [] } = req.body ?? {};
   if (!Array.isArray(task_ids) || task_ids.length < 1 || task_ids.length > 40 ||
       task_ids.some(id => typeof id !== "string" || !id.trim() || id.length > 100)) {
     return res.status(400).json({ error: "task_ids_must_contain_1_to_40_valid_ids_in_playback_order" });
   }
   if (new Set(task_ids).size !== task_ids.length) return res.status(400).json({ error: "duplicate_task_ids" });
+  if (!Array.isArray(audio_keys) || audio_keys.length > 4 ||
+      audio_keys.some(key => typeof key !== "string" ||
+        !/^audio\/pending\/[0-9a-f-]{36}\.(wav|mp3|m4a|aac|ogg|flac)$/i.test(key))) {
+    return res.status(400).json({ error: "audio_keys_must_contain_up_to_4_uploaded_audio_keys" });
+  }
+  if (new Set(audio_keys).size !== audio_keys.length) return res.status(400).json({ error: "duplicate_audio_keys" });
   try {
     const tasks = [];
     for (const id of task_ids) {
@@ -772,14 +817,19 @@ app.post("/api/hermes/assemble", async (req, res) => {
     const storage = createObjectStorage();
     const clips = [];
     for (const task of tasks) clips.push(await storage.get(task.key));
-    const finalVideo = await assembleMp4(clips);
+    const audioTracks = [];
+    for (const key of audio_keys) {
+      const extension = key.split(".").pop().toLowerCase();
+      audioTracks.push({ buffer: await storage.get(key), extension });
+    }
+    const finalVideo = await assembleMp4(clips, { audioTracks });
     const finalId = randomUUID();
     const finalKey = "finals/" + finalId + ".mp4";
     await storage.put(finalKey, finalVideo, "video/mp4");
     res.set("Cache-Control", "no-store");
     return res.status(201).json({
       status: "completed", final_id: finalId, storage_key: finalKey,
-      scene_count: tasks.length, bytes: finalVideo.length,
+      scene_count: tasks.length, audio_track_count: audioTracks.length, bytes: finalVideo.length,
       download_path: "/api/hermes/final/" + finalId
     });
   } catch (error) {
