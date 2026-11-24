@@ -7,7 +7,7 @@ test("detects supported audio containers by file signature", () => {
     ["wav", "RIFFxxxxWAVE"],
     ["flac", "fLaCxxxxxxxx"],
     ["ogg", "OggSxxxxxxxx"],
-    ["mp3", "ID3xxxxxxx"],
+    ["mp3", "ID3xxxxxxxxx"],
     ["m4a", "xxxxftypM4A "]
   ];
   for (const [extension, header] of cases) {
