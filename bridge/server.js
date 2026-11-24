@@ -881,7 +881,7 @@ app.post("/api/hermes/assemble", async (req, res) => {
         return sum + (Number.isFinite(duration) && duration > 0 ? duration : 3.5);
       }, 0);
       audioTracks.push({
-        buffer: createProceduralMusicWav({ durationSeconds: targetDuration, style: music_style }),
+        buffer: createProceduralMusicWav({ durationSeconds: targetDuration, style: music_style, sampleRate: 16000 }),
         extension: "wav",
         volume: 0.28
       });
