@@ -31,7 +31,14 @@ jobs:
               raise SystemExit("Reference frame is not a PNG.")
           print("Reference frame downloaded:", os.path.getsize("joyverse-dragon-reference.png"), "bytes")
           PY
-          ffmpeg -y -loglevel error -i joyverse-dragon-reference.png -vf "scale=512:288" -frames:v 1 joyverse-dragon-reference-small.png
+          python3 -m pip install --quiet pillow
+          python3 - <<'PY'
+          from PIL import Image
+          image = Image.open("joyverse-dragon-reference.png").convert("RGB")
+          image = image.resize((512, 288), Image.Resampling.LANCZOS)
+          image.save("joyverse-dragon-reference-small.png", format="PNG", optimize=True)
+          print("Downscaled reference:", image.size)
+          PY
           file joyverse-dragon-reference-small.png
 
       - name: Submit one Wan 2.2 image-to-video job
