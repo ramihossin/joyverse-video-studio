@@ -45,7 +45,7 @@ export function createAgnesVideoProvider({
   if (typeof apiKey !== "string" || !apiKey.trim()) {
     throw new Error("AGNES_API_KEY is required to use the Agnes video provider.");
   }
-  if (model !== MODEL) throw new Error("Unsupported Agnes video model.");
+  if (model !== MODEL) throw new Error("Only the free Agnes Video 2.5 Flash model is enabled in this adapter.");
   if (typeof fetchImpl !== "function") throw new Error("A fetch implementation is required.");
   if (!Number.isInteger(pollIntervalMs) || pollIntervalMs < 1000 || pollIntervalMs > 30000 ||
       !Number.isInteger(maxWaitMs) || maxWaitMs < 10000 || maxWaitMs > 30 * 60 * 1000 ||
@@ -63,14 +63,20 @@ export function createAgnesVideoProvider({
   }
 
   return Object.freeze({
-    name: "agnes-video-2.5-flash",
-    async generate({ prompt, referenceImage = null, videoOptions = {}, onProgress } = {}) {
+    name: MODEL,
+    async generate({
+      prompt, referenceImage = null, videoOptions = {}, onProgress,
+      providerJobId = null, onJobCreated
+    } = {}) {
       if (typeof prompt !== "string" || !prompt.trim() || prompt.length > 12000) {
         throw new Error("A non-empty prompt up to 12000 characters is required.");
       }
       if (referenceImage !== null &&
           (!Buffer.isBuffer(referenceImage) || referenceImage.length === 0)) {
         throw new Error("Reference image must be a non-empty Buffer.");
+      }
+      if (referenceImage) {
+        throw new Error("Agnes 2.5 Flash reference mode requires a hosted image URL; this adapter currently accepts text-to-video only. Use LTX for reference-image generation.");
       }
       const requestedDuration = videoOptions.duration ?? 5;
       if (!Number.isInteger(requestedDuration) || requestedDuration < 4 || requestedDuration > 12) {
@@ -80,36 +86,44 @@ export function createAgnesVideoProvider({
       const body = {
         model,
         prompt: prompt.trim(),
-        mode: referenceImage ? "img2video" : "text",
+        mode: "text",
         seconds: String(seconds),
         size: "720P",
         n: 1,
         aspect_ratio: aspectRatioFor(videoOptions)
       };
       if (Number.isInteger(videoOptions.seed) && videoOptions.seed >= 0) body.seed = videoOptions.seed;
-      if (referenceImage) body.first_frame = "data:image/png;base64," + referenceImage.toString("base64");
 
-      await onProgress?.({ stage: "connecting", progress: 0.02 });
-      let created;
-      for (let submissionAttempt = 0; ; submissionAttempt++) {
-        try {
-          created = await request(API_BASE + "/v1/videos", {
-            method: "POST", headers, body: JSON.stringify(body)
-          }, "Agnes video submission");
-          break;
-        } catch (error) {
-          const isQueueFull = /HTTP 503:.*queue is full/i.test(String(error?.message || error));
-          if (!isQueueFull || submissionAttempt >= 2) throw error;
-          const retryDelayMs = 30000 * (2 ** submissionAttempt);
-          await onProgress?.({ stage: "waiting_for_provider", progress: 0.01,
-            message: "Agnes queue is full; safely retrying submission after " + Math.round(retryDelayMs / 1000) + " seconds." });
-          await sleep(retryDelayMs);
+      let videoId = providerJobId;
+      if (videoId !== null && (typeof videoId !== "string" || !videoId.trim() || videoId.length > 2048)) {
+        throw new Error("Agnes provider job ID is invalid.");
+      }
+      if (!videoId) {
+        await onProgress?.({ stage: "connecting", progress: 0.02 });
+        let created;
+        for (let submissionAttempt = 0; ; submissionAttempt++) {
+          try {
+            created = await request(API_BASE + "/v1/videos", {
+              method: "POST", headers, body: JSON.stringify(body)
+            }, "Agnes video submission");
+            break;
+          } catch (error) {
+            const message = String(error?.message || error);
+            const isQueueFull = /video_queue_full|HTTP 503:.*queue is full/i.test(message);
+            if (!isQueueFull || submissionAttempt >= 2) throw error;
+            const retryDelayMs = 30000 * (2 ** submissionAttempt);
+            await onProgress?.({ stage: "waiting_for_provider", progress: 0.01,
+              message: "Agnes queue is full; safely retrying submission after " + Math.round(retryDelayMs / 1000) + " seconds." });
+            await sleep(retryDelayMs);
+          }
         }
+        videoId = created.video_id || created.id || created.task_id;
+        if (typeof videoId !== "string" || !videoId.trim()) {
+          throw new Error("Agnes did not return a resumable video_id.");
+        }
+        await onJobCreated?.(videoId);
       }
-      const videoId = created.video_id || created.id;
-      if (typeof videoId !== "string" || !videoId.trim()) {
-        throw new Error("Agnes did not return a video_id.");
-      }
+
       const deadline = now() + maxWaitMs;
       let lastProgress = 0.05;
       while (now() < deadline) {
